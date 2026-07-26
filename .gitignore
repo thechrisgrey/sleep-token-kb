@@ -1,0 +1,25 @@
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Python
+.venv/
+
+# macOS
+.DS_Store
+
+# Secrets / local overrides
+*.mobileprovision
+*.p12
+Secrets.xcconfig

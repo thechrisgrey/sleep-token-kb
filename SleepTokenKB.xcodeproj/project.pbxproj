@@ -1,0 +1,484 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		01A2009543D9BA179F37E6F0 /* LayoutMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DC71CFEE0A72F1981885FAD /* LayoutMode.swift */; };
+		02855833FFBA19E180125288 /* AlphabetChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FA93313652D135E88CF1E1 /* AlphabetChartView.swift */; };
+		09992AB3A35C1B588264CDDF /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E015BC4EB2125A6F597E6DA /* KeyboardViewController.swift */; };
+		1C069107C79837E2C3297973 /* Alphabet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F8B191D3CC54F363C6833E /* Alphabet.swift */; };
+		2DA166D0AFAA8F2AC37E84B5 /* LayoutMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DC71CFEE0A72F1981885FAD /* LayoutMode.swift */; };
+		4F9B122D7FBE549ABDC74519 /* SymbolGlyphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F8987716A1302DDC384C178 /* SymbolGlyphView.swift */; };
+		5497021A6F0AC323C422A947 /* SleepTokenKBApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91AD1321AFA7CBB8EA75619E /* SleepTokenKBApp.swift */; };
+		57C6864CA7DA671770FF6B70 /* EnableKeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552C9BA590F343156D99A70D /* EnableKeyboardView.swift */; };
+		84C7D4FF9A9275386565E4E8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A54E051FC5420CE3A2B6B172 /* Assets.xcassets */; };
+		93F1C84E847CB3E7121A9814 /* KeyboardRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A6A4EC0AD28FD24AE067D6 /* KeyboardRootView.swift */; };
+		A5E548A515A12BDD6257C2A8 /* Alphabet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F8B191D3CC54F363C6833E /* Alphabet.swift */; };
+		B313D78914B713A9790D6574 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3027B80208E51D6B3304FA50 /* Assets.xcassets */; };
+		BAFF2A479A23DB3D53CB07FC /* SleepTokenKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BD67C38107529CFBD5DFA9A8 /* SleepTokenKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E7603E6FDDF6B258CCA53197 /* SymbolGlyphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F8987716A1302DDC384C178 /* SymbolGlyphView.swift */; };
+		EB6C02B83B7D5AAE2E33D972 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A8C769BA84F84C9A399166F /* ContentView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F19C6DAD01A4E5D87D857CDB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 279A74CD1B308620D2E4D882 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F5BAE3138B44BE95BB2CCB6E;
+			remoteInfo = SleepTokenKeyboard;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D7F89DEA51AAF8AAAC09D51C /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BAFF2A479A23DB3D53CB07FC /* SleepTokenKeyboard.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		09FA93313652D135E88CF1E1 /* AlphabetChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlphabetChartView.swift; sourceTree = "<group>"; };
+		17F8B191D3CC54F363C6833E /* Alphabet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Alphabet.swift; sourceTree = "<group>"; };
+		2DC71CFEE0A72F1981885FAD /* LayoutMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutMode.swift; sourceTree = "<group>"; };
+		3027B80208E51D6B3304FA50 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		434AC2364F4B983B3DD35DB4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		4F8987716A1302DDC384C178 /* SymbolGlyphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolGlyphView.swift; sourceTree = "<group>"; };
+		552C9BA590F343156D99A70D /* EnableKeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnableKeyboardView.swift; sourceTree = "<group>"; };
+		588BCFC4A4EB5774183C06C3 /* SleepTokenKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SleepTokenKeyboard.entitlements; sourceTree = "<group>"; };
+		75BF6E6C381599E1617A8935 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		7E015BC4EB2125A6F597E6DA /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
+		91AD1321AFA7CBB8EA75619E /* SleepTokenKBApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTokenKBApp.swift; sourceTree = "<group>"; };
+		9A8C769BA84F84C9A399166F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A0A6A4EC0AD28FD24AE067D6 /* KeyboardRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardRootView.swift; sourceTree = "<group>"; };
+		A54E051FC5420CE3A2B6B172 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BD67C38107529CFBD5DFA9A8 /* SleepTokenKeyboard.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SleepTokenKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1C5A0DCB6F05CB00209375A /* SleepTokenKB.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SleepTokenKB.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D869B07816C79E1AA3784CE4 /* SleepTokenKB.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SleepTokenKB.entitlements; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		03E0C76C347D5295E46B212C /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				17F8B191D3CC54F363C6833E /* Alphabet.swift */,
+				2DC71CFEE0A72F1981885FAD /* LayoutMode.swift */,
+				4F8987716A1302DDC384C178 /* SymbolGlyphView.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		1A8C5B4093D8A5345055BC76 /* SleepTokenKeyboard */ = {
+			isa = PBXGroup;
+			children = (
+				A54E051FC5420CE3A2B6B172 /* Assets.xcassets */,
+				434AC2364F4B983B3DD35DB4 /* Info.plist */,
+				A0A6A4EC0AD28FD24AE067D6 /* KeyboardRootView.swift */,
+				7E015BC4EB2125A6F597E6DA /* KeyboardViewController.swift */,
+				588BCFC4A4EB5774183C06C3 /* SleepTokenKeyboard.entitlements */,
+			);
+			path = SleepTokenKeyboard;
+			sourceTree = "<group>";
+		};
+		44DC00735123BC33CABE8634 = {
+			isa = PBXGroup;
+			children = (
+				03E0C76C347D5295E46B212C /* Shared */,
+				7E24843B476DA614AA3C65D3 /* SleepTokenKB */,
+				1A8C5B4093D8A5345055BC76 /* SleepTokenKeyboard */,
+				9BB0FC983C77B601E30D78AC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		7E24843B476DA614AA3C65D3 /* SleepTokenKB */ = {
+			isa = PBXGroup;
+			children = (
+				09FA93313652D135E88CF1E1 /* AlphabetChartView.swift */,
+				3027B80208E51D6B3304FA50 /* Assets.xcassets */,
+				9A8C769BA84F84C9A399166F /* ContentView.swift */,
+				552C9BA590F343156D99A70D /* EnableKeyboardView.swift */,
+				75BF6E6C381599E1617A8935 /* Info.plist */,
+				D869B07816C79E1AA3784CE4 /* SleepTokenKB.entitlements */,
+				91AD1321AFA7CBB8EA75619E /* SleepTokenKBApp.swift */,
+			);
+			path = SleepTokenKB;
+			sourceTree = "<group>";
+		};
+		9BB0FC983C77B601E30D78AC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D1C5A0DCB6F05CB00209375A /* SleepTokenKB.app */,
+				BD67C38107529CFBD5DFA9A8 /* SleepTokenKeyboard.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C2FCFE85A237CB67B6331672 /* SleepTokenKB */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 561F2EBCCAC3E9CE2BD14F7A /* Build configuration list for PBXNativeTarget "SleepTokenKB" */;
+			buildPhases = (
+				2B9710A89399A57C002A8E84 /* Sources */,
+				6CF6029F3B6E73B538C90D8D /* Resources */,
+				D7F89DEA51AAF8AAAC09D51C /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FAE9B09F720A976AC4987703 /* PBXTargetDependency */,
+			);
+			name = SleepTokenKB;
+			packageProductDependencies = (
+			);
+			productName = SleepTokenKB;
+			productReference = D1C5A0DCB6F05CB00209375A /* SleepTokenKB.app */;
+			productType = "com.apple.product-type.application";
+		};
+		F5BAE3138B44BE95BB2CCB6E /* SleepTokenKeyboard */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 64B8370131481BCB959E5678 /* Build configuration list for PBXNativeTarget "SleepTokenKeyboard" */;
+			buildPhases = (
+				E6246C65BDE231794123D9E0 /* Sources */,
+				BDC12A3EB2AD8607F6D9C7BB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SleepTokenKeyboard;
+			packageProductDependencies = (
+			);
+			productName = SleepTokenKeyboard;
+			productReference = BD67C38107529CFBD5DFA9A8 /* SleepTokenKeyboard.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		279A74CD1B308620D2E4D882 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					C2FCFE85A237CB67B6331672 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					F5BAE3138B44BE95BB2CCB6E = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 42D5A12BBE87FEED0EC13FBF /* Build configuration list for PBXProject "SleepTokenKB" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 44DC00735123BC33CABE8634;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 9BB0FC983C77B601E30D78AC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C2FCFE85A237CB67B6331672 /* SleepTokenKB */,
+				F5BAE3138B44BE95BB2CCB6E /* SleepTokenKeyboard */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6CF6029F3B6E73B538C90D8D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B313D78914B713A9790D6574 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BDC12A3EB2AD8607F6D9C7BB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				84C7D4FF9A9275386565E4E8 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2B9710A89399A57C002A8E84 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C069107C79837E2C3297973 /* Alphabet.swift in Sources */,
+				02855833FFBA19E180125288 /* AlphabetChartView.swift in Sources */,
+				EB6C02B83B7D5AAE2E33D972 /* ContentView.swift in Sources */,
+				57C6864CA7DA671770FF6B70 /* EnableKeyboardView.swift in Sources */,
+				2DA166D0AFAA8F2AC37E84B5 /* LayoutMode.swift in Sources */,
+				5497021A6F0AC323C422A947 /* SleepTokenKBApp.swift in Sources */,
+				4F9B122D7FBE549ABDC74519 /* SymbolGlyphView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E6246C65BDE231794123D9E0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A5E548A515A12BDD6257C2A8 /* Alphabet.swift in Sources */,
+				93F1C84E847CB3E7121A9814 /* KeyboardRootView.swift in Sources */,
+				09992AB3A35C1B588264CDDF /* KeyboardViewController.swift in Sources */,
+				01A2009543D9BA179F37E6F0 /* LayoutMode.swift in Sources */,
+				E7603E6FDDF6B258CCA53197 /* SymbolGlyphView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		FAE9B09F720A976AC4987703 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F5BAE3138B44BE95BB2CCB6E /* SleepTokenKeyboard */;
+			targetProxy = F19C6DAD01A4E5D87D857CDB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		04C3021CAEFFB37805FB090E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SleepTokenKB/SleepTokenKB.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SleepTokenKB/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.altivum.SleepTokenKB;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		255CB822BBC0B56BBC76545E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SleepTokenKB/SleepTokenKB.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SleepTokenKB/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.altivum.SleepTokenKB;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9CB822728B19700B361D31EB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B33E187CFAEED2ABD9821745 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SleepTokenKeyboard/SleepTokenKeyboard.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SleepTokenKeyboard/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.altivum.SleepTokenKB.keyboard;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		EB18BD0EAF410859CBD08DDE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SleepTokenKeyboard/SleepTokenKeyboard.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SleepTokenKeyboard/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.altivum.SleepTokenKB.keyboard;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EB9C1C2B1F25656B801FDE80 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		42D5A12BBE87FEED0EC13FBF /* Build configuration list for PBXProject "SleepTokenKB" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EB9C1C2B1F25656B801FDE80 /* Debug */,
+				9CB822728B19700B361D31EB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		561F2EBCCAC3E9CE2BD14F7A /* Build configuration list for PBXNativeTarget "SleepTokenKB" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				255CB822BBC0B56BBC76545E /* Debug */,
+				04C3021CAEFFB37805FB090E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		64B8370131481BCB959E5678 /* Build configuration list for PBXNativeTarget "SleepTokenKeyboard" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EB18BD0EAF410859CBD08DDE /* Debug */,
+				B33E187CFAEED2ABD9821745 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 279A74CD1B308620D2E4D882 /* Project object */;
+}

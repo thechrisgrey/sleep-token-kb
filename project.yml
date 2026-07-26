@@ -1,0 +1,78 @@
+# Optional: `brew install xcodegen && xcodegen generate`
+name: SleepTokenKB
+options:
+  bundleIdPrefix: com.altivum
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    DEVELOPMENT_TEAM: "" # set your Team ID in Xcode
+    CODE_SIGN_STYLE: Automatic
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: "1.0"
+targets:
+  SleepTokenKB:
+    type: application
+    platform: iOS
+    sources:
+      - path: SleepTokenKB
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.altivum.SleepTokenKB
+        INFOPLIST_FILE: SleepTokenKB/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SleepTokenKB/SleepTokenKB.entitlements
+        GENERATE_INFOPLIST_FILE: false
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+    entitlements:
+      path: SleepTokenKB/SleepTokenKB.entitlements
+    dependencies:
+      - target: SleepTokenKeyboard
+        embed: true
+    info:
+      path: SleepTokenKB/Info.plist
+      properties:
+        CFBundleDisplayName: Sleep Token KB
+
+  SleepTokenKeyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: SleepTokenKeyboard
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.altivum.SleepTokenKB.keyboard
+        INFOPLIST_FILE: SleepTokenKeyboard/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SleepTokenKeyboard/SleepTokenKeyboard.entitlements
+        GENERATE_INFOPLIST_FILE: false
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
+        SKIP_INSTALL: true
+    entitlements:
+      path: SleepTokenKeyboard/SleepTokenKeyboard.entitlements
+    info:
+      path: SleepTokenKeyboard/Info.plist
+      properties:
+        CFBundleDisplayName: Sleep Token KB
+        NSExtension:
+          NSExtensionAttributes:
+            IsASCIICapable: true
+            PrefersRightToLeft: false
+            PrimaryLanguage: en-US
+            RequestsOpenAccess: false
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+
+schemes:
+  SleepTokenKB:
+    build:
+      targets:
+        SleepTokenKB: all
+        SleepTokenKeyboard: all
+    run:
+      config: Debug
