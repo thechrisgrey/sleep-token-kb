@@ -1,42 +1,45 @@
 # Sleep Token KB
 
-Custom **iOS system keyboard** that shows Sleep Token ritual alphabet glyphs on the keys and inserts standard Latin letters into any text field.
+Custom **iOS system keyboard** that shows Sleep Token ritual alphabet glyphs on the keys and inserts standard Latin letters into any text field. Also includes **Rune Pad**, a screen for composing vertical ritual text and exporting it as an image.
 
 After you install the host app once, **Sleep Token KB** appears under:
 
 **Settings → General → Keyboard → Keyboards → Add New Keyboard…**
 
-## What’s included
+## What's included
 
 | Target | Role |
 |--------|------|
-| **SleepTokenKB** | Host app — enable guide, alphabet chart, default prefs |
+| **SleepTokenKB** | Host app — enable guide, alphabet chart, Rune Pad, defaults |
 | **SleepTokenKeyboard** | Custom Keyboard extension (`UIInputViewController`) |
+| **SleepTokenKBTests** | Unit tests for the pure-logic layer (`Alphabet`, `LayoutMode`, `KeyboardPreferences`) |
 
 | Feature | Notes |
 |---------|--------|
 | QWERTY layout | Muscle-memory typing; symbol faces on keys |
 | A–Z Grid layout | Learning / ritual layout; toggle in the keyboard top bar |
+| Rune / ABC key style | Toggle whether keys show ritual glyphs or plain letters; typed text is always English either way |
 | Latin insert | Tapping a key inserts `a`–`z` / `A`–`Z` (usable everywhere) |
+| Rune Pad | Compose vertical ritual text in the host app, then Copy Image (transparent PNG) into any app |
 | 123 page | Numbers and punctuation |
-| Latin hints | Optional small letter under each glyph |
+| Latin hints | Optional small letter under each rune-art glyph |
 | Haptics | Toggle in host app |
 | Full Access | **Off** by default (`RequestsOpenAccess = false`) |
 
-Shared code lives in `Shared/` (alphabet map, layout prefs, glyph renderer).
+Shared code lives in `Shared/` (alphabet map, layout prefs, glyph renderer, rune font loader).
 
 ## Open & run
 
 1. Open `SleepTokenKB.xcodeproj` in Xcode.
 2. Select the **SleepTokenKB** scheme (not the extension alone).
 3. Signing & Capabilities:
-   - Choose your **Team** on **both** targets (`SleepTokenKB` and `SleepTokenKeyboard`).
-   - Bundle IDs (change if you like, keep the `.keyboard` suffix relationship):
-     - App: `com.altivum.SleepTokenKB`
-     - Keyboard: `com.altivum.SleepTokenKB.keyboard`
-   - **App Groups** (both targets): `group.com.altivum.SleepTokenKB`  
-     Required so host-app prefs (default layout, haptics, hints) sync into the keyboard. Without it, the keyboard still works; prefs set *inside* the keyboard persist only in the extension process.
-4. Run on a **physical iPhone** (recommended). Simulator support for keyboard extensions is limited.
+   - Choose your **Team** on **all three** targets (`SleepTokenKB`, `SleepTokenKeyboard`, `SleepTokenKBTests`) — `project.yml` hardcodes `VMMDK66N53`; change it there (not in Xcode) if you use a different team, then re-run `xcodegen generate`.
+   - Bundle IDs (change if you like, keep the `.SleepTokenKeyboard` suffix relationship):
+     - App: `ai.altivum.SleepTokenFanKB`
+     - Keyboard: `ai.altivum.SleepTokenFanKB.SleepTokenKeyboard`
+   - **App Groups** (both app and keyboard targets): `group.ai.altivum.SleepTokenFanKB`
+     Required so host-app prefs (default layout, key style, haptics, hints) sync into the keyboard. Declared in each target's `.entitlements` file — managed via `project.yml`'s `entitlements.properties`, so re-running `xcodegen generate` won't wipe it.
+4. Run on a **physical iPhone** (recommended). Simulator support for keyboard extensions is limited (press Command-K if the software keyboard doesn't appear).
 5. After install, enable the keyboard (next section).
 
 Regenerate the project from `project.yml` if you edit it:
@@ -54,30 +57,28 @@ iOS never auto-enables third-party keyboards. The host app includes these steps 
 3. **Add New Keyboard…**
 4. Under **THIRD-PARTY KEYBOARDS**, choose **Sleep Token KB**
 5. (Optional) Tap the keyboard name → **Allow Full Access** — **not needed** for this build
-6. In any app’s text field: long-press the **globe** key → **Sleep Token KB**
+6. In any app's text field: long-press the **globe** key → **Sleep Token KB**
 
-If it’s missing from the list: delete the app, reinstall, force-quit Settings, try again.
+If it's missing from the list: delete the app, reinstall, force-quit Settings, try again.
 
 ## Using the keyboard
 
-- **Top bar:** toggle **QWERTY** ↔ **A–Z Grid**; toggle Latin letter hints
-- **Keys:** Sleep Token glyphs (geometric stand-ins until you add PDFs)
+- **Bottom bar:** toggle **QWERTY** ↔ **A–Z Grid**; toggle **Rune art** ↔ **ABC** key style; next-keyboard globe key
+- **Keys:** Sleep Token glyphs (real traced art, with a geometric fallback if an asset is ever missing) or plain letters, depending on key style
 - **Shift:** uppercase; double-tap for caps-lock style sticky shift
 - **123 / ABC:** numbers and punctuation
-- **Globe:** next system keyboard
+- Typed text is **always** plain English — the key style is cosmetic only
 
-## Replacing glyphs with real art
+## Rune Pad
 
-Geometric approximations are built-in so you can type immediately. For production art:
+Open **Rune Pad** from the host app to compose vertical ritual text: each space starts a new column, long text auto-shrinks to fit, and **Copy Image** exports a transparent PNG you can paste into Messages, Notes, Reminders, and anywhere else that accepts images.
 
-1. Trace `Assets/Symbols/sleep-token-alphabet-reference.png` into monochrome PDFs.
-2. Name them `symbol_a.pdf` … `symbol_z.pdf`.
-3. Add each to **both** asset catalogs (or a shared catalog):
-   - Render As: **Template Image**
-   - Preserve Vector Data: **Yes**
-4. `SymbolGlyphView` prefers catalog images over geometry when present.
+## Replacing/updating glyph art
 
-See `Assets/Symbols/README.md`.
+Real traced art is already imported for all 26 letters. To update it:
+
+1. Edit the source SVGs in `stkb-runes-svg/`.
+2. Re-run the PDF import loop and the font rebuild — see `Assets/Symbols/README.md` for both commands.
 
 ## Architecture
 
@@ -86,7 +87,7 @@ Host app (SleepTokenKB)
   └── embeds → Keyboard extension (SleepTokenKeyboard)
                   └── KeyboardViewController : UIInputViewController
                         └── SwiftUI KeyboardRootView
-                              ├── LetterPage (QWERTY | Grid)
+                              ├── LetterPage (QWERTY | Grid; rune art | ABC)
                               └── SymbolsPage (123)
 ```
 
@@ -104,14 +105,19 @@ NSExtensionPrincipalClass  = $(PRODUCT_MODULE_NAME).KeyboardViewController
 RequestsOpenAccess         = false
 ```
 
-That is what registers it with the system keyboard list.
+That is what registers it with the system keyboard list. Both `Info.plist` files (and both `.entitlements` files) are generated by `xcodegen` from `project.yml` — edit `project.yml`, not the plist/entitlements XML directly, since `xcodegen generate` overwrites them from there.
+
+## Tests
+
+`SleepTokenKBTests` covers the pure-logic layer: PUA rune-character round-tripping, `LayoutMode`/`KeyFaceStyle` cycling, and `KeyboardPreferences` defaults. Run via the `SleepTokenKB` scheme's Test action in Xcode.
 
 ## Legal
 
-Unofficial fan project. Sleep Token names and iconography are almost certainly protected IP. Fine for personal/TestFlight use; public App Store distribution may require rights clearance and clear “not affiliated” labeling.
+Unofficial fan project. Sleep Token names and iconography are almost certainly protected IP. Fine for personal/TestFlight use; public App Store distribution may require rights clearance and clear "not affiliated" labeling.
 
 ## Requirements
 
 - Xcode 15+ (built against current iOS SDK)
-- iOS 17.0+ deployment target
+- iOS 26.5+ deployment target
 - Apple Developer team (free or paid) for device install
+- Python 3 + the packages in `requirements.txt` (only needed if regenerating `SleepTokenRunes.ttf` from the source SVGs — see `Assets/Symbols/README.md`)

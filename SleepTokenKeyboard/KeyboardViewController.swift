@@ -1,11 +1,11 @@
 import UIKit
 import SwiftUI
 
-/// Principal class for the Custom Keyboard extension.
-/// Appears under Settings → General → Keyboard → Keyboards after the host app is installed.
+/// Custom keyboard: ritual or ABC keycaps; always inserts English letters.
 final class KeyboardViewController: UIInputViewController {
     private var hostingController: UIHostingController<KeyboardRootView>?
     private var heightConstraint: NSLayoutConstraint?
+    private var showNextKeyboardKey = true
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -15,45 +15,53 @@ final class KeyboardViewController: UIInputViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        updateHeight()
-        hostingController?.rootView = makeRootView()
+        showNextKeyboardKey = needsInputModeSwitchKey
+        applyHeight()
+        refreshRoot()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        showNextKeyboardKey = needsInputModeSwitchKey
+        applyHeight()
+        refreshRoot()
     }
 
     override func viewWillTransition(to size: CGSize, with coordinator: any UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
         coordinator.animate(alongsideTransition: { _ in
-            self.updateHeight()
+            self.applyHeight()
         })
     }
 
-    override func textDidChange(_ textInput: (any UITextInput)?) {
-        // Could refresh shift state from proxy autocapitalization if desired.
-    }
-
-    // MARK: - UI
-
     private func installKeyboardUI() {
-        let root = makeRootView()
-        let host = UIHostingController(rootView: root)
+        let host = UIHostingController(rootView: makeRootView())
         host.view.translatesAutoresizingMaskIntoConstraints = false
         host.view.backgroundColor = .clear
         addChild(host)
         view.addSubview(host.view)
         host.didMove(toParent: self)
+        hostingController = host
 
-        let height = view.heightAnchor.constraint(equalToConstant: preferredKeyboardHeight)
-        height.priority = .defaultHigh
-        height.isActive = true
+        let height = NSLayoutConstraint(
+            item: view!,
+            attribute: .height,
+            relatedBy: .equal,
+            toItem: nil,
+            attribute: .notAnAttribute,
+            multiplier: 0,
+            constant: preferredKeyboardHeight
+        )
+        height.priority = UILayoutPriority(999)
+        view.addConstraint(height)
         heightConstraint = height
 
         NSLayoutConstraint.activate([
-            host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             host.view.topAnchor.constraint(equalTo: view.topAnchor),
-            host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
-
-        hostingController = host
     }
 
     private func makeRootView() -> KeyboardRootView {
@@ -62,32 +70,43 @@ final class KeyboardViewController: UIInputViewController {
             onNextKeyboard: { [weak self] in
                 self?.advanceToNextInputMode()
             },
-            needsInputModeSwitchKey: needsInputModeSwitchKey,
-            onLayoutModeChange: { [weak self] _ in
-                self?.updateHeight(rebuild: false)
+            needsInputModeSwitchKey: showNextKeyboardKey,
+            onNeedsHeightUpdate: { [weak self] in
+                self?.applyHeight()
+                self?.refreshRoot()
             }
         )
     }
 
+    private func refreshRoot() {
+        hostingController?.rootView = makeRootView()
+    }
+
     private var preferredKeyboardHeight: CGFloat {
         let bounds = view.bounds
-        let isLandscape = bounds.width > 0
+        let screen = UIScreen.main.bounds
+        let isLandscape = (bounds.width > 1 && bounds.height > 1)
             ? bounds.width > bounds.height
-            : UIScreen.main.bounds.width > UIScreen.main.bounds.height
-        // Grid needs a bit more vertical room than QWERTY.
+            : screen.width > screen.height
+
         let mode = KeyboardPreferences.layoutMode
-        switch (isLandscape, mode) {
-        case (true, .qwerty): return 180
-        case (true, .grid): return 200
-        case (false, .qwerty): return 260
-        case (false, .grid): return 300
+        let hints = KeyboardPreferences.showLatinHints
+
+        if isLandscape {
+            return hints ? 210 : 190
+        }
+        switch (mode, hints) {
+        case (.qwerty, false): return 280
+        case (.qwerty, true): return 300
+        case (.grid, false): return 320
+        case (.grid, true): return 340
         }
     }
 
-    private func updateHeight(rebuild: Bool = true) {
+    private func applyHeight() {
         heightConstraint?.constant = preferredKeyboardHeight
-        if rebuild {
-            hostingController?.rootView = makeRootView()
-        }
+        view.setNeedsUpdateConstraints()
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
     }
 }

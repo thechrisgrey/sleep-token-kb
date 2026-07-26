@@ -44,7 +44,7 @@ struct EnableKeyboardView: View {
                 step(
                     number: 5,
                     title: "Use it",
-                    detail: "In any text field, tap and hold the globe key (or swipe) and select Sleep Token KB. Toggle QWERTY / A–Z Grid from the bar above the keys."
+                    detail: "In any text field, long-press the globe key and select Sleep Token KB. Keys can show runes or ABC; text is always English. For rune messages, use Rune Pad → Copy Image."
                 )
 
                 Divider().padding(.vertical, 4)
@@ -52,9 +52,9 @@ struct EnableKeyboardView: View {
                 Text("Troubleshooting")
                     .font(.headline)
 
-                bullet("If Sleep Token KB is missing from Add New Keyboard, force-quit Settings, reinstall this app, and try again.")
+                bullet("If the keyboard is missing from Add New Keyboard, force-quit Settings, reinstall this app, and try again.")
                 bullet("Keyboard extensions only appear after the host app has been installed at least once.")
-                bullet("Test on a real device when possible; the Simulator is limited for keyboard extensions.")
+                bullet("On Simulator, press Command-K if the software keyboard is hidden.")
             }
             .padding()
         }

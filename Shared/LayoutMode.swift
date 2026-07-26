@@ -1,6 +1,5 @@
 import Foundation
 
-/// Keyboard presentation mode. Persisted via App Group UserDefaults.
 public enum LayoutMode: String, CaseIterable, Identifiable, Codable, Sendable {
     case qwerty
     case grid
@@ -29,10 +28,34 @@ public enum LayoutMode: String, CaseIterable, Identifiable, Codable, Sendable {
     }
 }
 
-/// Shared preferences between host app and keyboard extension.
+/// How letter keys look. Typing always inserts normal English a–z.
+public enum KeyFaceStyle: String, CaseIterable, Identifiable, Codable, Sendable {
+    /// Sleep Token art on keys (avid-fan look). Text is still English.
+    case runeArt
+    /// Plain English A–Z on keys.
+    case letters
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .runeArt: "Rune keys"
+        case .letters: "ABC keys"
+        }
+    }
+
+    public var next: KeyFaceStyle {
+        switch self {
+        case .runeArt: .letters
+        case .letters: .runeArt
+        }
+    }
+}
+
 public enum KeyboardPreferences {
-    public static let appGroupID = "group.com.altivum.SleepTokenKB"
+    public static let appGroupID = "group.ai.altivum.SleepTokenFanKB"
     public static let layoutModeKey = "layoutMode"
+    public static let keyFaceStyleKey = "keyFaceStyle"
     public static let hapticsKey = "hapticsEnabled"
     public static let showLatinHintsKey = "showLatinHints"
 
@@ -43,14 +66,22 @@ public enum KeyboardPreferences {
     public static var layoutMode: LayoutMode {
         get {
             guard let raw = defaults.string(forKey: layoutModeKey),
-                  let mode = LayoutMode(rawValue: raw) else {
-                return .qwerty
-            }
+                  let mode = LayoutMode(rawValue: raw) else { return .qwerty }
             return mode
         }
-        set {
-            defaults.set(newValue.rawValue, forKey: layoutModeKey)
+        set { defaults.set(newValue.rawValue, forKey: layoutModeKey) }
+    }
+
+    public static var keyFaceStyle: KeyFaceStyle {
+        get {
+            guard let raw = defaults.string(forKey: keyFaceStyleKey),
+                  let style = KeyFaceStyle(rawValue: raw) else {
+                // Default: ritual keys, English text (simple path for fans).
+                return .runeArt
+            }
+            return style
         }
+        set { defaults.set(newValue.rawValue, forKey: keyFaceStyleKey) }
     }
 
     public static var hapticsEnabled: Bool {
@@ -61,7 +92,7 @@ public enum KeyboardPreferences {
         set { defaults.set(newValue, forKey: hapticsKey) }
     }
 
-    /// When true, small Latin letter appears under each symbol (learning mode).
+    /// Small Latin letter under rune art keys (learning aid).
     public static var showLatinHints: Bool {
         get {
             if defaults.object(forKey: showLatinHintsKey) == nil { return false }

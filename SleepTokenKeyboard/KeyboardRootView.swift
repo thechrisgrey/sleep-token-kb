@@ -1,14 +1,16 @@
 import SwiftUI
 import UIKit
 
-/// Bridge from SwiftUI keyboard chrome to `UITextDocumentProxy`.
+/// Simple fan keyboard: ritual or ABC keycaps, always types normal English.
+/// For actual rune *text*, open Rune Pad in the host app and copy as image.
 struct KeyboardRootView: View {
     let proxy: UITextDocumentProxy
     let onNextKeyboard: () -> Void
     let needsInputModeSwitchKey: Bool
-    var onLayoutModeChange: ((LayoutMode) -> Void)? = nil
+    var onNeedsHeightUpdate: (() -> Void)? = nil
 
     @State private var layoutMode: LayoutMode = KeyboardPreferences.layoutMode
+    @State private var keyFaceStyle: KeyFaceStyle = KeyboardPreferences.keyFaceStyle
     @State private var isShifted = false
     @State private var isCapsLock = false
     @State private var showSymbols = false
@@ -16,32 +18,41 @@ struct KeyboardRootView: View {
 
     private let impact = UIImpactFeedbackGenerator(style: .light)
 
+    private var keyHeight: CGFloat {
+        (showLatinHints && keyFaceStyle == .runeArt) ? 44 : 40
+    }
+    private let rowGap: CGFloat = 6
+    private let bottomBarHeight: CGFloat = 42
+
     var body: some View {
-        VStack(spacing: 6) {
-            topBar
+        VStack(spacing: rowGap) {
             if showSymbols {
-                SymbolsPage(
-                    onInsert: insertRaw,
-                    onBackspace: deleteBackward
-                )
+                SymbolsPage(keyHeight: keyHeight, rowGap: rowGap, onInsert: insertRaw, onBackspace: handleBackspace)
             } else {
                 LetterPage(
                     layoutMode: layoutMode,
+                    keyFaceStyle: keyFaceStyle,
                     isShifted: isShifted || isCapsLock,
                     showLatinHints: showLatinHints,
+                    keyHeight: keyHeight,
+                    rowGap: rowGap,
                     onLetter: insertLetter,
                     onShift: toggleShift,
-                    onBackspace: deleteBackward
+                    onBackspace: handleBackspace
                 )
             }
+
             bottomBar
+                .frame(height: bottomBarHeight)
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 6)
+        .padding(.horizontal, 3)
+        .padding(.top, 8)
         .padding(.bottom, 4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .background(Color(uiColor: .secondarySystemBackground))
         .onAppear {
             layoutMode = KeyboardPreferences.layoutMode
+            keyFaceStyle = KeyboardPreferences.keyFaceStyle
             showLatinHints = KeyboardPreferences.showLatinHints
             if KeyboardPreferences.hapticsEnabled {
                 impact.prepare()
@@ -49,59 +60,45 @@ struct KeyboardRootView: View {
         }
     }
 
-    // MARK: - Bars
+    // MARK: - Bottom chrome
 
-    private var topBar: some View {
-        HStack(spacing: 8) {
-            Button {
+    private var bottomBar: some View {
+        HStack(spacing: 4) {
+            if needsInputModeSwitchKey {
+                KeyChromeButton(systemName: "globe", weight: .medium, action: onNextKeyboard)
+                    .frame(width: 34)
+                    .accessibilityLabel("Next keyboard")
+            }
+
+            KeyChromeButton(
+                title: layoutMode == .qwerty ? "A–Z" : "QWRTY",
+                weight: .semibold
+            ) {
                 haptic()
                 layoutMode = layoutMode.next
                 KeyboardPreferences.layoutMode = layoutMode
-                onLayoutModeChange?(layoutMode)
-            } label: {
-                Label(layoutMode.title, systemImage: layoutMode == .qwerty ? "keyboard" : "square.grid.3x3")
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(Color(uiColor: .tertiarySystemFill)))
+                onNeedsHeightUpdate?()
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Toggle layout, currently \(layoutMode.accessibilityLabel)")
+            .frame(width: 50)
+            .accessibilityLabel("Switch layout")
 
-            Spacer()
-
-            Button {
+            // Rune art keys ↔ plain ABC keys (text is always English either way)
+            KeyChromeButton(
+                title: keyFaceStyle == .runeArt ? "ABC" : "Art",
+                weight: .semibold
+            ) {
                 haptic()
-                showLatinHints.toggle()
-                KeyboardPreferences.showLatinHints = showLatinHints
-            } label: {
-                Image(systemName: showLatinHints ? "textformat.abc" : "textformat.abc.dottedunderline")
-                    .font(.body.weight(.medium))
-                    .frame(width: 36, height: 32)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(Color(uiColor: .tertiarySystemFill)))
+                keyFaceStyle = keyFaceStyle.next
+                KeyboardPreferences.keyFaceStyle = keyFaceStyle
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(showLatinHints ? "Hide Latin hints" : "Show Latin hints")
-        }
-        .padding(.horizontal, 6)
-        .foregroundStyle(Color.primary)
-    }
-
-    private var bottomBar: some View {
-        HStack(spacing: 6) {
-            if needsInputModeSwitchKey {
-                KeyChromeButton(systemName: "globe", weight: .medium) {
-                    onNextKeyboard()
-                }
-                .frame(width: 42)
-                .accessibilityLabel("Next keyboard")
-            }
+            .frame(width: 42)
+            .accessibilityLabel("Key style \(keyFaceStyle.title)")
 
             KeyChromeButton(title: showSymbols ? "ABC" : "123", weight: .semibold) {
                 haptic()
                 showSymbols.toggle()
             }
-            .frame(width: 52)
+            .frame(width: 42)
 
             KeyChromeButton(title: "space", weight: .regular) {
                 insertRaw(" ")
@@ -111,17 +108,16 @@ struct KeyboardRootView: View {
             KeyChromeButton(title: "return", weight: .semibold) {
                 insertRaw("\n")
             }
-            .frame(width: 74)
+            .frame(width: 60)
         }
-        .frame(height: 42)
         .padding(.horizontal, 2)
     }
 
     // MARK: - Actions
 
     private func insertLetter(_ letter: SleepTokenLetter) {
-        let ch = (isShifted || isCapsLock) ? letter.upperLatin : letter.latin
-        insertRaw(ch)
+        let shifted = isShifted || isCapsLock
+        insertRaw(letter.englishInsert(shifted: shifted))
         if isShifted && !isCapsLock {
             isShifted = false
         }
@@ -132,7 +128,7 @@ struct KeyboardRootView: View {
         proxy.insertText(text)
     }
 
-    private func deleteBackward() {
+    private func handleBackspace() {
         haptic()
         proxy.deleteBackward()
     }
@@ -140,7 +136,6 @@ struct KeyboardRootView: View {
     private func toggleShift() {
         haptic()
         if isShifted {
-            // Second tap → caps lock
             if isCapsLock {
                 isCapsLock = false
                 isShifted = false
@@ -159,12 +154,15 @@ struct KeyboardRootView: View {
     }
 }
 
-// MARK: - Letter pages
+// MARK: - Pages
 
 private struct LetterPage: View {
     let layoutMode: LayoutMode
+    let keyFaceStyle: KeyFaceStyle
     let isShifted: Bool
     let showLatinHints: Bool
+    let keyHeight: CGFloat
+    let rowGap: CGFloat
     let onLetter: (SleepTokenLetter) -> Void
     let onShift: () -> Void
     let onBackspace: () -> Void
@@ -174,47 +172,49 @@ private struct LetterPage: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: rowGap) {
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 HStack(spacing: 5) {
                     if layoutMode == .qwerty && index == 2 {
                         ShiftKeyButton(isActive: isShifted, action: onShift)
-                            .frame(width: 44)
+                            .frame(width: 42, height: keyHeight)
                     }
 
                     ForEach(row) { letter in
                         LetterKeyButton(
                             letter: letter,
-                            showLatinHint: showLatinHints,
+                            keyFaceStyle: keyFaceStyle,
+                            showLatinHint: showLatinHints && keyFaceStyle == .runeArt,
+                            keyHeight: keyHeight,
                             action: { onLetter(letter) }
                         )
                     }
 
                     if layoutMode == .qwerty && index == 2 {
                         BackspaceKeyButton(action: onBackspace)
-                            .frame(width: 44)
+                            .frame(width: 42, height: keyHeight)
                     }
                 }
-                // Center the shorter middle QWERTY row
-                .padding(.horizontal, layoutMode == .qwerty && index == 1 ? 14 : 0)
+                .padding(.horizontal, layoutMode == .qwerty && index == 1 ? 12 : 0)
             }
 
             if layoutMode == .grid {
                 HStack {
                     ShiftKeyButton(isActive: isShifted, action: onShift)
-                        .frame(width: 52)
-                    Spacer()
+                        .frame(width: 48, height: keyHeight)
+                    Spacer(minLength: 0)
                     BackspaceKeyButton(action: onBackspace)
-                        .frame(width: 52)
+                        .frame(width: 48, height: keyHeight)
                 }
-                .frame(height: 40)
-                .padding(.horizontal, 4)
+                .padding(.horizontal, 2)
             }
         }
     }
 }
 
 private struct SymbolsPage: View {
+    let keyHeight: CGFloat
+    let rowGap: CGFloat
     let onInsert: (String) -> Void
     let onBackspace: () -> Void
 
@@ -225,22 +225,22 @@ private struct SymbolsPage: View {
     ]
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: rowGap) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 HStack(spacing: 5) {
                     ForEach(row, id: \.self) { symbol in
                         KeyChromeButton(title: symbol, weight: .medium) {
                             onInsert(symbol)
                         }
+                        .frame(height: keyHeight)
                     }
                 }
             }
             HStack {
-                Spacer()
+                Spacer(minLength: 0)
                 BackspaceKeyButton(action: onBackspace)
-                    .frame(width: 52, height: 40)
+                    .frame(width: 48, height: keyHeight)
             }
-            .padding(.horizontal, 4)
         }
     }
 }
@@ -249,25 +249,39 @@ private struct SymbolsPage: View {
 
 private struct LetterKeyButton: View {
     let letter: SleepTokenLetter
+    let keyFaceStyle: KeyFaceStyle
     let showLatinHint: Bool
+    let keyHeight: CGFloat
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 1) {
-                SymbolGlyphView(letter: letter, foreground: .primary)
-                    .frame(height: showLatinHint ? 22 : 28)
-                    .padding(.top, 4)
+            Group {
+                switch keyFaceStyle {
+                case .runeArt:
+                    VStack(spacing: 1) {
+                        SymbolGlyphView(letter: letter, foreground: .primary)
+                            .frame(height: showLatinHint ? 22 : 28)
+                            .padding(.top, 4)
 
-                if showLatinHint {
+                        if showLatinHint {
+                            Text(letter.upperLatin)
+                                .font(.system(size: 9, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .padding(.bottom, 2)
+                        } else {
+                            Spacer(minLength: 0)
+                        }
+                    }
+                case .letters:
                     Text(letter.upperLatin)
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .padding(.bottom, 2)
+                        .font(.system(size: max(17, keyHeight * 0.42), weight: .medium, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 42)
+            .frame(height: keyHeight)
             .background(
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(Color(uiColor: .systemBackground))
@@ -332,7 +346,9 @@ private struct KeyChromeButton: View {
                         .font(.body.weight(weight))
                 } else if let title {
                     Text(title)
-                        .font(.system(size: title.count > 2 ? 14 : 18, weight: weight, design: .rounded))
+                        .font(.system(size: title.count > 3 ? 11 : (title.count > 2 ? 12 : 15), weight: weight, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

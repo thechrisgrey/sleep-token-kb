@@ -17,11 +17,14 @@ public struct SymbolGlyphView: View {
                 Image(letter.assetName)
                     .renderingMode(.template)
                     .resizable()
+                    // Preserve aspect — never stretch circles into ovals or skew 45° strokes.
                     .scaledToFit()
+                    .aspectRatio(1, contentMode: .fit)
             } else {
                 GeometricSymbol(letter: letter)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(foreground)
         .accessibilityLabel(Text(letter.upperLatin))
         .accessibilityHint(Text(letter.glyphDescription))

@@ -1,21 +1,40 @@
 import Foundation
 
-/// Sleep Token ritual alphabet: Latin letter ↔ symbol asset.
+/// Sleep Token ritual alphabet: Latin letter ↔ key art asset.
 public enum SleepTokenLetter: String, CaseIterable, Identifiable, Codable, Sendable {
     case a, b, c, d, e, f, g, h, i, j, k, l, m
     case n, o, p, q, r, s, t, u, v, w, x, y, z
 
     public var id: String { rawValue }
 
-    /// Character inserted into the text field (always Latin).
     public var latin: String { rawValue }
-
     public var upperLatin: String { rawValue.uppercased() }
 
-    /// Asset catalog name (template, monochrome).
+    public var runeIndex: Int {
+        Int(rawValue.utf8.first! - UInt8(ascii: "a"))
+    }
+
+    /// Exact custom-font codepoint for Rune Pad (U+E900…).
+    public static let puaBase = 0xE900
+
+    public var exactRuneCharacter: Character {
+        Character(UnicodeScalar(Self.puaBase + runeIndex)!)
+    }
+
+    public var exactRuneString: String { String(exactRuneCharacter) }
+
     public var assetName: String { "symbol_\(rawValue)" }
 
-    /// Short description of the glyph (for accessibility / host chart).
+    /// Map a Private Use rune character back to its letter (for asset rendering).
+    public static func fromRuneCharacter(_ character: Character) -> SleepTokenLetter? {
+        guard let value = character.unicodeScalars.first?.value,
+              value >= UInt32(puaBase),
+              value < UInt32(puaBase + 26) else {
+            return nil
+        }
+        return SleepTokenLetter.allCases[Int(value - UInt32(puaBase))]
+    }
+
     public var glyphDescription: String {
         switch self {
         case .a: "Circle with center dot and X base"
@@ -46,9 +65,13 @@ public enum SleepTokenLetter: String, CaseIterable, Identifiable, Codable, Senda
         case .z: "Horizontal bar with Y below"
         }
     }
+
+    /// Keyboard always inserts normal English (works in every app).
+    public func englishInsert(shifted: Bool) -> String {
+        shifted ? upperLatin : latin
+    }
 }
 
-/// QWERTY rows (lowercase); shift is handled at insert time.
 public enum KeyboardLayout {
     public static let qwertyRows: [[SleepTokenLetter]] = [
         [.q, .w, .e, .r, .t, .y, .u, .i, .o, .p],
@@ -56,7 +79,6 @@ public enum KeyboardLayout {
         [.z, .x, .c, .v, .b, .n, .m]
     ]
 
-    /// A–Z grid: 3 rows of 9 + remainder (classic learning layout).
     public static let gridRows: [[SleepTokenLetter]] = [
         [.a, .b, .c, .d, .e, .f, .g, .h, .i],
         [.j, .k, .l, .m, .n, .o, .p, .q, .r],

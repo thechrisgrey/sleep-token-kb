@@ -1,0 +1,5 @@
+# Font/asset pipeline (see Assets/Symbols/README.md and scripts/build_rune_font.py)
+fonttools==4.63.0
+pillow==12.3.0
+svgelements==1.9.6
+shapely==2.1.2

@@ -1,16 +1,16 @@
 # Optional: `brew install xcodegen && xcodegen generate`
 name: SleepTokenKB
 options:
-  bundleIdPrefix: com.altivum
+  bundleIdPrefix: ai.altivum
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "26.5"
   createIntermediateGroups: true
   groupSortPosition: top
 settings:
   base:
     SWIFT_VERSION: "5.0"
     TARGETED_DEVICE_FAMILY: "1,2"
-    DEVELOPMENT_TEAM: "" # set your Team ID in Xcode
+    DEVELOPMENT_TEAM: "VMMDK66N53"
     CODE_SIGN_STYLE: Automatic
     CURRENT_PROJECT_VERSION: 1
     MARKETING_VERSION: "1.0"
@@ -23,7 +23,7 @@ targets:
       - path: Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.altivum.SleepTokenKB
+        PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenFanKB
         INFOPLIST_FILE: SleepTokenKB/Info.plist
         CODE_SIGN_ENTITLEMENTS: SleepTokenKB/SleepTokenKB.entitlements
         GENERATE_INFOPLIST_FILE: false
@@ -31,6 +31,9 @@ targets:
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
     entitlements:
       path: SleepTokenKB/SleepTokenKB.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.ai.altivum.SleepTokenFanKB
     dependencies:
       - target: SleepTokenKeyboard
         embed: true
@@ -38,6 +41,8 @@ targets:
       path: SleepTokenKB/Info.plist
       properties:
         CFBundleDisplayName: Sleep Token KB
+        UIAppFonts:
+          - SleepTokenRunes.ttf
 
   SleepTokenKeyboard:
     type: app-extension
@@ -47,7 +52,7 @@ targets:
       - path: Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.altivum.SleepTokenKB.keyboard
+        PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenFanKB.SleepTokenKeyboard
         INFOPLIST_FILE: SleepTokenKeyboard/Info.plist
         CODE_SIGN_ENTITLEMENTS: SleepTokenKeyboard/SleepTokenKeyboard.entitlements
         GENERATE_INFOPLIST_FILE: false
@@ -55,10 +60,15 @@ targets:
         SKIP_INSTALL: true
     entitlements:
       path: SleepTokenKeyboard/SleepTokenKeyboard.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.ai.altivum.SleepTokenFanKB
     info:
       path: SleepTokenKeyboard/Info.plist
       properties:
         CFBundleDisplayName: Sleep Token KB
+        UIAppFonts:
+          - SleepTokenRunes.ttf
         NSExtension:
           NSExtensionAttributes:
             IsASCIICapable: true
@@ -68,11 +78,28 @@ targets:
           NSExtensionPointIdentifier: com.apple.keyboard-service
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
 
+  SleepTokenKBTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: SleepTokenKBTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenFanKBTests
+        GENERATE_INFOPLIST_FILE: true
+    dependencies:
+      - target: SleepTokenKB
+
 schemes:
   SleepTokenKB:
     build:
       targets:
         SleepTokenKB: all
         SleepTokenKeyboard: all
+        SleepTokenKBTests: [test]
+    test:
+      config: Debug
+      targets:
+        - SleepTokenKBTests
     run:
       config: Debug
