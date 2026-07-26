@@ -24,5 +24,7 @@
 	<array>
 		<string>SleepTokenRunes.ttf</string>
 	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
 </dict>
 </plist>
