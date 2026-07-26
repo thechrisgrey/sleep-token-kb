@@ -18,6 +18,12 @@ final class KeyboardViewController: UIInputViewController {
         super.viewDidLoad()
         view.backgroundColor = KeyPalette.fieldColor
         installKeyboardUI()
+
+        // The vertical size class drives key height via KeyboardMetrics, so re-reserve
+        // height whenever it changes (rotation, iPad multitasking).
+        registerForTraitChanges([UITraitVerticalSizeClass.self]) { (controller: KeyboardViewController, _) in
+            controller.applyHeight()
+        }
     }
 
     // Both are needed: viewWillAppear runs before the input view is sized, and
@@ -37,14 +43,6 @@ final class KeyboardViewController: UIInputViewController {
         coordinator.animate(alongsideTransition: { _ in
             self.applyHeight()
         })
-    }
-
-    override func traitCollectionDidChange(_ previous: UITraitCollection?) {
-        super.traitCollectionDidChange(previous)
-        // The vertical size class drives key height via KeyboardMetrics.
-        if previous?.verticalSizeClass != traitCollection.verticalSizeClass {
-            applyHeight()
-        }
     }
 
     private func syncForAppearance() {

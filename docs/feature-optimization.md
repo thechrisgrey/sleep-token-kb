@@ -55,7 +55,7 @@
 
 _All 32 refinements below were implemented on 2026-07-26 (see `Implementation notes` at the end for what was adapted and why). Analysis run 2026-07-26 — keyboard extension core (features 6-10), 8 lenses. 63 raw findings, 3 refuted by adversarial verification, 56 retained, then merged across lenses into the 32 distinct refinements below (several lenses independently flagged the same lines). Ranked by impact, never by effort._
 
-_Not compile-verified: this environment has Command Line Tools only, so findings are verified against source text, not against a running keyboard._
+_Compile-verified 2026-07-26: `./scripts/test.sh` builds both targets against the iOS Simulator 26.5 SDK and runs 33 tests, all passing, with zero source warnings. Behaviour on a physical device is still unverified._
 
 ### 6. Letter input with QWERTY / A-Z grid layouts
 
@@ -158,9 +158,20 @@ All 32 refinements for features 6-10 were implemented in the suggested order.
 - *`.renderingMode(.template)`*: removed only after verifying all 26 imagesets in **both**
   catalogs declare `template-rendering-intent`.
 
-**Not verified**
-- Nothing here has been compiled or run. `swiftc -parse` passes on all 20 Swift files, which
-  catches syntax errors but not type errors — there is no iOS SDK in the build environment.
+**Verification**
+- `./scripts/test.sh` — builds both targets against the iOS Simulator 26.5 SDK and runs the
+  full suite: **33 tests, 0 failures, 0 source warnings**.
+- The script sets `DEVELOPER_DIR` because this machine's `xcode-select` points at
+  CommandLineTools, which makes plain `xcodebuild` refuse to run even though Xcode is
+  installed. That is why an earlier pass wrongly believed no iOS SDK was available.
+- Two deprecations the build surfaced were fixed: `traitCollectionDidChange` →
+  `registerForTraitChanges`, and `UIScreen.main.scale` → `@Environment(\.displayScale)`
+  in Rune Pad.
+
+**Still unverified**
+- Everything device-specific: real VoiceOver behaviour, dark-mode contrast on hardware, and
+  the actual keyboard height in a live text field. The simulator builds and the arithmetic
+  is unit-tested, but neither proves the keyboard feels right in Messages.
 - The haptic question raised under feature 6 (whether `impactOccurred` does anything with
   `RequestsOpenAccess = false`) still needs a real device to answer. The generator is now
   process-scoped and re-armed after each fire, but if it turns out to be inert on device,

@@ -9,6 +9,8 @@ struct RunePadView: View {
     @State private var copyStatus: String?
     @State private var isExporting = false
 
+    @Environment(\.displayScale) private var displayScale
+
     private let preferredRuneSize: CGFloat = 32
     private let rows: [[SleepTokenLetter]] = KeyboardLayout.qwertyRows
 
@@ -175,7 +177,9 @@ struct RunePadView: View {
         .background(Color.clear)
 
         let renderer = ImageRenderer(content: content)
-        renderer.scale = UIScreen.main.scale
+        // UIScreen.main is deprecated in iOS 26; displayScale is the SwiftUI-native
+        // equivalent and correctly follows the scene this view is actually in.
+        renderer.scale = displayScale
         renderer.isOpaque = false
 
         try? await Task.sleep(nanoseconds: 50_000_000)
