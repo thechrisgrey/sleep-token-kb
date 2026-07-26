@@ -11,11 +11,24 @@ public struct SymbolGlyphView: View {
         self.foreground = foreground
     }
 
+    /// Which letters have real art, resolved once per process rather than on every body
+    /// evaluation. The keyboard renders 26+ of these per frame, and `UIImage(named:)` was
+    /// being called inside `body` for each one.
+    ///
+    /// The answer is stable for the life of the process: the asset catalog is baked into
+    /// the bundle at build time.
+    private static let availableAssets: Set<String> = Set(
+        SleepTokenLetter.allCases
+            .map(\.assetName)
+            .filter { UIImage(named: $0) != nil }
+    )
+
     public var body: some View {
         Group {
-            if UIImage(named: letter.assetName) != nil {
+            if Self.availableAssets.contains(letter.assetName) {
+                // Template rendering comes from the asset catalog itself
+                // (template-rendering-intent), so it is not restated here.
                 Image(letter.assetName)
-                    .renderingMode(.template)
                     .resizable()
                     // Preserve aspect — never stretch circles into ovals or skew 45° strokes.
                     .scaledToFit()
@@ -31,9 +44,12 @@ public struct SymbolGlyphView: View {
     }
 }
 
-// MARK: - Geometric fallbacks (stand in until PDF assets are dropped in)
+// MARK: - Geometric fallback
 
-/// Approximate ritual glyphs so the keyboard is usable without hand-traced art.
+/// Approximate ritual glyphs, drawn in code.
+///
+/// Unreachable while all 26 traced PDFs ship in both asset catalogs; kept as a safety net
+/// so a missing or failed asset degrades to a readable key instead of a blank one.
 struct GeometricSymbol: View {
     let letter: SleepTokenLetter
 
@@ -200,48 +216,55 @@ struct GeometricSymbol: View {
         }
     }
 
+    /// Half-diamond fills, named by which half is inked.
+    private func triangle(_ points: [CGPoint]) -> Path {
+        var p = Path()
+        guard let first = points.first else { return p }
+        p.move(to: first)
+        for point in points.dropFirst() { p.addLine(to: point) }
+        p.closeSubpath()
+        return p
+    }
+
+    private func bottomHalf(of r: CGRect) -> Path {
+        triangle([
+            CGPoint(x: r.minX, y: r.midY),
+            CGPoint(x: r.midX, y: r.maxY),
+            CGPoint(x: r.maxX, y: r.midY)
+        ])
+    }
+
+    private func topHalf(of r: CGRect) -> Path {
+        triangle([
+            CGPoint(x: r.minX, y: r.midY),
+            CGPoint(x: r.midX, y: r.minY),
+            CGPoint(x: r.maxX, y: r.midY)
+        ])
+    }
+
+    private func leftHalf(of r: CGRect) -> Path {
+        triangle([
+            CGPoint(x: r.midX, y: r.minY),
+            CGPoint(x: r.minX, y: r.midY),
+            CGPoint(x: r.midX, y: r.maxY)
+        ])
+    }
+
+    private func rightHalf(of r: CGRect) -> Path {
+        triangle([
+            CGPoint(x: r.midX, y: r.minY),
+            CGPoint(x: r.maxX, y: r.midY),
+            CGPoint(x: r.midX, y: r.maxY)
+        ])
+    }
+
     private func fillPath(letter: SleepTokenLetter, in r: CGRect) -> Path? {
-        let d = diamond(in: r)
         switch letter {
-        case .c:
-            // bottom half
-            var p = Path()
-            p.move(to: CGPoint(x: r.minX, y: r.midY))
-            p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
-            p.addLine(to: CGPoint(x: r.maxX, y: r.midY))
-            p.closeSubpath()
-            return p
-        case .d, .t:
-            var p = Path()
-            p.move(to: CGPoint(x: r.minX, y: r.midY))
-            p.addLine(to: CGPoint(x: r.midX, y: r.minY))
-            p.addLine(to: CGPoint(x: r.maxX, y: r.midY))
-            p.closeSubpath()
-            return p
-        case .f:
-            var p = Path()
-            p.move(to: CGPoint(x: r.midX, y: r.minY))
-            p.addLine(to: CGPoint(x: r.minX, y: r.midY))
-            p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
-            p.closeSubpath()
-            return p
-        case .y:
-            var p = Path()
-            p.move(to: CGPoint(x: r.midX, y: r.minY))
-            p.addLine(to: CGPoint(x: r.maxX, y: r.midY))
-            p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
-            p.closeSubpath()
-            return p
-        case .s:
-            var p = Path()
-            p.move(to: CGPoint(x: r.minX, y: r.midY))
-            p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
-            p.addLine(to: CGPoint(x: r.maxX, y: r.midY))
-            p.closeSubpath()
-            return p
-        default:
-            _ = d
-            return nil
+        case .c, .s: bottomHalf(of: r)
+        case .d, .t: topHalf(of: r)
+        case .f: leftHalf(of: r)
+        case .y: rightHalf(of: r)
+        default: nil
         }
     }
 }

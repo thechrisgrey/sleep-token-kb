@@ -84,4 +84,12 @@ public enum KeyboardLayout {
         [.j, .k, .l, .m, .n, .o, .p, .q, .r],
         [.s, .t, .u, .v, .w, .x, .y, .z]
     ]
+
+    /// Digits and punctuation for the 123 page. Lives here beside the letter tables so
+    /// all three key layouts are in one place and reachable from the test target.
+    public static let symbolRows: [[String]] = [
+        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+        ["-", "/", ":", ";", "(", ")", "$", "&", "@", "\""],
+        [".", ",", "?", "!", "'", "#", "%", "*", "+", "="]
+    ]
 }

@@ -38,9 +38,5 @@
 		<key>NSExtensionPrincipalClass</key>
 		<string>$(PRODUCT_MODULE_NAME).KeyboardViewController</string>
 	</dict>
-	<key>UIAppFonts</key>
-	<array>
-		<string>SleepTokenRunes.ttf</string>
-	</array>
 </dict>
 </plist>

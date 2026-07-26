@@ -2,29 +2,34 @@ import UIKit
 import SwiftUI
 
 /// Custom keyboard: ritual or ABC keycaps; always inserts English letters.
+///
+/// The controller owns every host interaction (text insertion, keyboard switching) and
+/// reserves height by running the same `KeyboardMetrics` arithmetic the SwiftUI content
+/// lays itself out with, so the container cannot promise less space than the rows need.
 final class KeyboardViewController: UIInputViewController {
     private var hostingController: UIHostingController<KeyboardRootView>?
     private var heightConstraint: NSLayoutConstraint?
-    private var showNextKeyboardKey = true
+
+    /// Which page the SwiftUI view is showing. The view reports it up, because the page
+    /// changes the row count and therefore the height the container must reserve.
+    private var currentPage: KeyboardMetrics.Page = .letters
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor.secondarySystemBackground
+        view.backgroundColor = KeyPalette.fieldColor
         installKeyboardUI()
     }
 
+    // Both are needed: viewWillAppear runs before the input view is sized, and
+    // viewDidAppear is where needsInputModeSwitchKey is finally accurate.
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        showNextKeyboardKey = needsInputModeSwitchKey
-        applyHeight()
-        refreshRoot()
+        syncForAppearance()
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        showNextKeyboardKey = needsInputModeSwitchKey
-        applyHeight()
-        refreshRoot()
+        syncForAppearance()
     }
 
     override func viewWillTransition(to size: CGSize, with coordinator: any UIViewControllerTransitionCoordinator) {
@@ -33,6 +38,21 @@ final class KeyboardViewController: UIInputViewController {
             self.applyHeight()
         })
     }
+
+    override func traitCollectionDidChange(_ previous: UITraitCollection?) {
+        super.traitCollectionDidChange(previous)
+        // The vertical size class drives key height via KeyboardMetrics.
+        if previous?.verticalSizeClass != traitCollection.verticalSizeClass {
+            applyHeight()
+        }
+    }
+
+    private func syncForAppearance() {
+        applyHeight()
+        refreshRoot()
+    }
+
+    // MARK: - UI
 
     private func installKeyboardUI() {
         let host = UIHostingController(rootView: makeRootView())
@@ -43,20 +63,12 @@ final class KeyboardViewController: UIInputViewController {
         host.didMove(toParent: self)
         hostingController = host
 
-        let height = NSLayoutConstraint(
-            item: view!,
-            attribute: .height,
-            relatedBy: .equal,
-            toItem: nil,
-            attribute: .notAnAttribute,
-            multiplier: 0,
-            constant: preferredKeyboardHeight
-        )
+        let height = view.heightAnchor.constraint(equalToConstant: preferredKeyboardHeight)
         height.priority = UILayoutPriority(999)
-        view.addConstraint(height)
         heightConstraint = height
 
         NSLayoutConstraint.activate([
+            height,
             host.view.topAnchor.constraint(equalTo: view.topAnchor),
             host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -66,46 +78,46 @@ final class KeyboardViewController: UIInputViewController {
 
     private func makeRootView() -> KeyboardRootView {
         KeyboardRootView(
-            proxy: textDocumentProxy,
+            onInsert: { [weak self] text in
+                self?.textDocumentProxy.insertText(text)
+            },
+            onDeleteBackward: { [weak self] in
+                self?.textDocumentProxy.deleteBackward()
+            },
             onNextKeyboard: { [weak self] in
                 self?.advanceToNextInputMode()
             },
-            needsInputModeSwitchKey: showNextKeyboardKey,
-            onNeedsHeightUpdate: { [weak self] in
+            needsInputModeSwitchKey: needsInputModeSwitchKey,
+            onHeightInputsChanged: { [weak self] page in
+                self?.currentPage = page
                 self?.applyHeight()
-                self?.refreshRoot()
             }
         )
     }
 
+    /// Reassigning rootView only propagates the values passed into `makeRootView` —
+    /// notably `needsInputModeSwitchKey`. It cannot refresh the view's own `@State`,
+    /// so do not add preference plumbing here expecting it to take effect.
     private func refreshRoot() {
         hostingController?.rootView = makeRootView()
     }
 
+    // MARK: - Height
+
     private var preferredKeyboardHeight: CGFloat {
-        let bounds = view.bounds
-        let screen = UIScreen.main.bounds
-        let isLandscape = (bounds.width > 1 && bounds.height > 1)
-            ? bounds.width > bounds.height
-            : screen.width > screen.height
-
-        let mode = KeyboardPreferences.layoutMode
-        let hints = KeyboardPreferences.showLatinHints
-
-        if isLandscape {
-            return hints ? 210 : 190
-        }
-        switch (mode, hints) {
-        case (.qwerty, false): return 280
-        case (.qwerty, true): return 300
-        case (.grid, false): return 320
-        case (.grid, true): return 340
-        }
+        // Derived from the same metrics the SwiftUI content uses. Reserve the tallest
+        // key style for the current page so toggling rune/ABC never clips a visible row.
+        KeyboardMetrics.maxContentHeight(
+            page: currentPage,
+            mode: KeyboardPreferences.layoutMode,
+            compact: traitCollection.verticalSizeClass == .compact
+        )
     }
 
     private func applyHeight() {
-        heightConstraint?.constant = preferredKeyboardHeight
-        view.setNeedsUpdateConstraints()
+        let target = preferredKeyboardHeight
+        guard let heightConstraint, heightConstraint.constant != target else { return }
+        heightConstraint.constant = target
         view.setNeedsLayout()
         view.layoutIfNeeded()
     }
