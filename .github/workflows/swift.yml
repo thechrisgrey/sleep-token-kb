@@ -1,5 +1,14 @@
-# This workflow will build a Swift project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
+# Build and test the iOS app and its keyboard extension.
+#
+# NOT SwiftPM. This repository has no Package.swift and cannot usefully have one:
+# the three targets are an iOS application, an app extension (a custom keyboard,
+# NSExtensionPointIdentifier = com.apple.keyboard-service) and a unit-test bundle.
+# SwiftPM builds libraries and executables — it cannot produce a .app or .appex,
+# nor carry the Info.plists, entitlements, App Group, or asset catalogs these
+# targets require. `swift build` therefore fails here by design, and a stub
+# Package.swift would only turn a truthful red into a meaningless green.
+#
+# The real build is xcodebuild against an iOS Simulator SDK.
 
 name: Swift
 
@@ -11,12 +20,54 @@ on:
 
 jobs:
   build:
-
+    name: Build & test
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: swift build -v
-    - name: Run tests
-      run: swift test -v
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          echo "Xcode:         $(xcodebuild -version | head -1)"
+          echo "Simulator SDK: $(xcrun --sdk iphonesimulator --show-sdk-version)"
+          echo "Deployment target from project.yml:"
+          grep -A2 'deploymentTarget:' project.yml || true
+
+      # The device list differs between runner images, so hardcoding a model
+      # ("iPhone 17 Pro") would break whenever GitHub rotates the image. Pick the
+      # newest available iOS runtime and the last iPhone in it instead.
+      - name: Select a simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          udid=$(xcrun simctl list devices available --json | jq -r '
+            .devices
+            | to_entries
+            | map(select(.key | test("SimRuntime.iOS")))
+            | sort_by(.key)
+            | last
+            | .value
+            | map(select(.name | startswith("iPhone")))
+            | last
+            | .udid // empty')
+
+          if [ -z "$udid" ]; then
+            echo "::error::No iOS iPhone simulator is available on this runner."
+            xcrun simctl list devices available
+            exit 1
+          fi
+
+          name=$(xcrun simctl list devices available --json \
+            | jq -r --arg u "$udid" '[.devices[][] | select(.udid==$u)] | first | .name')
+          echo "Using $name ($udid)"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+
+      - name: Build and test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project SleepTokenKB.xcodeproj \
+            -scheme SleepTokenKB \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY=""
