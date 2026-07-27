@@ -179,7 +179,7 @@ struct ContentView: View {
                 .tracking(2.6)
                 .foregroundStyle(Theme.gold)
 
-            Text("Sleep Token KB")
+            Text("Ritual Keyboard")
                 .font(Theme.display(40, weight: .bold))
                 .foregroundStyle(Theme.ink)
 
