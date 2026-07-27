@@ -32,8 +32,13 @@ it should be handed to a tool that would need your credentials to perform it.
 
 ### 1. Apple Developer Program
 
-Team `VMMDK66N53` needs an active paid membership. The free tier can run the app on
-your own device but cannot distribute it.
+Team `SGS94RW73Z` (Altivum Inc, enrolled as an Organization) needs an active paid
+membership. The free tier can run the app on your own device but cannot distribute it.
+
+Check the team ID against Membership details at developer.apple.com/account before
+trusting it. A Mac signed in to more than one team will happily archive against a
+personal team, and the failure only surfaces at export as `No Account for Team`,
+which reads like an authentication problem rather than a wrong-team problem.
 
 ### 2. Register the bundle identifiers
 

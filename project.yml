@@ -10,7 +10,11 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     TARGETED_DEVICE_FAMILY: "1,2"
-    DEVELOPMENT_TEAM: "VMMDK66N53"
+    # Altivum Inc, the organization membership that can actually distribute.
+    # Not the personal "Christian Rene Perez" team (VMMDK66N53) -- that one signs
+    # local development builds fine but owns no App Store Connect account, which
+    # makes exportArchive fail with the unhelpful `No Account for Team`.
+    DEVELOPMENT_TEAM: "SGS94RW73Z"
     CODE_SIGN_STYLE: Automatic
     CURRENT_PROJECT_VERSION: 1
     MARKETING_VERSION: "1.0"
