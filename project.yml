@@ -27,7 +27,7 @@ targets:
       - path: Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenFanKB
+        PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenKB
         INFOPLIST_FILE: SleepTokenKB/Info.plist
         CODE_SIGN_ENTITLEMENTS: SleepTokenKB/SleepTokenKB.entitlements
         GENERATE_INFOPLIST_FILE: false
@@ -37,7 +37,7 @@ targets:
       path: SleepTokenKB/SleepTokenKB.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.ai.altivum.SleepTokenFanKB
+          - group.ai.altivum.SleepTokenKB
     dependencies:
       - target: SleepTokenKeyboard
         embed: true
@@ -74,7 +74,7 @@ targets:
       - path: Shared/SymbolGlyphView.swift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenFanKB.SleepTokenKeyboard
+        PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenKB.SleepTokenKeyboard
         INFOPLIST_FILE: SleepTokenKeyboard/Info.plist
         CODE_SIGN_ENTITLEMENTS: SleepTokenKeyboard/SleepTokenKeyboard.entitlements
         GENERATE_INFOPLIST_FILE: false
@@ -84,7 +84,7 @@ targets:
       path: SleepTokenKeyboard/SleepTokenKeyboard.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.ai.altivum.SleepTokenFanKB
+          - group.ai.altivum.SleepTokenKB
     info:
       path: SleepTokenKeyboard/Info.plist
       properties:
@@ -111,7 +111,7 @@ targets:
       - path: SleepTokenKBTests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenFanKBTests
+        PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenKBTests
         GENERATE_INFOPLIST_FILE: true
     dependencies:
       - target: SleepTokenKB

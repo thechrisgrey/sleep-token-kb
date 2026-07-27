@@ -414,7 +414,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SleepTokenKB/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = ai.altivum.SleepTokenFanKB;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.altivum.SleepTokenKB;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -429,7 +429,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SleepTokenKB/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = ai.altivum.SleepTokenFanKB;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.altivum.SleepTokenKB;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -445,7 +445,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = ai.altivum.SleepTokenFanKBTests;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.altivum.SleepTokenKBTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SleepTokenKB.app/SleepTokenKB";
@@ -523,7 +523,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = ai.altivum.SleepTokenFanKBTests;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.altivum.SleepTokenKBTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SleepTokenKB.app/SleepTokenKB";
@@ -537,7 +537,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SleepTokenKeyboard/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = ai.altivum.SleepTokenFanKB.SleepTokenKeyboard;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.altivum.SleepTokenKB.SleepTokenKeyboard;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -551,7 +551,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SleepTokenKeyboard/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = ai.altivum.SleepTokenFanKB.SleepTokenKeyboard;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.altivum.SleepTokenKB.SleepTokenKeyboard;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";

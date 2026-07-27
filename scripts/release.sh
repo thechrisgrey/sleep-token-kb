@@ -41,7 +41,7 @@ REPO_ROOT="$PWD"
 
 PROJECT="SleepTokenKB.xcodeproj"
 SCHEME="SleepTokenKB"
-APP_BUNDLE_ID="ai.altivum.SleepTokenFanKB"
+APP_BUNDLE_ID="ai.altivum.SleepTokenKB"
 EXPORT_OPTIONS="$REPO_ROOT/scripts/ExportOptions.plist"
 BUILD_DIR="$REPO_ROOT/build/release"
 ARCHIVE_PATH="$BUILD_DIR/$SCHEME.xcarchive"
@@ -159,12 +159,19 @@ marketing_version() {
   fi
 }
 
-# Auth flags shared by archive and export. Empty when no key is configured, which
-# lets a locally signed-in Xcode still archive.
+# Provisioning flags shared by archive and export.
+#
+# -allowProvisioningUpdates is passed unconditionally, and separately from the key.
+# It is what permits Xcode to create the App Store distribution profiles, and that
+# is needed whether it authenticates with an API key or with an account signed in
+# through Xcode -> Settings -> Accounts. Bundling the two together meant a run
+# without a key silently dropped it, and the export failed with the very
+# misleading `No profiles for '<bundle id>' were found` -- misleading because the
+# profiles did not exist and nothing had been allowed to create them.
 auth_args() {
+  printf '%s\n' -allowProvisioningUpdates
   if have_asc_key; then
     printf '%s\n' \
-      -allowProvisioningUpdates \
       -authenticationKeyPath "$ASC_KEY_PATH" \
       -authenticationKeyID "$ASC_KEY_ID" \
       -authenticationKeyIssuerID "$ASC_ISSUER_ID"

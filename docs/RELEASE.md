@@ -47,15 +47,15 @@ matters because the second is a child of the first:
 
 | Identifier | Capability to enable |
 |---|---|
-| `ai.altivum.SleepTokenFanKB` | App Groups -> `group.ai.altivum.SleepTokenFanKB` |
-| `ai.altivum.SleepTokenFanKB.SleepTokenKeyboard` | App Groups -> same group |
+| `ai.altivum.SleepTokenKB` | App Groups -> `group.ai.altivum.SleepTokenKB` |
+| `ai.altivum.SleepTokenKB.SleepTokenKeyboard` | App Groups -> same group |
 
 Both bundles must be members of the same App Group or the keyboard silently stops
 seeing preference changes made in the app.
 
 ### 3. Create the app record
 
-App Store Connect -> Apps -> plus -> New App, bound to `ai.altivum.SleepTokenFanKB`.
+App Store Connect -> Apps -> plus -> New App, bound to `ai.altivum.SleepTokenKB`.
 
 This is the one step with no API at all. The App Store Connect API can read and
 update apps but not create them, so it is the web UI or nothing.

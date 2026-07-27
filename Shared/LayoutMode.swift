@@ -83,7 +83,11 @@ public enum KeyFaceStyle: String, CaseIterable, Identifiable, Codable, Sendable 
 }
 
 public enum KeyboardPreferences {
-    public static let appGroupID = "group.ai.altivum.SleepTokenFanKB"
+    /// Not `...SleepTokenFanKB`, which reads more naturally but is unavailable: App Group
+    /// identifiers are globally unique across Apple's ecosystem, and that one is already
+    /// held by a personal team from early development. Registered to Altivum Inc
+    /// (SGS94RW73Z) instead.
+    public static let appGroupID = "group.ai.altivum.SleepTokenKB"
     public static let layoutModeKey = "layoutMode"
     public static let keyFaceStyleKey = "keyFaceStyle"
     public static let hapticsKey = "hapticsEnabled"

@@ -394,9 +394,9 @@ xcodegen generate   # after any project.yml change
 
 | Thing | Value |
 |---|---|
-| App bundle ID | `ai.altivum.SleepTokenFanKB` |
-| Keyboard bundle ID | `ai.altivum.SleepTokenFanKB.SleepTokenKeyboard` |
-| App Group | `group.ai.altivum.SleepTokenFanKB` |
+| App bundle ID | `ai.altivum.SleepTokenKB` |
+| Keyboard bundle ID | `ai.altivum.SleepTokenKB.SleepTokenKeyboard` |
+| App Group | `group.ai.altivum.SleepTokenKB` |
 
 The keyboard's ID must stay a suffix of the app's, and both targets need the App Group or host settings will never reach the keyboard.
 
