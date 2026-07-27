@@ -1,0 +1,113 @@
+# Ship a signed build to App Store Connect.
+#
+# Manual dispatch only. There is no push or schedule trigger here on purpose:
+# uploading a build is outward-facing and cannot be undone, so it should always
+# be somebody's deliberate click. The stage input defaults to `archive`, which
+# builds and signs but uploads nothing -- an accidental "Run workflow" is a
+# no-op against App Store Connect.
+#
+# Required repository secrets for the validate and upload stages:
+#
+#   ASC_KEY_ID      the App Store Connect API key identifier
+#   ASC_ISSUER_ID   the issuer UUID from Users and Access -> Integrations
+#   ASC_KEY_P8      the .p8 private key, base64 encoded:
+#                     base64 -i AuthKey_XXXX.p8 | pbcopy
+#
+# See docs/RELEASE.md for how to create those and what to do beforehand.
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "How far to take the build"
+        type: choice
+        default: archive
+        options:
+          - archive
+          - validate
+          - upload
+      internal_only:
+        description: "Mark internal-testing-only (blocks external TestFlight and the App Store)"
+        type: boolean
+        default: true
+
+# One release at a time, and never cancel one in flight -- an interrupted upload
+# leaves a half-processed build in App Store Connect.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: ${{ inputs.stage }}
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # scripts/release.sh derives the build number from the commit count, so
+          # a shallow clone would produce a number that resets between runs and
+          # gets rejected as a duplicate.
+          fetch-depth: 0
+
+      - name: Show toolchain
+        run: |
+          echo "Xcode:         $(xcodebuild -version | head -1)"
+          echo "Simulator SDK: $(xcrun --sdk iphonesimulator --show-sdk-version)"
+          echo "Build number:  $(git rev-list --count HEAD)"
+
+      # Every value below arrives through `env:` rather than being interpolated
+      # into the shell text. For the secrets that keeps them out of the command
+      # line; for the inputs it means a workflow input can never be parsed as
+      # shell syntax.
+      - name: Install App Store Connect API key
+        if: inputs.stage != 'archive'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          STAGE: ${{ inputs.stage }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ASC_KEY_ID:-}" ] || [ -z "${ASC_ISSUER_ID:-}" ] || [ -z "${ASC_KEY_P8:-}" ]; then
+            echo "::error::The $STAGE stage needs the ASC_KEY_ID, ASC_ISSUER_ID, and ASC_KEY_P8 secrets. See docs/RELEASE.md."
+            exit 1
+          fi
+
+          key_dir="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$key_dir"
+          chmod 700 "$key_dir"
+          umask 077
+          printf '%s' "$ASC_KEY_P8" | base64 --decode > "$key_dir/AuthKey_${ASC_KEY_ID}.p8"
+
+          # Validate the shape without ever echoing the contents: a secret pasted
+          # raw instead of base64 encoded is the usual first-run mistake, and it
+          # otherwise surfaces as an opaque authentication failure much later.
+          if ! grep -q "BEGIN PRIVATE KEY" "$key_dir/AuthKey_${ASC_KEY_ID}.p8"; then
+            echo "::error::ASC_KEY_P8 did not decode to a PEM private key. Re-encode with: base64 -i AuthKey_XXXX.p8"
+            exit 1
+          fi
+          echo "Installed key $ASC_KEY_ID"
+
+      - name: ${{ inputs.stage }}
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          TESTFLIGHT_INTERNAL_ONLY: ${{ inputs.internal_only && '1' || '0' }}
+          STAGE: ${{ inputs.stage }}
+        run: ./scripts/release.sh "$STAGE"
+
+      - name: Keep the .ipa
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SleepTokenKB-ipa
+          path: build/release/export/*.ipa
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Scrub credentials
+        if: always()
+        run: rm -rf "$HOME/.appstoreconnect"

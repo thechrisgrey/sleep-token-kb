@@ -41,6 +41,14 @@ targets:
       path: SleepTokenKB/Info.plist
       properties:
         CFBundleDisplayName: Sleep Token KB
+        # Point the bundle version keys at the build settings instead of literals.
+        # Without this, `xcodebuild CURRENT_PROJECT_VERSION=42` silently does nothing
+        # and every upload after the first is rejected as a duplicate build number.
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        # The app uses no encryption beyond what iOS itself provides, so declaring
+        # this up front skips the export-compliance prompt on every single upload.
+        ITSAppUsesNonExemptEncryption: false
         # Without this key iOS runs the app in legacy compatibility mode:
         # letterboxed, and reporting a shorter screen that squeezes every layout.
         UILaunchScreen: {}
@@ -77,6 +85,10 @@ targets:
       path: SleepTokenKeyboard/Info.plist
       properties:
         CFBundleDisplayName: Sleep Token KB
+        # Must track the host app exactly: App Store Connect rejects an archive whose
+        # embedded extension disagrees with the app on either version key.
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         # No UIAppFonts here: the extension never draws SleepTokenRunes, it only renders
         # asset-catalog glyph art. The host app keeps its own declaration for Rune Pad.
         NSExtension:

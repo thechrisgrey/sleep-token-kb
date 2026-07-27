@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Export options for App Store / TestFlight distribution. Consumed by
+  scripts/release.sh; see docs/RELEASE.md for the full runbook.
+
+  Two of these are load-bearing and easy to get wrong:
+
+  manageAppVersionAndBuildNumber defaults to YES, which lets Xcode rewrite the
+  build number during upload. That silently defeats the BUILD_NUMBER the release
+  script computes, so we turn it off and stay the single source of truth.
+
+  method must be app-store-connect. The old spelling, app-store, still works but
+  is deprecated as of Xcode 15.3 (`xcodebuild -help`).
+
+  signingStyle is automatic on purpose. Paired with -allowProvisioningUpdates and
+  an App Store Connect API key, Xcode mints the distribution certificate and both
+  provisioning profiles itself, so no .p12 and no certificate password ever needs
+  to exist in this repo or in CI secrets.
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>export</string>
+	<key>teamID</key>
+	<string>VMMDK66N53</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>stripSwiftSymbols</key>
+	<true/>
+</dict>
+</plist>

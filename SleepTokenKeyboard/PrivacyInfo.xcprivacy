@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Privacy manifest for the keyboard extension.
+
+  The extension ships as its own bundle inside the app, so it carries its own
+  manifest; Xcode aggregates the app's and the extension's into one privacy
+  report at archive time.
+
+  A custom keyboard is the most privacy-sensitive extension point on iOS, and
+  the honest answer here is short: this one collects nothing and sends nothing.
+  It has no networking, and RequestsOpenAccess is false (project.yml), so iOS
+  denies it network access and shared-container access outright.
+
+  Reason codes, both real:
+
+    1C8F.1  reads the App Group suite for layout and key-face preferences
+            written by the host app (Shared/LayoutMode.swift). Only reachable
+            when the user grants Full Access, which this keyboard never asks
+            for - hence the fallback below.
+    CA92.1  reads and writes the extension's own standard defaults, the
+            fallback path used whenever the shared container is unavailable.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>1C8F.1</string>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

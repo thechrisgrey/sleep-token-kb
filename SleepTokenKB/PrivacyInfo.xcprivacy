@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Privacy manifest for the host app.
+
+  Required by App Store Connect since spring 2024: an upload is rejected at
+  processing time if the bundle touches a "required reason" API without
+  declaring why. This app touches exactly one of them - UserDefaults - and
+  collects nothing else. There is no networking anywhere in the target (no
+  URLSession, no analytics SDK, no tracking), which is why every collection
+  array below is empty rather than merely unspecified.
+
+  The two UserDefaults reason codes are both genuinely in use:
+
+    1C8F.1  reads and writes the App Group suite shared with the keyboard
+            extension (Shared/LayoutMode.swift) - both bundles are members of
+            group.ai.altivum.SleepTokenFanKB.
+    CA92.1  reads and writes defaults visible only to this app: the appearance
+            theme (SleepTokenKB/Theme.swift), the Jerry hunt state
+            (SleepTokenKB/JerryHunt.swift), and the local fallback suite used
+            when the extension sandbox denies the shared container.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>1C8F.1</string>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

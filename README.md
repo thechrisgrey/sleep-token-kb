@@ -40,6 +40,7 @@
 - [How state flows](#how-state-flows)
 - [Getting started](#getting-started)
 - [Testing](#testing)
+- [Releasing](#releasing)
 - [Project structure](#project-structure)
 - [Accessibility](#accessibility)
 - [Privacy & Full Access](#privacy--full-access)
@@ -434,6 +435,25 @@ Sixty-three tests cover the pure-logic layer — the parts where a silent regres
 | `KeyboardLayoutTests` | 5 | Both layouts contain all 26 letters exactly once |
 
 > Tests passing is not the same as shipped-and-working. Every feature here was also exercised by hand in the Simulator — the keyboard typing into Safari, the pasteboard inspected after each export, the ceremonies watched frame by frame.
+
+---
+
+## Releasing
+
+Archiving, signing, validating and uploading are scripted. Signing authenticates with an App Store Connect API key rather than a checked-in certificate, so no `.p12` and no certificate password lives in this repo.
+
+```bash
+./scripts/release.sh preflight   # inspect the environment; builds nothing
+./scripts/release.sh archive     # archive + export a signed .ipa (default)
+./scripts/release.sh validate    # ...then run Apple's validation
+./scripts/release.sh upload      # ...then upload to App Store Connect
+```
+
+Stages are cumulative and the default never uploads. The same script runs in CI through the manually-dispatched [Release workflow](.github/workflows/release.yml) — `archive` is its default too, so a mis-click is a no-op.
+
+Build numbers come from the commit count, so they only ever increase and never collide between a laptop and a runner.
+
+**[docs/RELEASE.md](docs/RELEASE.md)** is the full runbook: the one-time account setup that has no API and has to be done by hand, the review notes specific to shipping a custom keyboard, and a troubleshooting table.
 
 ---
 

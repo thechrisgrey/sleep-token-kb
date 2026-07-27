@@ -11,6 +11,7 @@
 		02855833FFBA19E180125288 /* AlphabetChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FA93313652D135E88CF1E1 /* AlphabetChartView.swift */; };
 		09992AB3A35C1B588264CDDF /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E015BC4EB2125A6F597E6DA /* KeyboardViewController.swift */; };
 		10C6F47ED4334ADFA54454F7 /* KeyboardMetricsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169A4EB79EEE4BB091880928 /* KeyboardMetricsTests.swift */; };
+		1538BBE1F8EF0C458D8C86A5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EEF43754E7EFEBEE3DBE885E /* PrivacyInfo.xcprivacy */; };
 		17A9D58D634C22CCD79F2885 /* ShiftState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CAFEA8E748BFEF65ED884D4 /* ShiftState.swift */; };
 		1C069107C79837E2C3297973 /* Alphabet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F8B191D3CC54F363C6833E /* Alphabet.swift */; };
 		2DA166D0AFAA8F2AC37E84B5 /* LayoutMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DC71CFEE0A72F1981885FAD /* LayoutMode.swift */; };
@@ -32,6 +33,7 @@
 		93F1C84E847CB3E7121A9814 /* KeyboardRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A6A4EC0AD28FD24AE067D6 /* KeyboardRootView.swift */; };
 		A5E548A515A12BDD6257C2A8 /* Alphabet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F8B191D3CC54F363C6833E /* Alphabet.swift */; };
 		A7D6071C57E9C283B268E23D /* ArcadiaRevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B6F2822F0667359A689E627 /* ArcadiaRevealView.swift */; };
+		ABDAEE7960F2E604A3FEBEEE /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6E2C60A1ED5255A7B399E354 /* PrivacyInfo.xcprivacy */; };
 		B313D78914B713A9790D6574 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3027B80208E51D6B3304FA50 /* Assets.xcassets */; };
 		BAFF2A479A23DB3D53CB07FC /* SleepTokenKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BD67C38107529CFBD5DFA9A8 /* SleepTokenKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		CCF933829EDB4A1151A60E03 /* KeyboardPreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D3D861BDF2AC3FE450D9A0 /* KeyboardPreferencesTests.swift */; };
@@ -89,6 +91,7 @@
 		552C9BA590F343156D99A70D /* EnableKeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnableKeyboardView.swift; sourceTree = "<group>"; };
 		588BCFC4A4EB5774183C06C3 /* SleepTokenKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SleepTokenKeyboard.entitlements; sourceTree = "<group>"; };
 		5B1217EEFF5F8964823A8706 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
+		6E2C60A1ED5255A7B399E354 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		75BF6E6C381599E1617A8935 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7B6F2822F0667359A689E627 /* ArcadiaRevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArcadiaRevealView.swift; sourceTree = "<group>"; };
 		7BD59817881E4F731E45CD5D /* JerryHunt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JerryHunt.swift; sourceTree = "<group>"; };
@@ -112,6 +115,7 @@
 		D34CF559D2C60AEE4558833F /* RuneExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuneExport.swift; sourceTree = "<group>"; };
 		D869B07816C79E1AA3784CE4 /* SleepTokenKB.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SleepTokenKB.entitlements; sourceTree = "<group>"; };
 		DB174ED028252D27375F7E3C /* JerryHuntTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JerryHuntTests.swift; sourceTree = "<group>"; };
+		EEF43754E7EFEBEE3DBE885E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		EF6A8D3881DC7EE73BFE5D2E /* RunePadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunePadView.swift; sourceTree = "<group>"; };
 		F8F398F5432EDA25CEFEA211 /* AlphabetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlphabetTests.swift; sourceTree = "<group>"; };
 		FAD366C12A527A2E0266EEE1 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -140,6 +144,7 @@
 				A0A6A4EC0AD28FD24AE067D6 /* KeyboardRootView.swift */,
 				7E015BC4EB2125A6F597E6DA /* KeyboardViewController.swift */,
 				B7FFDCF2286E61D11706D975 /* KeyPalette.swift */,
+				EEF43754E7EFEBEE3DBE885E /* PrivacyInfo.xcprivacy */,
 				588BCFC4A4EB5774183C06C3 /* SleepTokenKeyboard.entitlements */,
 			);
 			path = SleepTokenKeyboard;
@@ -182,6 +187,7 @@
 				552C9BA590F343156D99A70D /* EnableKeyboardView.swift */,
 				75BF6E6C381599E1617A8935 /* Info.plist */,
 				7BD59817881E4F731E45CD5D /* JerryHunt.swift */,
+				6E2C60A1ED5255A7B399E354 /* PrivacyInfo.xcprivacy */,
 				B17A5FE4C09C83C14AE57624 /* RuneCanvas.swift */,
 				D34CF559D2C60AEE4558833F /* RuneExport.swift */,
 				EF6A8D3881DC7EE73BFE5D2E /* RunePadView.swift */,
@@ -312,6 +318,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B313D78914B713A9790D6574 /* Assets.xcassets in Resources */,
+				ABDAEE7960F2E604A3FEBEEE /* PrivacyInfo.xcprivacy in Resources */,
 				84B430F0F3178703A108A20D /* SleepTokenRunes.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -321,6 +328,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				84C7D4FF9A9275386565E4E8 /* Assets.xcassets in Resources */,
+				1538BBE1F8EF0C458D8C86A5 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
