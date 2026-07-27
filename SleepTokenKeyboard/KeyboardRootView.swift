@@ -20,7 +20,6 @@ struct KeyboardRootView: View {
     // onAppear, with neither identifiable as authoritative.
     @State private var layoutMode: LayoutMode = .qwerty
     @State private var keyFaceStyle: KeyFaceStyle = .runeArt
-    @State private var showLatinHints = false
     @State private var hapticsEnabled = true
 
     @State private var shift: ShiftState = .off
@@ -42,11 +41,7 @@ struct KeyboardRootView: View {
     private var isCompact: Bool { verticalSizeClass == .compact }
 
     private var keyHeight: CGFloat {
-        KeyboardMetrics.keyHeight(
-            style: keyFaceStyle,
-            showLatinHints: showLatinHints,
-            compact: isCompact
-        )
+        KeyboardMetrics.keyHeight(style: keyFaceStyle, compact: isCompact)
     }
 
     private var pageHeight: CGFloat {
@@ -54,7 +49,6 @@ struct KeyboardRootView: View {
             page: page,
             mode: layoutMode,
             style: keyFaceStyle,
-            showLatinHints: showLatinHints,
             compact: isCompact
         )
     }
@@ -75,7 +69,6 @@ struct KeyboardRootView: View {
                     layoutMode: layoutMode,
                     keyFaceStyle: keyFaceStyle,
                     shift: shift,
-                    showLatinHints: showLatinHints,
                     keyHeight: keyHeight,
                     hintSize: hintSize,
                     faceSize: letterFaceSize,
@@ -129,10 +122,11 @@ struct KeyboardRootView: View {
             }
             .frame(width: 54)
 
-            // Rune art keys <-> plain ABC keys (text is always English either way).
+            // Cycles the key face: runes -> runes with Latin hints -> plain ABC.
+            // Text is always English regardless of the face.
             ChromeKeyButton(
                 content: .text(keyFaceStyle.next.shortTitle),
-                fontSize: 13,
+                fontSize: 12,
                 weight: .semibold,
                 label: "Switch to \(keyFaceStyle.next.title)"
             ) {
@@ -141,7 +135,7 @@ struct KeyboardRootView: View {
                 KeyboardPreferences.keyFaceStyle = keyFaceStyle
                 onHeightInputsChanged?(page)
             }
-            .frame(width: 46)
+            .frame(width: 50)
 
             ChromeKeyButton(
                 content: .text(page == .symbols ? "ABC" : "123"),
@@ -184,7 +178,6 @@ struct KeyboardRootView: View {
     private func loadPreferences() {
         layoutMode = KeyboardPreferences.layoutMode
         keyFaceStyle = KeyboardPreferences.keyFaceStyle
-        showLatinHints = KeyboardPreferences.showLatinHints
         hapticsEnabled = KeyboardPreferences.hapticsEnabled
         if hapticsEnabled { Self.impact.prepare() }
         onHeightInputsChanged?(page)
@@ -224,7 +217,6 @@ private struct LetterPage: View {
     let layoutMode: LayoutMode
     let keyFaceStyle: KeyFaceStyle
     let shift: ShiftState
-    let showLatinHints: Bool
     let keyHeight: CGFloat
     let hintSize: CGFloat
     let faceSize: CGFloat
@@ -252,7 +244,6 @@ private struct LetterPage: View {
                             LetterKeyButton(
                                 letter: letter,
                                 keyFaceStyle: keyFaceStyle,
-                                showLatinHint: showLatinHints && keyFaceStyle == .runeArt,
                                 keyHeight: keyHeight,
                                 hintSize: hintSize,
                                 faceSize: faceSize,
@@ -371,7 +362,6 @@ private extension View {
 private struct LetterKeyButton: View, Equatable {
     let letter: SleepTokenLetter
     let keyFaceStyle: KeyFaceStyle
-    let showLatinHint: Bool
     let keyHeight: CGFloat
     let hintSize: CGFloat
     let faceSize: CGFloat
@@ -383,7 +373,6 @@ private struct LetterKeyButton: View, Equatable {
     static func == (lhs: LetterKeyButton, rhs: LetterKeyButton) -> Bool {
         lhs.letter == rhs.letter
             && lhs.keyFaceStyle == rhs.keyFaceStyle
-            && lhs.showLatinHint == rhs.showLatinHint
             && lhs.keyHeight == rhs.keyHeight
             && lhs.hintSize == rhs.hintSize
             && lhs.faceSize == rhs.faceSize
@@ -409,21 +398,19 @@ private struct LetterKeyButton: View, Equatable {
     private var face: some View {
         switch keyFaceStyle {
         case .runeArt:
-            if showLatinHint {
-                VStack(spacing: 1) {
-                    SymbolGlyphView(letter: letter)
-                        .accessibilityHidden(true)
-                    Text(letter.upperLatin)
-                        .font(.system(size: hintSize, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
-                }
-                .padding(.vertical, 5)
-            } else {
+            SymbolGlyphView(letter: letter)
+                .accessibilityHidden(true)
+                .padding(.vertical, 6)
+        case .runeHints:
+            VStack(spacing: 1) {
                 SymbolGlyphView(letter: letter)
                     .accessibilityHidden(true)
-                    .padding(.vertical, 6)
+                Text(letter.upperLatin)
+                    .font(.system(size: hintSize, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
             }
+            .padding(.vertical, 5)
         case .letters:
             Text(letter.upperLatin)
                 .font(.system(size: faceSize, weight: .medium, design: .rounded))

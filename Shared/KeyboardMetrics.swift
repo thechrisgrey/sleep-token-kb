@@ -43,10 +43,9 @@ public enum KeyboardMetrics {
     /// both call this function, so they cannot disagree about how tall a key is.
     public static func keyHeight(
         style: KeyFaceStyle,
-        showLatinHints: Bool,
         compact: Bool = false
     ) -> CGFloat {
-        let hinted = showLatinHints && style == .runeArt
+        let hinted = style.showsLatinHint
         if compact {
             return hinted ? compactHintedKeyHeight : compactBaseKeyHeight
         }
@@ -83,11 +82,10 @@ public enum KeyboardMetrics {
         page: Page,
         mode: LayoutMode,
         style: KeyFaceStyle,
-        showLatinHints: Bool,
         compact: Bool = false
     ) -> CGFloat {
         let rows = CGFloat(rowCount(page: page, mode: mode))
-        let height = keyHeight(style: style, showLatinHints: showLatinHints, compact: compact)
+        let height = keyHeight(style: style, compact: compact)
         return rows * height + max(rows - 1, 0) * rowGap
     }
 
@@ -96,13 +94,9 @@ public enum KeyboardMetrics {
         page: Page,
         mode: LayoutMode,
         style: KeyFaceStyle,
-        showLatinHints: Bool,
         compact: Bool = false
     ) -> CGFloat {
-        let rows = pageHeight(
-            page: page, mode: mode, style: style,
-            showLatinHints: showLatinHints, compact: compact
-        )
+        let rows = pageHeight(page: page, mode: mode, style: style, compact: compact)
         return topPadding + rows + rowGap + bottomBarHeight + bottomPadding
     }
 
@@ -118,8 +112,8 @@ public enum KeyboardMetrics {
         (keyUnit + keyGap) / 2
     }
 
-    /// Tallest height any key style can need for this page, so flipping the rune/ABC
-    /// toggle never leaves the already-visible rows clipped mid-transition.
+    /// Tallest height any key style can need for this page, so cycling the key face
+    /// never leaves the already-visible rows clipped mid-transition.
     public static func maxContentHeight(
         page: Page,
         mode: LayoutMode,
@@ -127,12 +121,9 @@ public enum KeyboardMetrics {
     ) -> CGFloat {
         var tallest: CGFloat = 0
         for style in KeyFaceStyle.allCases {
-            for hints in [true, false] {
-                tallest = max(tallest, contentHeight(
-                    page: page, mode: mode, style: style,
-                    showLatinHints: hints, compact: compact
-                ))
-            }
+            tallest = max(tallest, contentHeight(
+                page: page, mode: mode, style: style, compact: compact
+            ))
         }
         return tallest
     }

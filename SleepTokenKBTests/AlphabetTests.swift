@@ -34,4 +34,30 @@ final class AlphabetTests: XCTestCase {
         XCTAssertEqual(SleepTokenLetter.a.englishInsert(shifted: false), "a")
         XCTAssertEqual(SleepTokenLetter.a.englishInsert(shifted: true), "A")
     }
+
+    func testLatinTranslationMapsRunesBackToLetters() {
+        let runes = [SleepTokenLetter.s, .l, .e, .e, .p]
+            .map(\.exactRuneString)
+            .joined()
+        XCTAssertEqual(SleepTokenLetter.latinTranslation(of: runes), "sleep")
+    }
+
+    /// Spaces and any non-rune character (punctuation typed via paste, say) pass
+    /// through untouched — the translation must never drop or reorder anything.
+    func testLatinTranslationPassesNonRuneCharactersThrough() {
+        let mixed = SleepTokenLetter.a.exactRuneString + " b! " + SleepTokenLetter.c.exactRuneString
+        XCTAssertEqual(SleepTokenLetter.latinTranslation(of: mixed), "a b! c")
+    }
+
+    func testLatinTranslationOfEmptyStringIsEmpty() {
+        XCTAssertEqual(SleepTokenLetter.latinTranslation(of: ""), "")
+    }
+
+    func testLatinTranslationRoundTripsTheWholeAlphabet() {
+        let runes = SleepTokenLetter.allCases.map(\.exactRuneString).joined()
+        XCTAssertEqual(
+            SleepTokenLetter.latinTranslation(of: runes),
+            "abcdefghijklmnopqrstuvwxyz"
+        )
+    }
 }

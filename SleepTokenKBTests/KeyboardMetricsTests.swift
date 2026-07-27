@@ -18,20 +18,17 @@ final class KeyboardMetricsTests: XCTestCase {
         for page in allPages {
             for mode in allModes {
                 for style in allStyles {
-                    for hints in [true, false] {
-                        for compact in [true, false] {
-                            let needed = KeyboardMetrics.contentHeight(
-                                page: page, mode: mode, style: style,
-                                showLatinHints: hints, compact: compact
-                            )
-                            let reserved = KeyboardMetrics.maxContentHeight(
-                                page: page, mode: mode, compact: compact
-                            )
-                            XCTAssertGreaterThanOrEqual(
-                                reserved, needed,
-                                "\(page)/\(mode)/\(style)/hints:\(hints)/compact:\(compact) reserves \(reserved) but needs \(needed)"
-                            )
-                        }
+                    for compact in [true, false] {
+                        let needed = KeyboardMetrics.contentHeight(
+                            page: page, mode: mode, style: style, compact: compact
+                        )
+                        let reserved = KeyboardMetrics.maxContentHeight(
+                            page: page, mode: mode, compact: compact
+                        )
+                        XCTAssertGreaterThanOrEqual(
+                            reserved, needed,
+                            "\(page)/\(mode)/\(style)/compact:\(compact) reserves \(reserved) but needs \(needed)"
+                        )
                     }
                 }
             }
@@ -48,20 +45,31 @@ final class KeyboardMetricsTests: XCTestCase {
     }
 
     func testGridIsTallerThanQwerty() {
-        let qwerty = KeyboardMetrics.contentHeight(
-            page: .letters, mode: .qwerty, style: .runeArt, showLatinHints: false
-        )
-        let grid = KeyboardMetrics.contentHeight(
-            page: .letters, mode: .grid, style: .runeArt, showLatinHints: false
-        )
+        let qwerty = KeyboardMetrics.contentHeight(page: .letters, mode: .qwerty, style: .runeArt)
+        let grid = KeyboardMetrics.contentHeight(page: .letters, mode: .grid, style: .runeArt)
         XCTAssertGreaterThan(grid, qwerty)
+    }
+
+    /// The hinted face carries a small Latin letter under each glyph, so its keys — and
+    /// only its keys — are the tall variant.
+    func testOnlyTheHintedFaceGetsTheTallKeys() {
+        XCTAssertEqual(
+            KeyboardMetrics.keyHeight(style: .runeArt),
+            KeyboardMetrics.baseKeyHeight
+        )
+        XCTAssertEqual(
+            KeyboardMetrics.keyHeight(style: .runeHints),
+            KeyboardMetrics.hintedKeyHeight
+        )
+        XCTAssertEqual(
+            KeyboardMetrics.keyHeight(style: .letters),
+            KeyboardMetrics.baseKeyHeight
+        )
     }
 
     /// Pins the composition: padding + rows + gap + bottom bar + padding.
     func testContentHeightMatchesExplicitArithmetic() {
-        let height = KeyboardMetrics.contentHeight(
-            page: .letters, mode: .qwerty, style: .runeArt, showLatinHints: false
-        )
+        let height = KeyboardMetrics.contentHeight(page: .letters, mode: .qwerty, style: .runeArt)
         let rows: CGFloat = 3
         let expected = KeyboardMetrics.topPadding
             + (rows * KeyboardMetrics.baseKeyHeight + (rows - 1) * KeyboardMetrics.rowGap)
@@ -79,12 +87,8 @@ final class KeyboardMetricsTests: XCTestCase {
         let oldLandscapeNoHints: CGFloat = 190
         let oldLandscapeHints: CGFloat = 210
 
-        let gridNoHints = KeyboardMetrics.contentHeight(
-            page: .letters, mode: .grid, style: .runeArt, showLatinHints: false
-        )
-        let gridHints = KeyboardMetrics.contentHeight(
-            page: .letters, mode: .grid, style: .runeArt, showLatinHints: true
-        )
+        let gridNoHints = KeyboardMetrics.contentHeight(page: .letters, mode: .grid, style: .runeArt)
+        let gridHints = KeyboardMetrics.contentHeight(page: .letters, mode: .grid, style: .runeHints)
 
         XCTAssertGreaterThan(gridNoHints, oldLandscapeNoHints)
         XCTAssertGreaterThan(gridHints, oldLandscapeHints)
@@ -92,12 +96,10 @@ final class KeyboardMetricsTests: XCTestCase {
 
     func testCompactKeysAreShorterButStillPositive() {
         for style in allStyles {
-            for hints in [true, false] {
-                let regular = KeyboardMetrics.keyHeight(style: style, showLatinHints: hints, compact: false)
-                let compact = KeyboardMetrics.keyHeight(style: style, showLatinHints: hints, compact: true)
-                XCTAssertLessThan(compact, regular)
-                XCTAssertGreaterThan(compact, 0)
-            }
+            let regular = KeyboardMetrics.keyHeight(style: style, compact: false)
+            let compact = KeyboardMetrics.keyHeight(style: style, compact: true)
+            XCTAssertLessThan(compact, regular)
+            XCTAssertGreaterThan(compact, 0)
         }
     }
 

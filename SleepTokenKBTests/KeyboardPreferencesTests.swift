@@ -4,40 +4,58 @@ import XCTest
 /// Reads/writes the same App Group suite as `KeyboardPreferences` (it hardcodes
 /// its own suite, so there's nothing to inject) — every test restores whatever
 /// was there before it ran, so the suite is left exactly as it was found.
+///
+/// `KeyboardPreferences` writes both the App Group suite and `UserDefaults.standard`
+/// (the extension's no-Full-Access fallback), so both are snapshotted and restored.
 final class KeyboardPreferencesTests: XCTestCase {
-    private var defaults: UserDefaults {
-        UserDefaults(suiteName: KeyboardPreferences.appGroupID) ?? .standard
+    private var suites: [UserDefaults] {
+        var all: [UserDefaults] = [.standard]
+        if let group = UserDefaults(suiteName: KeyboardPreferences.appGroupID) {
+            all.append(group)
+        }
+        return all
     }
 
-    private var originalLayoutMode: String?
-    private var originalHaptics: Bool?
-    private var originalShowHints: Bool?
-    private var originalKeyFaceStyle: String?
+    private let trackedKeys = [
+        KeyboardPreferences.layoutModeKey,
+        KeyboardPreferences.keyFaceStyleKey,
+        KeyboardPreferences.hapticsKey,
+        KeyboardPreferences.showLatinHintsKey
+    ]
+
+    /// One snapshot per suite, keyed by suite index then preference key.
+    private var snapshots: [[String: Any]] = []
 
     override func setUpWithError() throws {
-        originalLayoutMode = defaults.string(forKey: KeyboardPreferences.layoutModeKey)
-        originalHaptics = defaults.object(forKey: KeyboardPreferences.hapticsKey) as? Bool
-        originalShowHints = defaults.object(forKey: KeyboardPreferences.showLatinHintsKey) as? Bool
-        originalKeyFaceStyle = defaults.string(forKey: KeyboardPreferences.keyFaceStyleKey)
-    }
-
-    override func tearDownWithError() throws {
-        restore(KeyboardPreferences.layoutModeKey, originalLayoutMode)
-        restore(KeyboardPreferences.hapticsKey, originalHaptics)
-        restore(KeyboardPreferences.showLatinHintsKey, originalShowHints)
-        restore(KeyboardPreferences.keyFaceStyleKey, originalKeyFaceStyle)
-    }
-
-    private func restore(_ key: String, _ value: Any?) {
-        if let value {
-            defaults.set(value, forKey: key)
-        } else {
-            defaults.removeObject(forKey: key)
+        snapshots = suites.map { suite in
+            trackedKeys.reduce(into: [:]) { snapshot, key in
+                snapshot[key] = suite.object(forKey: key)
+            }
         }
     }
 
+    override func tearDownWithError() throws {
+        for (suite, snapshot) in zip(suites, snapshots) {
+            for key in trackedKeys {
+                if let value = snapshot[key] {
+                    suite.set(value, forKey: key)
+                } else {
+                    suite.removeObject(forKey: key)
+                }
+            }
+        }
+    }
+
+    private func removeEverywhere(_ key: String) {
+        for suite in suites { suite.removeObject(forKey: key) }
+    }
+
+    private func setEverywhere(_ value: Any, _ key: String) {
+        for suite in suites { suite.set(value, forKey: key) }
+    }
+
     func testLayoutModeDefaultsToQwerty() {
-        defaults.removeObject(forKey: KeyboardPreferences.layoutModeKey)
+        removeEverywhere(KeyboardPreferences.layoutModeKey)
         XCTAssertEqual(KeyboardPreferences.layoutMode, .qwerty)
     }
 
@@ -49,17 +67,42 @@ final class KeyboardPreferencesTests: XCTestCase {
     }
 
     func testHapticsDefaultsToTrue() {
-        defaults.removeObject(forKey: KeyboardPreferences.hapticsKey)
+        removeEverywhere(KeyboardPreferences.hapticsKey)
         XCTAssertTrue(KeyboardPreferences.hapticsEnabled)
     }
 
-    func testShowLatinHintsDefaultsToFalse() {
-        defaults.removeObject(forKey: KeyboardPreferences.showLatinHintsKey)
-        XCTAssertFalse(KeyboardPreferences.showLatinHints)
+    func testKeyFaceStyleDefaultsToRuneArt() {
+        removeEverywhere(KeyboardPreferences.keyFaceStyleKey)
+        removeEverywhere(KeyboardPreferences.showLatinHintsKey)
+        XCTAssertEqual(KeyboardPreferences.keyFaceStyle, .runeArt)
     }
 
-    func testKeyFaceStyleDefaultsToRuneArt() {
-        defaults.removeObject(forKey: KeyboardPreferences.keyFaceStyleKey)
+    func testKeyFaceStyleRoundTripsAllThreeFaces() {
+        for style in KeyFaceStyle.allCases {
+            KeyboardPreferences.keyFaceStyle = style
+            XCTAssertEqual(KeyboardPreferences.keyFaceStyle, style)
+        }
+    }
+
+    /// Hints used to be a separate bool beside `runeArt`. A device upgrading with that
+    /// pair stored must come back as the merged `runeHints` face, not lose its hints.
+    func testLegacyRuneArtWithHintsOnMigratesToRuneHints() {
+        setEverywhere(KeyFaceStyle.runeArt.rawValue, KeyboardPreferences.keyFaceStyleKey)
+        setEverywhere(true, KeyboardPreferences.showLatinHintsKey)
+        XCTAssertEqual(KeyboardPreferences.keyFaceStyle, .runeHints)
+    }
+
+    func testLegacyRuneArtWithHintsOffStaysRuneArt() {
+        setEverywhere(KeyFaceStyle.runeArt.rawValue, KeyboardPreferences.keyFaceStyleKey)
+        setEverywhere(false, KeyboardPreferences.showLatinHintsKey)
+        XCTAssertEqual(KeyboardPreferences.keyFaceStyle, .runeArt)
+    }
+
+    /// Choosing plain runes after runeHints must stick: the setter clears the legacy
+    /// bool, otherwise the migration read would re-promote `runeArt` to hints forever.
+    func testChoosingRuneArtAfterRuneHintsDoesNotBounceBack() {
+        KeyboardPreferences.keyFaceStyle = .runeHints
+        KeyboardPreferences.keyFaceStyle = .runeArt
         XCTAssertEqual(KeyboardPreferences.keyFaceStyle, .runeArt)
     }
 }

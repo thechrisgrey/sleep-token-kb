@@ -70,6 +70,15 @@ public enum SleepTokenLetter: String, CaseIterable, Identifiable, Codable, Senda
     public func englishInsert(shifted: Bool) -> String {
         shifted ? upperLatin : latin
     }
+
+    /// Latin reading of a Rune Pad string: Private Use rune characters map back to
+    /// their letters, everything else (spaces, punctuation) passes through unchanged.
+    /// Lowercase, so callers can spell-check it directly and style case themselves.
+    public static func latinTranslation(of text: String) -> String {
+        String(text.map { character in
+            fromRuneCharacter(character)?.latin.first ?? character
+        })
+    }
 }
 
 public enum KeyboardLayout {

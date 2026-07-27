@@ -18,11 +18,10 @@ After you install the host app once, **Sleep Token KB** appears under:
 |---------|--------|
 | QWERTY layout | Muscle-memory typing; symbol faces on keys |
 | A–Z Grid layout | Learning / ritual layout; toggle in the keyboard top bar |
-| Rune / ABC key style | Toggle whether keys show ritual glyphs or plain letters; typed text is always English either way |
+| Key face cycle | One key cycles **Rune → Rune·A → Aa**: pure glyphs, glyphs with a small Latin letter beneath, plain ABC. Typed text is always English either way |
 | Latin insert | Tapping a key inserts `a`–`z` / `A`–`Z` (usable everywhere) |
-| Rune Pad | Compose vertical ritual text in the host app, then Copy Image (transparent PNG) into any app |
+| Rune Pad | Compose vertical ritual text, read it back in Latin with live spell check, export as transparent PNG (light or dark ink), plaque PNG, share sheet, or plain Latin text |
 | 123 page | Numbers and punctuation |
-| Latin hints | Optional small letter under each rune-art glyph |
 | Haptics | Toggle in host app |
 | Full Access | **Off** by default (`RequestsOpenAccess = false`) |
 
@@ -63,15 +62,21 @@ If it's missing from the list: delete the app, reinstall, force-quit Settings, t
 
 ## Using the keyboard
 
-- **Bottom bar:** toggle **QWERTY** ↔ **A–Z Grid**; toggle **Rune art** ↔ **ABC** key style; next-keyboard globe key
-- **Keys:** Sleep Token glyphs (real traced art, with a geometric fallback if an asset is ever missing) or plain letters, depending on key style
+- **Bottom bar:** toggle **QWERTY** ↔ **A–Z Grid**; cycle the key face **Rune → Rune·A → Aa** (pure glyphs / glyphs with Latin hints / plain ABC); next-keyboard globe key
+- **Keys:** Sleep Token glyphs (real traced art, with a geometric fallback if an asset is ever missing) or plain letters, depending on key face
 - **Shift:** uppercase; double-tap for caps-lock style sticky shift
 - **123 / ABC:** numbers and punctuation
-- Typed text is **always** plain English — the key style is cosmetic only
+- Typed text is **always** plain English — the key face is cosmetic only
 
 ## Rune Pad
 
-Open **Rune Pad** from the host app to compose vertical ritual text: each space starts a new column, long text auto-shrinks to fit, and **Copy Image** exports a transparent PNG you can paste into Messages, Notes, Reminders, and anywhere else that accepts images.
+Open **Rune Pad** from the host app to compose vertical ritual text: each space starts a new column and long text auto-shrinks to fit. A **READS** strip translates the runes back to Latin as you type, with live spell check (words missing from the dictionary are underlined). The **Export** menu offers:
+
+- **Copy image · for dark backgrounds** — transparent PNG, light ink
+- **Copy image · for light backgrounds** — transparent PNG, dark ink
+- **Copy image · on plaque** — obsidian card PNG, legible on any background
+- **Share as image** — system share sheet (Messages, Save to Files, AirDrop, Photos…)
+- **Copy as Latin text** — the plain-English reading, for spell checking or search
 
 ## Replacing/updating glyph art
 

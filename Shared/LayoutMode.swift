@@ -41,14 +41,24 @@ public enum LayoutMode: String, CaseIterable, Identifiable, Codable, Sendable {
 public enum KeyFaceStyle: String, CaseIterable, Identifiable, Codable, Sendable {
     /// Sleep Token art on keys (avid-fan look). Text is still English.
     case runeArt
+    /// Rune art with a small Latin letter beneath each glyph (learning look).
+    /// Replaces the old separate "Latin hints" toggle so switching is one tap.
+    case runeHints
     /// Plain English A–Z on keys.
     case letters
 
     public var id: String { rawValue }
 
+    /// Whether the key face draws the rune art at all.
+    public var showsRuneArt: Bool { self != .letters }
+
+    /// Whether a small Latin letter sits beneath the rune art.
+    public var showsLatinHint: Bool { self == .runeHints }
+
     public var title: String {
         switch self {
         case .runeArt: "Rune keys"
+        case .runeHints: "Runes + letters"
         case .letters: "ABC keys"
         }
     }
@@ -58,13 +68,15 @@ public enum KeyFaceStyle: String, CaseIterable, Identifiable, Codable, Sendable 
     public var shortTitle: String {
         switch self {
         case .runeArt: "Rune"
+        case .runeHints: "Rune·A"
         case .letters: "Aa"
         }
     }
 
     public var next: KeyFaceStyle {
         switch self {
-        case .runeArt: .letters
+        case .runeArt: .runeHints
+        case .runeHints: .letters
         case .letters: .runeArt
         }
     }
@@ -124,19 +136,23 @@ public enum KeyboardPreferences {
                 // Default: ritual keys, English text (simple path for fans).
                 return .runeArt
             }
+            // Legacy migration: hints used to be a separate bool alongside `runeArt`.
+            // A stored pair of (runeArt, hints on) means the user wants `runeHints`.
+            if style == .runeArt, storedBool(showLatinHintsKey, default: false) {
+                return .runeHints
+            }
             return style
         }
-        set { store(newValue.rawValue, keyFaceStyleKey) }
+        set {
+            store(newValue.rawValue, keyFaceStyleKey)
+            // Keep the legacy key coherent so an old build reading it stays sensible,
+            // and so the migration read above cannot re-promote `runeArt` to hints.
+            store(newValue.showsLatinHint, showLatinHintsKey)
+        }
     }
 
     public static var hapticsEnabled: Bool {
         get { storedBool(hapticsKey, default: true) }
         set { store(newValue, hapticsKey) }
-    }
-
-    /// Small Latin letter under rune art keys (learning aid).
-    public static var showLatinHints: Bool {
-        get { storedBool(showLatinHintsKey, default: false) }
-        set { store(newValue, showLatinHintsKey) }
     }
 }
