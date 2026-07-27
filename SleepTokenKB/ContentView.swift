@@ -1,8 +1,20 @@
 import SwiftUI
 
 struct ContentView: View {
+    /// `@State` so the observable store's identity is stable for this view tree;
+    /// reads of `Theme` colours inside any body register against it automatically.
+    @State private var store = ThemeStore.shared
+    @State private var ceremonyActive = false
+    /// Selection the picker shows while the ceremony's curtain is still rising
+    /// (the real mode flips only once the curtain is opaque).
+    @State private var pendingMode: ThemeMode?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         NavigationStack {
+            // The proxy supplies the real top safe-area inset, so the status-bar
+            // scrim is sized per device instead of a flat guess.
+            GeometryReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     hero
@@ -49,18 +61,26 @@ struct ContentView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
+                        SectionLabel(text: "Appearance")
+                        DefaultsRow(title: "Theme", caption: themeCaption) {
+                            Picker("Theme", selection: themeBinding) {
+                                ForEach(ThemeMode.allCases) { mode in
+                                    Text(mode.title).tag(mode)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                        .ritualCard()
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
                         SectionLabel(text: "Keyboard defaults")
                         VStack(spacing: 16) {
                             LayoutPicker()
                             Rectangle().fill(Theme.hairline).frame(height: 1)
                             KeyFacePicker()
                             Rectangle().fill(Theme.hairline).frame(height: 1)
-                            Toggle(isOn: hapticsBinding) {
-                                Text("Haptic feedback")
-                                    .font(.subheadline)
-                                    .foregroundStyle(Theme.ink)
-                            }
-                            .tint(Theme.goldDeep)
+                            HapticsToggle()
                         }
                         .ritualCard()
                     }
@@ -72,14 +92,15 @@ struct ContentView: View {
             .background(RitualBackground())
             // The root deliberately has no navigation title (the hero is the title),
             // which also means no system scroll-edge bar — so scrolled content would
-            // collide with the status bar. This scrim fades it out instead.
+            // collide with the status bar. This scrim fades it out instead, ending
+            // just below the status bar on every device class.
             .overlay(alignment: .top) {
                 LinearGradient(
                     colors: [Theme.field, Theme.field.opacity(0)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(height: 110)
+                .frame(height: proxy.safeAreaInsets.top + 44)
                 .ignoresSafeArea(edges: .top)
                 .allowsHitTesting(false)
             }
@@ -88,6 +109,50 @@ struct ContentView: View {
             .onAppear {
                 RuneFont.registerIfNeeded()
             }
+            }
+        }
+        .tint(Theme.gold)
+        // While the ceremony's curtain covers the app, the controls beneath must
+        // leave the accessibility tree too — invisible but activatable is worse
+        // than invisible.
+        .accessibilityHidden(ceremonyActive)
+        .overlay {
+            if ceremonyActive {
+                ArcadiaRevealView(
+                    onCurtainClosed: {
+                        store.mode = .evenInArcadia
+                        pendingMode = nil
+                    },
+                    onFinished: { ceremonyActive = false }
+                )
+            }
+        }
+    }
+
+    // MARK: - Theme switching
+
+    private var themeBinding: Binding<ThemeMode> {
+        Binding(
+            get: { pendingMode ?? store.mode },
+            set: { requestTheme($0) }
+        )
+    }
+
+    private var themeCaption: String {
+        switch pendingMode ?? store.mode {
+        case .ritual: "Obsidian and gold. The original ceremony."
+        case .evenInArcadia: "Pink overgrowth on black stone. The flamingo keeps watch."
+        }
+    }
+
+    private func requestTheme(_ mode: ThemeMode) {
+        guard mode != store.mode, !ceremonyActive else { return }
+        if mode == .evenInArcadia && !reduceMotion {
+            // The full ceremony: curtain, wordmark, flamingo, dissolve.
+            pendingMode = mode
+            ceremonyActive = true
+        } else {
+            withAnimation(.easeInOut(duration: 0.45)) { store.mode = mode }
         }
     }
 
@@ -131,7 +196,13 @@ struct ContentView: View {
 
     private var footer: some View {
         VStack(spacing: 14) {
-            RuneWordRow(word: "worship", glyphSize: 10, spacing: 8, color: Theme.inkFaint)
+            // Same slot, theme-appropriate ornament: the flamingo keeps the footer
+            // in Arcadia, the rune word keeps it in Ritual.
+            if store.mode == .evenInArcadia {
+                BlackFlamingo(height: 54)
+            } else {
+                RuneWordRow(word: "worship", glyphSize: 10, spacing: 8, color: Theme.inkFaint)
+            }
             Text("Unofficial fan project. Not affiliated with, endorsed by, or connected to Sleep Token or their rights holders.")
                 .font(.caption2)
                 .foregroundStyle(Theme.inkFaint)
@@ -142,12 +213,6 @@ struct ContentView: View {
         .padding(.bottom, 8)
     }
 
-    private var hapticsBinding: Binding<Bool> {
-        Binding(
-            get: { KeyboardPreferences.hapticsEnabled },
-            set: { KeyboardPreferences.hapticsEnabled = $0 }
-        )
-    }
 }
 
 // MARK: - Destination cards
@@ -194,48 +259,100 @@ private struct DestinationCard: View {
 
 // MARK: - Defaults controls
 
-private struct LayoutPicker: View {
-    @State private var mode: LayoutMode = KeyboardPreferences.layoutMode
+/// Owns the seed / write-back / refresh cycle every preference control needs, so the
+/// three controls in the defaults card share one sync pattern — including a re-read
+/// when the scene becomes active, which keeps the card truthful after the keyboard
+/// extension writes the same preferences from its own process.
+private struct PreferenceBacked<Value: Equatable, Content: View>: View {
+    @Environment(\.scenePhase) private var scenePhase
+    let read: () -> Value
+    let write: (Value) -> Void
+    @ViewBuilder let content: (Binding<Value>) -> Content
+    @State private var value: Value
+
+    init(
+        read: @escaping () -> Value,
+        write: @escaping (Value) -> Void,
+        @ViewBuilder content: @escaping (Binding<Value>) -> Content
+    ) {
+        self.read = read
+        self.write = write
+        self.content = content
+        _value = State(initialValue: read())
+    }
 
     var body: some View {
-        DefaultsRow(title: "Layout") {
-            Picker("Layout", selection: $mode) {
-                ForEach(LayoutMode.allCases) { m in
-                    Text(m.shortTitle).tag(m)
-                }
+        content($value)
+            .onChange(of: value) { _, newValue in write(newValue) }
+            .onAppear { value = read() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { value = read() }
             }
-            .pickerStyle(.segmented)
+    }
+}
+
+private struct LayoutPicker: View {
+    var body: some View {
+        PreferenceBacked(
+            read: { KeyboardPreferences.layoutMode },
+            write: { KeyboardPreferences.layoutMode = $0 }
+        ) { $mode in
+            DefaultsRow(title: "Layout") {
+                Picker("Layout", selection: $mode) {
+                    ForEach(LayoutMode.allCases) { m in
+                        Text(m.shortTitle)
+                            // Segments show the chrome-key short form; VoiceOver
+                            // gets the model's full description.
+                            .accessibilityLabel(m.accessibilityLabel)
+                            .tag(m)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
         }
-        .onChange(of: mode) { _, newValue in
-            KeyboardPreferences.layoutMode = newValue
-        }
-        .onAppear { mode = KeyboardPreferences.layoutMode }
     }
 }
 
 private struct KeyFacePicker: View {
-    @State private var style: KeyFaceStyle = KeyboardPreferences.keyFaceStyle
-
     var body: some View {
-        DefaultsRow(title: "Key look", caption: caption) {
-            Picker("Key look", selection: $style) {
-                ForEach(KeyFaceStyle.allCases) { s in
-                    Text(s.shortTitle).tag(s)
+        PreferenceBacked(
+            read: { KeyboardPreferences.keyFaceStyle },
+            write: { KeyboardPreferences.keyFaceStyle = $0 }
+        ) { $style in
+            DefaultsRow(title: "Key look", caption: Self.caption(for: style)) {
+                Picker("Key look", selection: $style) {
+                    ForEach(KeyFaceStyle.allCases) { s in
+                        Text(s.shortTitle)
+                            .accessibilityLabel(s.title)
+                            .tag(s)
+                    }
                 }
+                .pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
         }
-        .onChange(of: style) { _, newValue in
-            KeyboardPreferences.keyFaceStyle = newValue
-        }
-        .onAppear { style = KeyboardPreferences.keyFaceStyle }
     }
 
-    private var caption: String {
+    private static func caption(for style: KeyFaceStyle) -> String {
         switch style {
         case .runeArt: "Pure glyph keycaps. Typing still inserts English."
         case .runeHints: "Glyphs with a small Latin letter beneath — the learning face."
         case .letters: "Plain English keycaps."
+        }
+    }
+}
+
+private struct HapticsToggle: View {
+    var body: some View {
+        PreferenceBacked(
+            read: { KeyboardPreferences.hapticsEnabled },
+            write: { KeyboardPreferences.hapticsEnabled = $0 }
+        ) { $enabled in
+            Toggle(isOn: $enabled) {
+                Text("Haptic feedback")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.ink)
+            }
+            .tint(Theme.goldDeep)
         }
     }
 }

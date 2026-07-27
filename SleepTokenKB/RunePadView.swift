@@ -6,13 +6,17 @@ import UIKit
 ///
 /// Layout: plaque canvas (the runes), translation strip (the Latin reading with live
 /// spell check), letter pad. Long words / many columns automatically scale down so the
-/// canvas stays in view.
+/// canvas stays in view. Canvas geometry and the export types live in
+/// `RuneCanvas.swift` / `RuneExport.swift`.
 struct RunePadView: View {
     /// Words separated by spaces; each word is one vertical column.
     @State private var text = ""
     @State private var status: String?
+    @State private var statusExpiry: Task<Void, Never>?
     @State private var isExporting = false
     @State private var shareItem: ShareItem?
+    @State private var confirmClear = false
+    @State private var deleteRepeater: Task<Void, Never>?
 
     @Environment(\.displayScale) private var displayScale
 
@@ -20,20 +24,12 @@ struct RunePadView: View {
     private let rows: [[SleepTokenLetter]] = KeyboardLayout.qwertyRows
 
     var body: some View {
+        // No spacer: the canvas absorbs all free height, so the letter pad sits
+        // down by the home indicator like a real keyboard.
         VStack(spacing: 14) {
             canvas
             translationStrip
             letterPad
-
-            if let status {
-                Text(status)
-                    .font(.caption)
-                    .foregroundStyle(Theme.gold)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .transition(.opacity)
-            }
-
-            Spacer(minLength: 0)
         }
         .padding(16)
         .background(RitualBackground())
@@ -42,15 +38,33 @@ struct RunePadView: View {
         .onAppear { _ = RuneFont.registerIfNeeded() }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button("Clear") { text = ""; status = nil }
+                Button("Clear", role: .destructive) { confirmClear = true }
                     .disabled(text.isEmpty)
 
                 exportMenu
             }
         }
+        .confirmationDialog(
+            "Clear the canvas?",
+            isPresented: $confirmClear,
+            titleVisibility: .visible
+        ) {
+            Button("Clear", role: .destructive) {
+                statusExpiry?.cancel()
+                text = ""
+                status = nil
+            }
+            Button("Keep composing", role: .cancel) {}
+        }
         .sheet(item: $shareItem) { item in
-            ShareSheet(items: [item.url])
-                .presentationDetents([.medium, .large])
+            ShareSheet(items: [item.url]) { completed in
+                // The sheet is done with the file either way; confirm only success.
+                try? FileManager.default.removeItem(at: item.url)
+                if completed {
+                    setStatus("Image shared.")
+                }
+            }
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -80,8 +94,39 @@ struct RunePadView: View {
                 .animation(.easeOut(duration: 0.15), value: text)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 190, maxHeight: 260)
-        .ritualCard(padding: 0)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minHeight: 190)
+        // Overflow (more columns than even 8pt runes can fit) degrades inside the
+        // plaque instead of drawing across its border.
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        // One element: VoiceOver hears the words being written, not a stream of
+        // per-glyph letters and shape hints.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Rune canvas")
+        .accessibilityValue(
+            text.isEmpty
+                ? "Empty. Tap the keys below to compose."
+                : latinWords.joined(separator: " ")
+        )
+        // Translucent in Arcadia so the petals falling down the background
+        // stay visible behind the composed runes.
+        .ritualCard(padding: 0, fill: Theme.canvasSurface)
+        // Status rides the canvas card instead of stacking below the pad, so its
+        // appearance never nudges the pad away from the bottom edge.
+        .overlay(alignment: .bottomLeading) {
+            if let status {
+                Text(status)
+                    .font(.caption)
+                    .foregroundStyle(Theme.gold)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule().fill(Theme.field.opacity(0.85))
+                    )
+                    .padding(10)
+                    .transition(.opacity)
+            }
+        }
     }
 
     private var emptyState: some View {
@@ -97,39 +142,50 @@ struct RunePadView: View {
 
     // MARK: - Translation + spell check
 
-    /// Latin reading of each finished column, lowercase for the checker.
+    /// Latin reading of each column, lowercase for the checker.
     private var latinWords: [String] {
         columns
             .filter { !$0.isEmpty }
             .map { SleepTokenLetter.latinTranslation(of: $0) }
     }
 
-    /// Words the system dictionary does not recognise. Live, per keystroke — the last
-    /// column flags until it becomes a word, exactly like spell check anywhere else.
-    private var misspelledWords: Set<String> {
+    /// Words the system dictionary does not recognise. Only *finished* columns are
+    /// judged — the trailing column is still being typed until a space ends it, so
+    /// flagging it mid-word would just flicker amber on every keystroke. A word
+    /// passes if either its lowercase or capitalized form is accepted, so proper
+    /// nouns (EUCLID, ARCADIA) are not false-flagged.
+    private func misspelledWords(in words: [String]) -> Set<String> {
+        let completed = text.hasSuffix(" ") ? words : Array(words.dropLast())
         let checker = UITextChecker()
         var flagged: Set<String> = []
-        for word in latinWords where word.count > 1 {
-            let range = NSRange(location: 0, length: word.utf16.count)
-            let miss = checker.rangeOfMisspelledWord(
-                in: word, range: range, startingAt: 0, wrap: false, language: "en_US"
-            )
-            if miss.location != NSNotFound { flagged.insert(word) }
+        for word in completed where word.count > 1 {
+            if isMisspelled(word, checker), isMisspelled(word.capitalized, checker) {
+                flagged.insert(word)
+            }
         }
         return flagged
     }
 
+    private func isMisspelled(_ word: String, _ checker: UITextChecker) -> Bool {
+        let range = NSRange(location: 0, length: word.utf16.count)
+        let miss = checker.rangeOfMisspelledWord(
+            in: word, range: range, startingAt: 0, wrap: false, language: "en_US"
+        )
+        return miss.location != NSNotFound
+    }
+
     @ViewBuilder
     private var translationStrip: some View {
-        if !latinWords.isEmpty {
-            let flagged = misspelledWords
+        let words = latinWords
+        if !words.isEmpty {
+            let flagged = misspelledWords(in: words)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text("READS")
                         .font(Theme.overline(9))
                         .tracking(2.2)
                         .foregroundStyle(Theme.inkDim)
-                    translationText(flagged: flagged)
+                    Self.translationText(words: words, flagged: flagged)
                         .font(Theme.display(16, weight: .medium))
                         .kerning(1.4)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -142,13 +198,19 @@ struct RunePadView: View {
             }
             .ritualCard(padding: 12)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Reads \(latinWords.joined(separator: " "))")
+            .accessibilityLabel("Reads \(words.joined(separator: " "))")
+            .accessibilityValue(
+                flagged.isEmpty
+                    ? ""
+                    : "\(flagged.sorted().joined(separator: ", ")) not in the dictionary"
+            )
         }
     }
 
-    private func translationText(flagged: Set<String>) -> Text {
+    /// Pure: both inputs explicit, so the styling logic is testable in isolation.
+    private static func translationText(words: [String], flagged: Set<String>) -> Text {
         var combined = Text("")
-        for (index, word) in latinWords.enumerated() {
+        for (index, word) in words.enumerated() {
             var piece = Text(word.uppercased())
             if flagged.contains(word) {
                 piece = piece
@@ -237,6 +299,14 @@ struct RunePadView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                // Press-and-hold auto-repeats, like the system keyboard's delete.
+                // The zero-distance drag tracks press/release without stealing the
+                // plain tap, which still deletes exactly one rune.
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { _ in startDeleteRepeat() }
+                        .onEnded { _ in stopDeleteRepeat() }
+                )
                 .accessibilityLabel("Delete")
             }
         }
@@ -252,20 +322,12 @@ struct RunePadView: View {
     private var exportMenu: some View {
         Menu {
             Section("Copy image") {
-                Button {
-                    Task { await copyImage(style: .lightInk) }
-                } label: {
-                    Label("For dark backgrounds", systemImage: "moon")
-                }
-                Button {
-                    Task { await copyImage(style: .darkInk) }
-                } label: {
-                    Label("For light backgrounds", systemImage: "sun.max")
-                }
-                Button {
-                    Task { await copyImage(style: .plaque) }
-                } label: {
-                    Label("On plaque", systemImage: "rectangle.fill")
+                ForEach(RuneExportStyle.allCases, id: \.self) { style in
+                    Button {
+                        Task { await copyImage(style: style) }
+                    } label: {
+                        Label(style.menuTitle, systemImage: style.systemImage)
+                    }
                 }
             }
             Button {
@@ -281,6 +343,7 @@ struct RunePadView: View {
         } label: {
             if isExporting {
                 ProgressView()
+                    .accessibilityLabel("Exporting")
             } else {
                 Label("Export", systemImage: "square.and.arrow.up")
             }
@@ -300,44 +363,74 @@ struct RunePadView: View {
         text.removeLast()
     }
 
+    private func startDeleteRepeat() {
+        guard deleteRepeater == nil else { return }
+        deleteRepeater = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(0.45))
+            while !Task.isCancelled {
+                deleteBackward()
+                try? await Task.sleep(for: .seconds(0.08))
+            }
+        }
+    }
+
+    private func stopDeleteRepeat() {
+        deleteRepeater?.cancel()
+        deleteRepeater = nil
+    }
+
+    /// One path for all export feedback: fades in (the transition is otherwise
+    /// inert), announces to VoiceOver, and clears itself after a few seconds so the
+    /// capsule never squats on the canvas forever.
+    private func setStatus(_ message: String) {
+        statusExpiry?.cancel()
+        withAnimation(.easeOut(duration: 0.2)) { status = message }
+        AccessibilityNotification.Announcement(message).post()
+        statusExpiry = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.4)) { status = nil }
+        }
+    }
+
     private func copyLatinText() {
         UIPasteboard.general.string = latinWords.joined(separator: " ")
-        status = "Latin text copied. Paste it anywhere to spell check or search."
+        setStatus("Latin text copied. Paste it anywhere to spell check or search.")
     }
 
     @MainActor
     private func copyImage(style: RuneExportStyle) async {
         guard let image = await renderImage(style: style) else {
-            status = "Could not render image. Try again."
+            setStatus("Could not render image. Try again.")
             return
         }
         if let png = image.pngData() {
+            // The explicit public.png representation is the point of the
+            // transparent styles — nothing may replace this item afterwards.
             UIPasteboard.general.setItems([[
                 "public.png": png,
                 "com.apple.uikit.image": image
             ]], options: [:])
-            UIPasteboard.general.image = image
         } else {
             UIPasteboard.general.image = image
         }
-        status = style.copiedMessage
+        setStatus(style.copiedMessage)
     }
 
     @MainActor
     private func shareImage() async {
         guard let image = await renderImage(style: .plaque),
               let png = image.pngData() else {
-            status = "Could not render image. Try again."
+            setStatus("Could not render image. Try again.")
             return
         }
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("sleep-token-runes.png")
         do {
-            try png.write(to: url)
+            try png.write(to: url, options: .atomic)
             shareItem = ShareItem(url: url)
-            status = nil
         } catch {
-            status = "Could not prepare the share file. Try again."
+            setStatus("Could not prepare the share file. Try again.")
         }
     }
 
@@ -389,212 +482,11 @@ struct RunePadView: View {
         renderer.scale = displayScale
         renderer.isOpaque = false
 
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        // One turn of the run loop so the isExporting ProgressView can paint
+        // before the render occupies the main actor.
+        await Task.yield()
 
         return renderer.uiImage
-    }
-}
-
-// MARK: - Export styles
-
-/// The three image forms. Two transparent PNGs (one per destination background) and a
-/// plaque that is legible on any background because it brings its own.
-private enum RuneExportStyle {
-    case lightInk
-    case darkInk
-    case plaque
-
-    static let plaqueFill = Color(red: 0.062, green: 0.058, blue: 0.066)
-
-    var ink: Color {
-        switch self {
-        case .lightInk: Color(white: 0.93)
-        case .darkInk: Color(white: 0.08)
-        case .plaque: Theme.ink
-        }
-    }
-
-    var copiedMessage: String {
-        switch self {
-        case .lightInk: "Copied: transparent, light ink. Paste over dark backgrounds."
-        case .darkInk: "Copied: transparent, dark ink. Paste over light backgrounds."
-        case .plaque: "Copied: plaque image. Legible on any background."
-        }
-    }
-}
-
-private struct ShareItem: Identifiable {
-    let id = UUID()
-    let url: URL
-}
-
-private struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
-}
-
-// MARK: - Fit metrics
-
-private struct CanvasMetrics: Equatable {
-    var runeSize: CGFloat
-    var columnSpacing: CGFloat
-    var runeSpacing: CGFloat
-    var padding: CGFloat
-
-    /// Largest rune size that still fits all columns/rows inside `size`.
-    static func fitted(
-        columns: [String],
-        in size: CGSize,
-        preferredRuneSize: CGFloat
-    ) -> CanvasMetrics {
-        let colCount = max(columns.count, 1)
-        // Empty column still needs one cell (caret).
-        let maxRows = max(columns.map { max($0.count, 1) }.max() ?? 1, 1)
-
-        let padding: CGFloat = 16
-        let availW = max(size.width - padding * 2, 48)
-        let availH = max(size.height - padding * 2, 48)
-
-        var lo: CGFloat = 8
-        var hi = preferredRuneSize
-        var best = lo
-
-        for _ in 0..<24 {
-            let mid = (lo + hi) / 2
-            if Self.fits(runeSize: mid, colCount: colCount, maxRows: maxRows, availW: availW, availH: availH) {
-                best = mid
-                lo = mid
-            } else {
-                hi = mid
-            }
-        }
-
-        return Self.metrics(runeSize: min(preferredRuneSize, max(8, best)), padding: padding)
-    }
-
-    /// Comfortable size for PNG export (scale up long text slightly less).
-    static func forExport(columns: [String], preferredRuneSize: CGFloat) -> CanvasMetrics {
-        let colCount = max(columns.count, 1)
-        let maxRows = max(columns.map(\.count).max() ?? 1, 1)
-        // Soft cap so huge messages still export cleanly
-        let complexity = CGFloat(colCount * max(maxRows, 1))
-        let size: CGFloat
-        if complexity <= 24 {
-            size = preferredRuneSize
-        } else if complexity <= 60 {
-            size = 26
-        } else if complexity <= 120 {
-            size = 20
-        } else {
-            size = 16
-        }
-        return metrics(runeSize: size, padding: 24)
-    }
-
-    private static func metrics(runeSize: CGFloat, padding: CGFloat) -> CanvasMetrics {
-        CanvasMetrics(
-            runeSize: runeSize,
-            columnSpacing: max(6, runeSize * 0.45),
-            runeSpacing: max(3, runeSize * 0.22),
-            padding: padding
-        )
-    }
-
-    private static func fits(
-        runeSize: CGFloat,
-        colCount: Int,
-        maxRows: Int,
-        availW: CGFloat,
-        availH: CGFloat
-    ) -> Bool {
-        let cell = runeSize + 10
-        let colW = cell + 12
-        let colSpacing = max(6, runeSize * 0.45)
-        let runeSpacing = max(3, runeSize * 0.22)
-        let chromeV: CGFloat = 16
-
-        let width = CGFloat(colCount) * colW + CGFloat(max(colCount - 1, 0)) * colSpacing
-        let height = CGFloat(maxRows) * cell
-            + CGFloat(max(maxRows - 1, 0)) * runeSpacing
-            + chromeV
-
-        return width <= availW && height <= availH
-    }
-}
-
-// MARK: - Shared column layout (screen + export)
-
-private struct VerticalRuneColumnsView: View {
-    let columns: [String]
-    let runeSize: CGFloat
-    let columnSpacing: CGFloat
-    let runeSpacing: CGFloat
-    let ink: Color
-    let showChrome: Bool
-
-    private var cell: CGFloat { runeSize + 10 }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: columnSpacing) {
-            if columns.isEmpty {
-                Color.clear.frame(width: 1, height: 1)
-            } else {
-                ForEach(Array(columns.enumerated()), id: \.offset) { columnIndex, word in
-                    VStack(spacing: runeSpacing) {
-                        if word.isEmpty {
-                            if showChrome {
-                                caret
-                                    .frame(width: cell, height: cell)
-                            }
-                        } else {
-                            ForEach(Array(word.enumerated()), id: \.offset) { _, character in
-                                runeCell(for: character)
-                            }
-                            if showChrome, columnIndex == columns.count - 1 {
-                                caret
-                                    .frame(width: cell)
-                            }
-                        }
-                    }
-                    .frame(width: cell + (showChrome ? 12 : 4))
-                    .padding(.vertical, showChrome ? 8 : 2)
-                    .background {
-                        if showChrome {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
-                        }
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    @ViewBuilder
-    private func runeCell(for character: Character) -> some View {
-        if let letter = SleepTokenLetter.fromRuneCharacter(character) {
-            SymbolGlyphView(letter: letter, foreground: ink)
-                .frame(width: cell, height: cell)
-                .frame(maxWidth: .infinity)
-        } else {
-            Text(String(character))
-                .font(RuneFont.font(size: runeSize))
-                .foregroundStyle(ink)
-                .frame(width: cell, height: cell, alignment: .center)
-                .frame(maxWidth: .infinity)
-        }
-    }
-
-    private var caret: some View {
-        RoundedRectangle(cornerRadius: 2)
-            .fill(Theme.gold.opacity(0.9))
-            .frame(width: 2, height: max(8, runeSize * 0.55))
-            .frame(maxWidth: .infinity)
     }
 }
 

@@ -15,22 +15,24 @@
 |---|---------|--------------|----------------|---------------|
 | 1 | Enable-keyboard walkthrough | Numbered 5-step guide plus troubleshooting that walks the user through registering the extension in iOS Settings; includes a deep link that opens Settings | `SleepTokenKB/EnableKeyboardView.swift` | 2026-07-26 |
 | 2 | Alphabet chart | Scrollable 4-column reference grid of all 26 ritual glyphs with letter and prose description of each glyph's shape | `SleepTokenKB/AlphabetChartView.swift` | 2026-07-26 |
-| 3 | Keyboard defaults settings | Host-app controls (layout picker, key-style picker, haptics toggle, Latin-hints toggle) that write shared prefs consumed by the extension | `SleepTokenKB/ContentView.swift` | 2026-07-26 |
+| 3 | Home hub & keyboard defaults | Serif hero with rune wordmark, destination cards, and settings controls (layout picker, 3-way key-face picker, haptics toggle, theme picker) that write shared prefs consumed by the extension | `SleepTokenKB/ContentView.swift` | 2026-07-26 |
+| 18 | Theme system: Ritual & Even in Arcadia | Switchable app-wide aesthetic via `@Observable ThemeStore` (persisted): obsidian/gold vs pink-on-black with arcadian-green panels, drifting petal field, black-flamingo ornament, and a full-screen SLEEP TOKEN wordmark ceremony on switch (Reduce Motion gets a crossfade). Host app only; strictly cosmetic | `SleepTokenKB/Theme.swift`, `SleepTokenKB/ArcadiaRevealView.swift` | 2026-07-26 |
 
 ### B. Rune Pad (host-app composer)
 
 | # | Feature | What it does | Where it lives | Last reviewed |
 |---|---------|--------------|----------------|---------------|
-| 4 | Vertical rune composer | Type letters into vertical columns (space starts a new column); binary-searches the largest rune size that still fits the canvas so long text auto-shrinks | `SleepTokenKB/RunePadView.swift` | 2026-07-26 |
-| 5 | Transparent PNG export | Renders the composed columns off-screen at export resolution and writes a transparent PNG to the system pasteboard for pasting into any image-accepting app | `SleepTokenKB/RunePadView.swift` | 2026-07-26 |
+| 4 | Vertical rune composer | Type letters into vertical columns (space starts a new column); binary-searches the largest rune size that still fits the canvas so long text auto-shrinks. Letter pad is bottom-anchored like a real keyboard; the canvas absorbs all free height | `SleepTokenKB/RunePadView.swift` | 2026-07-26 |
+| 5 | Multi-format export | Export menu: transparent PNG in light or dark ink, plaque PNG (self-backed, legible anywhere), system share sheet with a named PNG file, and plain-Latin-text copy — all rendered off-screen at export resolution | `SleepTokenKB/RunePadView.swift` | 2026-07-26 |
+| 19 | Latin read-back with live spell check | READS strip translates the composed PUA runes back to Latin per keystroke; each word is checked with `UITextChecker` and unknown words are underlined in amber | `SleepTokenKB/RunePadView.swift`, `Shared/Alphabet.swift` | 2026-07-26 |
 
 ### C. Custom keyboard extension
 
 | # | Feature | What it does | Where it lives | Last reviewed |
 |---|---------|--------------|----------------|---------------|
 | 6 | Letter input with QWERTY / A–Z grid layouts | The core typing surface; two selectable key arrangements that always insert plain Latin text via `UITextDocumentProxy` | `SleepTokenKeyboard/KeyboardRootView.swift`, `Shared/Alphabet.swift` | 2026-07-26 |
-| 7 | Key face style + Latin hints | Toggles keycaps between ritual glyph art and plain ABC letters, with an optional small Latin letter under each glyph as a learning aid | `SleepTokenKeyboard/KeyboardRootView.swift`, `Shared/LayoutMode.swift` | 2026-07-26 |
-| 8 | Shift and caps lock | Single tap shifts one letter, second tap engages sticky caps lock, third releases | `SleepTokenKeyboard/KeyboardRootView.swift` | 2026-07-26 |
+| 7 | Key face cycle (Rune / Rune·A / Aa) | One chrome key cycles three keycap faces: pure glyphs, glyphs with a small Latin hint beneath, plain ABC — with legacy hints-bool migration on read | `SleepTokenKeyboard/KeyboardRootView.swift`, `Shared/LayoutMode.swift` | 2026-07-26 |
+| 8 | Shift and caps lock | `ShiftState` enum: single tap shifts one letter, second tap engages sticky caps lock, third releases; distinct SF Symbols and VoiceOver values per state | `Shared/ShiftState.swift`, `SleepTokenKeyboard/KeyboardRootView.swift` | 2026-07-26 |
 | 9 | Numbers and punctuation page | A 30-key `123` page of digits and punctuation with its own backspace | `SleepTokenKeyboard/KeyboardRootView.swift` | 2026-07-26 |
 | 10 | Keyboard chrome and adaptive height | Globe/space/return/layout/style bar, plus per-orientation and per-mode keyboard height driven through an explicit height constraint | `SleepTokenKeyboard/KeyboardViewController.swift`, `SleepTokenKeyboard/KeyboardRootView.swift` | 2026-07-26 |
 
@@ -49,13 +51,64 @@
 |---|---------|--------------|----------------|---------------|
 | 15 | xcodegen project generation | Single `project.yml` generates both targets, the test bundle, Info.plists, entitlements and the shared scheme | `project.yml` | 2026-07-26 |
 | 16 | SVG to PDF/TTF asset pipeline | 26 source SVGs converted to template PDFs for the asset catalogs and expanded stroke-to-fill into a PUA-mapped TrueType font | `scripts/build_rune_font.py`, `Assets/Symbols/README.md`, `stkb-runes-svg/` | 2026-07-26 |
-| 17 | Unit test suite | Pure-logic coverage of rune round-tripping, layout/key-style cycling, and preference defaults with save/restore isolation | `SleepTokenKBTests/` | 2026-07-26 |
+| 17 | Unit test suite | 49 pure-logic tests: rune round-tripping and Latin translation, layout/key-face cycling and pref migration, shift-state machine, keyboard metrics arithmetic, theme persistence — with save/restore isolation | `SleepTokenKBTests/`, `scripts/test.sh` | 2026-07-26 |
 
 ## Optimization Opportunities
 
-_All 32 refinements below were implemented on 2026-07-26 (see `Implementation notes` at the end for what was adapted and why). Analysis run 2026-07-26 — keyboard extension core (features 6-10), 8 lenses. 63 raw findings, 3 refuted by adversarial verification, 56 retained, then merged across lenses into the 32 distinct refinements below (several lenses independently flagged the same lines). Ranked by impact, never by effort._
+_Run 2026-07-26 (host app, categories A & B — features 1, 2, 3, 4, 5, 18, 19): 7 read-only lens reviewers + 7 adversarial verifiers via workflow. 36 findings, 0 refuted, 8 impact ratings revised downward on verification. All 36 retained below with verified impact, ranked by impact within each feature. Unchecked = not yet implemented._
+
+_All 32 refinements for features 6-10 below were implemented on 2026-07-26 (see `Implementation notes` at the end for what was adapted and why). Analysis run 2026-07-26 — keyboard extension core (features 6-10), 8 lenses. 63 raw findings, 3 refuted by adversarial verification, 56 retained, then merged across lenses into the 32 distinct refinements below (several lenses independently flagged the same lines). Ranked by impact, never by effort._
 
 _Compile-verified 2026-07-26: `./scripts/test.sh` builds both targets against the iOS Simulator 26.5 SDK and runs 33 tests, all passing, with zero source warnings. Behaviour on a physical device is still unverified._
+
+### 1. Enable-keyboard walkthrough
+
+_Current state: Visually cohesive with the ritual-card language; the five-step structure reads clearly, the copy is honest about Full Access, and the troubleshooting card plus Settings deep link cover the real first-run friction._
+
+- [x] **[UX]** Deep link lands on a screen the steps never describe — the gold button opens the app's own Settings page (which has a direct Keyboards list), but steps II–III only describe the manual General → Keyboard route, and step II's detail repeats its own title. Copy-only fix. Impact: High. Effort: Low. (`SleepTokenKB/EnableKeyboardView.swift:120-122`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Accessibility]** Step rows are fragmented for VoiceOver — numeral/title/detail are three separate elements, so users hear a bare "IV" with no sequence context; combine + label per the AlphabetChartView convention. Impact: Medium. Effort: Low. (`SleepTokenKB/EnableKeyboardView.swift:82-105`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Cleaner code]** Manually numbered steps subscript a fixed numeral array — five hand-maintained indices into `numerals`; a miscount traps at runtime. Model steps as data and derive numerals from the loop index. Impact: Low. Effort: Low. (`SleepTokenKB/EnableKeyboardView.swift:7`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Consistency]** Steps card is the app's only unlabeled ritual card group — troubleshooting and every ContentView group get a SectionLabel; the steps card does not. Impact: Low. Effort: Low. (`SleepTokenKB/EnableKeyboardView.swift:17-63`) — added 2026-07-26, completed 2026-07-26
+- [ ] **[UX]** Simulator-only Command-K bullet ships to end users — wrap in `#if targetEnvironment(simulator)`. Impact: Low. Effort: Low. (`SleepTokenKB/EnableKeyboardView.swift:70`) — added 2026-07-26
+
+### 2. Alphabet chart
+
+_Current state: Tidy 70-line file, closely on-theme, glyph rendering statically cached, every card a combined accessibility element with an explicit label._
+
+- [x] **[Accessibility]** VoiceOver reads each glyph description twice per card — the combined element inherits SymbolGlyphView's hint (the same description as the explicit label); hide the decorative glyph like RunePadView does. Impact: Medium. Effort: Low. (`SleepTokenKB/AlphabetChartView.swift:59-60`, `Shared/SymbolGlyphView.swift:43`) — added 2026-07-26, completed 2026-07-26
+- [x] **[UX]** Descriptions truncate at large Dynamic Type in the fixed 3-column grid — `.caption2` + `lineLimit(3)` in a ~100pt column ellipsizes at xxxLarge and widely at accessibility sizes; drop the line limit and fall to 2 columns at accessibility sizes. Impact: Medium (downgraded from High — truncation starts later than filed). Effort: Low. (`SleepTokenKB/AlphabetChartView.swift:4,41-46`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Consistency]** GlyphCard hand-rolls the card chrome at radius 14 — exact duplicate of RitualCard's body except the app-standard 16pt radius; replace with `.ritualCard(padding: 0)`. Impact: Low. Effort: Low. (`SleepTokenKB/AlphabetChartView.swift:51-58`) — added 2026-07-26, completed 2026-07-26
+
+### 3. Home hub & keyboard defaults
+
+_Current state: Ceremony wiring is sound (pendingMode/guard sequencing, reduce-motion fallback), DefaultsRow unifies the card, persistence is robust and tested._
+
+- [x] **[Resilience & tests]** Defaults card goes stale when the keyboard extension changes preferences — pickers seed once and re-read only on `.onAppear`, which does not fire on foregrounding; refresh all three controls on `scenePhase == .active`. Impact: Medium. Effort: Low. (`SleepTokenKB/ContentView.swift:265,279,212-217`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Accessibility]** Segmented pickers voice chrome-key abbreviations ("Rune·A", "Aa") — the model's full accessibility labels exist and the keyboard itself uses them; the home screen does not. Impact: Medium. Effort: Low. (`SleepTokenKB/ContentView.swift:271,290`, `Shared/LayoutMode.swift:25-30`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Consistency]** Three controls, three preference-sync patterns — LayoutPicker/KeyFacePicker duplicate a seed/onChange/onAppear dance while haptics uses a raw computed Binding; extract one preference-backed control helper. Impact: Low. Effort: Low. (`SleepTokenKB/ContentView.swift:264-308,212-217`) — added 2026-07-26, completed 2026-07-26
+- [x] **[UI]** Top scrim is a fixed 110pt ramp regardless of the device's safe-area inset — on small-inset devices it dims resting content; derive height from the actual inset. Impact: Low. Effort: Low. (`SleepTokenKB/ContentView.swift:98-107`) — added 2026-07-26, completed 2026-07-26
+
+### 4. Vertical rune composer
+
+_Current state: Binary-search fit keeps the plaque in view, one shared columns view renders screen and export so they cannot drift visually, the empty state teaches the interaction, pad keys carry correct accessibility labels._
+
+- [x] **[Resilience & tests]** Fit algorithm omits the trailing caret's height — `fits()` never counts the caret child + gap (~0.77 × runeSize) the screen appends to the last column, so tight fits overflow the plaque; CanvasMetrics has zero tests. Impact: Medium. Effort: Low. (`SleepTokenKB/RunePadView.swift:532-535,569-572`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Accessibility]** VoiceOver reads the canvas letter-by-letter with shape-description hints — collapse it to one element whose value is the latin words already computed. Impact: Medium (downgraded from High — the translation strip already speaks the words). Effort: Low. (`SleepTokenKB/RunePadView.swift:62-72`, `Shared/SymbolGlyphView.swift:42-43`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Cleaner code]** Canvas geometry constants duplicated between fit math and rendering view — `cell`, column width, chrome padding each derived twice; the caret bug is the drift this enables. Single-source them in CanvasMetrics (the KeyboardMetrics precedent). Impact: Medium. Effort: Low. (`SleepTokenKB/RunePadView.swift:526,551,527-530,575-576`) — added 2026-07-26, completed 2026-07-26
+- [x] **[UI]** When even the 8pt minimum cannot fit, content draws past the plaque card — nothing clips the canvas; add `.clipShape` on the card shape so overflow degrades inside the plaque. Impact: Medium. Effort: Low. (`SleepTokenKB/RunePadView.swift:488,62-75`) — added 2026-07-26, completed 2026-07-26
+- [x] **[UX]** Clear destroys the whole composition in one unconfirmed tap beside the Export menu — add `role: .destructive` + confirmationDialog. Impact: Medium. Effort: Low. (`SleepTokenKB/RunePadView.swift:37-38`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Architecture]** RunePadView.swift hosts three features across 620 lines and locks the pure fit math behind private scope — split canvas types and export types into their own files at internal access so tests can reach them. Impact: Medium. Effort: Medium. (`SleepTokenKB/RunePadView.swift:10,454,543`) — added 2026-07-26, completed 2026-07-26
+- [x] **[UX]** Delete has no press-and-hold auto-repeat — one tap per rune to trim long text; add long-press repeat per platform convention. Impact: Low (downgraded from Medium). Effort: Medium. (`SleepTokenKB/RunePadView.swift:237-251`) — added 2026-07-26, completed 2026-07-26
+
+### 5. Multi-format export
+
+_Current state: Three deliberate image styles centralized on RuneExportStyle with per-destination status copy, export-resolution metrics, displayScale-aware rendering, failure status on every path; security posture fine as-is._
+
+- [x] **[Resilience & tests]** Redundant `UIPasteboard.image` assignment clobbers the PNG-first pasteboard item — line 330 replaces the `setItems` payload written at 326, discarding the explicit `public.png` representation that is the point of the transparent styles; delete the line (the else branch remains the fallback). Impact: High. Effort: Low. (`SleepTokenKB/RunePadView.swift:326,330`) — added 2026-07-26, completed 2026-07-26
+- [x] **[UX]** Status capsule never fades, never expires, and is silent to VoiceOver — no `withAnimation` despite the declared transition, no expiry, no announcement; route status through one helper that animates, auto-clears, and announces. Impact: Medium. Effort: Low. (`SleepTokenKB/RunePadView.swift:82,316,334`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Resilience & tests]** Share flow observes no completion — temp PNG lingers, success is never confirmed, write is non-atomic; wire `completionWithItemsHandler` to clean up and confirm. Impact: Low. Effort: Low. (`SleepTokenKB/RunePadView.swift:344-349,445`) — added 2026-07-26, completed 2026-07-26
+- [ ] **[Performance]** Unexplained fixed 50 ms sleep in renderImage plus main-actor PNG encoding — everything feeding the renderer is synchronous; replace with a commented yield or delete, move `pngData()` off the main actor. Note 2026-07-26: the sleep was replaced with a commented `Task.yield()`; the PNG encode deliberately stays on the main actor (occasional exports, ImageRenderer is main-bound anyway). Impact: Low (downgraded from Medium). Effort: Low. (`SleepTokenKB/RunePadView.swift:403,325,340`) — added 2026-07-26
+- [x] **[Cleaner code]** Export menu metadata split between the view and RuneExportStyle — titles/symbols hand-written in three Button blocks while the enum owns ink and copy; make the enum CaseIterable with menuTitle/systemImage. Impact: Low. Effort: Low. (`SleepTokenKB/RunePadView.swift:265-281,428`) — added 2026-07-26, completed 2026-07-26
 
 ### 6. Letter input with QWERTY / A-Z grid layouts
 
@@ -113,6 +166,28 @@ _Current state: The chrome plumbing is the right shape: the globe key correctly 
 - [x] **[UI]** No shared spacing scale: rows use 2/3/5/6pt insets and gaps, and function keys are 34/42/48/50/60pt wide — Horizontal insets are set independently at three nesting levels, so rows do not share a left or right edge: the root applies 3pt, the bottom bar adds another 2pt, the grid function row adds... Impact: Low. Effort: Low. (`SleepTokenKeyboard/KeyboardRootView.swift:48`) — added 2026-07-26, completed 2026-07-26
 - [x] **[UX]** The space bar is styled identically to the modifier keys and squeezed by five fixed widths — Every key in the bottom bar is the same KeyChromeButton with the same systemGray4 fill, so space and return carry no visual weight over the layout/style/123 modifiers — the bar reads as one... Impact: Low. Effort: Low. (`SleepTokenKeyboard/KeyboardRootView.swift:103-106`) — added 2026-07-26, completed 2026-07-26
 - [x] **[Cleaner code]** The height constraint uses the legacy NSLayoutConstraint initialiser four lines above the modern anchors it sits with — installKeyboardUI builds the height constraint with the seven-argument NSLayoutConstraint initialiser — including a force-unwrapped `view!`, an `attribute: .notAnAttribute` sentinel and a... Impact: Low. Effort: Low. (`SleepTokenKeyboard/KeyboardViewController.swift:46-54`) — added 2026-07-26, completed 2026-07-26
+
+### 18. Theme system: Ritual & Even in Arcadia
+
+_Current state: Single observable store with stable raw values, palette that rethemes every call site untouched, deterministic petal layout, TimelineView correctly paused under Reduce Motion, ceremony hides the raw recolour behind an opaque curtain; persistence and hash determinism tested._
+
+- [x] **[Accessibility]** Ceremony curtain is not modal to VoiceOver — covered controls stay reachable for the ~3.5 s it plays and the transition is never announced; `.accessibilityHidden(ceremonyActive)` on the content plus an announcement at `play()` start. Impact: Medium. Effort: Low. (`SleepTokenKB/ContentView.swift:115-125`, `SleepTokenKB/ArcadiaRevealView.swift:80-82`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Resilience & tests]** Ceremony cancellation fast-forwards through `try?` sleeps — under task cancellation the remaining timeline runs in one burst and `onCurtainClosed` can fire before the curtain is opaque; make cancellation explicit and commit the terminal state. Impact: Low. Effort: Low. (`SleepTokenKB/ArcadiaRevealView.swift:95-113`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Resilience & tests]** ThemeStore's fallback and palette switching asserted around, not through, the real code — the singleton's private init is untestable and no test flips the mode and asserts a colour changes; add an internal `init(defaults:)` and one palette-difference test. Impact: Low. Effort: Low. (`SleepTokenKB/Theme.swift:36-39,52`, `SleepTokenKBTests/ThemeTests.swift:46-48`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Performance]** PetalField recomputes frame-invariant seeds, colors, and paths every frame — hoist per-petal descriptors and draw via context transforms. Impact: Low (downgraded from Medium — the waste is microseconds against the 24fps budget). Effort: Low. (`SleepTokenKB/Theme.swift:318-348`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Cleaner code]** Arcadia rose and champagne literals hand-copied across Theme and the ceremony — three sites for rose, two for champagne; name them as fixed constants so the ceremony's stable-palette invariant holds by construction. Impact: Low (downgraded from Medium). Effort: Low. (`SleepTokenKB/Theme.swift:109,127,153`, `SleepTokenKB/ArcadiaRevealView.swift:26-27`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Consistency]** App-level `.tint(Theme.gold)` duplicates ContentView's tracked tint and lives where Observation tracking is not guaranteed — remove the app-level copy. Impact: Low. Effort: Low. (`SleepTokenKB/SleepTokenKBApp.swift:11`, `SleepTokenKB/ContentView.swift:114`) — added 2026-07-26, completed 2026-07-26
+
+### 19. Latin read-back with live spell check
+
+_Current state: latinTranslation is a small pure function with thorough round-trip coverage; the strip is visually polished with a two-channel flag treatment (color + underline) kept distinct from both themes' accents._
+
+- [x] **[UX]** Lowercase-only checking false-flags proper nouns central to the app's vocabulary — "EUCLID" is flagged because only the lowercase form is checked while the strip displays uppercase; accept a word if lowercase or `.capitalized` passes. Impact: High. Effort: Low. (`SleepTokenKB/RunePadView.swift:123-128,163`, `Shared/Alphabet.swift:77-81`) — added 2026-07-26, completed 2026-07-26
+- [x] **[UX]** The in-progress column flags mid-word, jittering the caption and re-fitting the canvas per keystroke — exclude the trailing column until it is finished (space or a later column), unlike the comment's claim of matching system behaviour. Impact: Medium. Effort: Low. (`SleepTokenKB/RunePadView.swift:118-131,148-152`) — added 2026-07-26, completed 2026-07-26
+- [x] **[Accessibility]** VoiceOver never hears which words are flagged — the explicit "Reads …" label erases the spell-check signal entirely; add an accessibilityValue listing flagged words. Impact: Medium. Effort: Low. (`SleepTokenKB/RunePadView.swift:155-156,164-168`) — added 2026-07-26, completed 2026-07-26
+- [ ] **[Performance]** UITextChecker rebuilt and every word re-checked on every body evaluation — including status/isExporting changes unrelated to text; hoist to `@State` updated in `.onChange(of: text)` with a small memo. Impact: Low (downgraded from Medium — millisecond-scale at this app's text sizes). Effort: Low. (`SleepTokenKB/RunePadView.swift:120-131,136`) — added 2026-07-26
+- [x] **[Cleaner code]** latinWords recomputed four times per render and translationText is impure — bind once, pass explicitly, make the Text builder pure. Impact: Low. Effort: Low. (`SleepTokenKB/RunePadView.swift:135-156,160-174`) — added 2026-07-26, completed 2026-07-26
+- [ ] **[Resilience & tests]** The flag pipeline above latinTranslation has zero coverage — columns split, empty-column filter, and the `count > 1` gate are view-private; extract the pure pipeline beside latinTranslation with an injectable checker. Impact: Low (downgraded from Medium — preventive, no observed defect). Effort: Medium. (`SleepTokenKB/RunePadView.swift:112-131,178-184`) — added 2026-07-26
 
 ### Highest-impact refinement
 

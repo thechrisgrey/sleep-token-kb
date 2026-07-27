@@ -22,6 +22,7 @@ After you install the host app once, **Sleep Token KB** appears under:
 | Latin insert | Tapping a key inserts `a`–`z` / `A`–`Z` (usable everywhere) |
 | Rune Pad | Compose vertical ritual text, read it back in Latin with live spell check, export as transparent PNG (light or dark ink), plaque PNG, share sheet, or plain Latin text |
 | 123 page | Numbers and punctuation |
+| Themes | **Ritual** (obsidian and gold) or **Even in Arcadia** (pink on black stone, arcadian-green panels, drifting petals, the black flamingo). Switch under Appearance in the host app — choosing Arcadia plays a full-screen Sleep Token wordmark ceremony. Strictly cosmetic; the keyboard extension always mirrors the system look |
 | Haptics | Toggle in host app |
 | Full Access | **Off** by default (`RequestsOpenAccess = false`) |
 
