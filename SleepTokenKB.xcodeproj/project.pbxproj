@@ -23,6 +23,7 @@
 		69B673D05FD3441ED63D6FC9 /* KeyboardMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C784720BF702AC00EAD916E /* KeyboardMetrics.swift */; };
 		6F15561AF34EE3F7E4BBB854 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B1217EEFF5F8964823A8706 /* ThemeTests.swift */; };
 		76BDD0A698E5BCD375F27517 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD366C12A527A2E0266EEE1 /* Theme.swift */; };
+		7774E551382872402C4E73B4 /* JerryHunt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BD59817881E4F731E45CD5D /* JerryHunt.swift */; };
 		7C166D6DF1651443677250F7 /* KeyPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7FFDCF2286E61D11706D975 /* KeyPalette.swift */; };
 		7FF7C55EF2E686EBDCCE5C37 /* AlphabetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8F398F5432EDA25CEFEA211 /* AlphabetTests.swift */; };
 		84B430F0F3178703A108A20D /* SleepTokenRunes.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8E64D0C4BB44067FF9654EC3 /* SleepTokenRunes.ttf */; };
@@ -36,6 +37,7 @@
 		CCF933829EDB4A1151A60E03 /* KeyboardPreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D3D861BDF2AC3FE450D9A0 /* KeyboardPreferencesTests.swift */; };
 		CF02186A21A344E4500C8337 /* CanvasMetricsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC6AA14C3002A819481F7D6 /* CanvasMetricsTests.swift */; };
 		D552F6CA2BFC07986E539B0C /* ShiftStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF380D63C799184E6A67B59 /* ShiftStateTests.swift */; };
+		DA5D79D9C79DD6B933A75042 /* JerryHuntTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB174ED028252D27375F7E3C /* JerryHuntTests.swift */; };
 		DCAB232C8F6D8D6F81AE0552 /* LayoutModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FFDCB708F5C31C5A3A08C77 /* LayoutModeTests.swift */; };
 		E7603E6FDDF6B258CCA53197 /* SymbolGlyphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F8987716A1302DDC384C178 /* SymbolGlyphView.swift */; };
 		EB6C02B83B7D5AAE2E33D972 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A8C769BA84F84C9A399166F /* ContentView.swift */; };
@@ -89,6 +91,7 @@
 		5B1217EEFF5F8964823A8706 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
 		75BF6E6C381599E1617A8935 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7B6F2822F0667359A689E627 /* ArcadiaRevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArcadiaRevealView.swift; sourceTree = "<group>"; };
+		7BD59817881E4F731E45CD5D /* JerryHunt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JerryHunt.swift; sourceTree = "<group>"; };
 		7C784720BF702AC00EAD916E /* KeyboardMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardMetrics.swift; sourceTree = "<group>"; };
 		7E015BC4EB2125A6F597E6DA /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		8CC6AA14C3002A819481F7D6 /* CanvasMetricsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasMetricsTests.swift; sourceTree = "<group>"; };
@@ -108,6 +111,7 @@
 		D1C5A0DCB6F05CB00209375A /* SleepTokenKB.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SleepTokenKB.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D34CF559D2C60AEE4558833F /* RuneExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuneExport.swift; sourceTree = "<group>"; };
 		D869B07816C79E1AA3784CE4 /* SleepTokenKB.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SleepTokenKB.entitlements; sourceTree = "<group>"; };
+		DB174ED028252D27375F7E3C /* JerryHuntTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JerryHuntTests.swift; sourceTree = "<group>"; };
 		EF6A8D3881DC7EE73BFE5D2E /* RunePadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunePadView.swift; sourceTree = "<group>"; };
 		F8F398F5432EDA25CEFEA211 /* AlphabetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlphabetTests.swift; sourceTree = "<group>"; };
 		FAD366C12A527A2E0266EEE1 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -146,6 +150,7 @@
 			children = (
 				F8F398F5432EDA25CEFEA211 /* AlphabetTests.swift */,
 				8CC6AA14C3002A819481F7D6 /* CanvasMetricsTests.swift */,
+				DB174ED028252D27375F7E3C /* JerryHuntTests.swift */,
 				C027840CED3A4DB8DD9A917B /* KeyboardLayoutTests.swift */,
 				169A4EB79EEE4BB091880928 /* KeyboardMetricsTests.swift */,
 				91D3D861BDF2AC3FE450D9A0 /* KeyboardPreferencesTests.swift */,
@@ -176,6 +181,7 @@
 				9A8C769BA84F84C9A399166F /* ContentView.swift */,
 				552C9BA590F343156D99A70D /* EnableKeyboardView.swift */,
 				75BF6E6C381599E1617A8935 /* Info.plist */,
+				7BD59817881E4F731E45CD5D /* JerryHunt.swift */,
 				B17A5FE4C09C83C14AE57624 /* RuneCanvas.swift */,
 				D34CF559D2C60AEE4558833F /* RuneExport.swift */,
 				EF6A8D3881DC7EE73BFE5D2E /* RunePadView.swift */,
@@ -330,6 +336,7 @@
 				A7D6071C57E9C283B268E23D /* ArcadiaRevealView.swift in Sources */,
 				EB6C02B83B7D5AAE2E33D972 /* ContentView.swift in Sources */,
 				57C6864CA7DA671770FF6B70 /* EnableKeyboardView.swift in Sources */,
+				7774E551382872402C4E73B4 /* JerryHunt.swift in Sources */,
 				69B673D05FD3441ED63D6FC9 /* KeyboardMetrics.swift in Sources */,
 				2DA166D0AFAA8F2AC37E84B5 /* LayoutMode.swift in Sources */,
 				F61A8DF54444A92F24AD1B10 /* RuneCanvas.swift in Sources */,
@@ -349,6 +356,7 @@
 			files = (
 				7FF7C55EF2E686EBDCCE5C37 /* AlphabetTests.swift in Sources */,
 				CF02186A21A344E4500C8337 /* CanvasMetricsTests.swift in Sources */,
+				DA5D79D9C79DD6B933A75042 /* JerryHuntTests.swift in Sources */,
 				3D95CE3B4754F38C81174AE8 /* KeyboardLayoutTests.swift in Sources */,
 				10C6F47ED4334ADFA54454F7 /* KeyboardMetricsTests.swift in Sources */,
 				CCF933829EDB4A1151A60E03 /* KeyboardPreferencesTests.swift in Sources */,

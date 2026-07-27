@@ -17,6 +17,7 @@
 | 2 | Alphabet chart | Scrollable 4-column reference grid of all 26 ritual glyphs with letter and prose description of each glyph's shape | `SleepTokenKB/AlphabetChartView.swift` | 2026-07-26 |
 | 3 | Home hub & keyboard defaults | Serif hero with rune wordmark, destination cards, and settings controls (layout picker, 3-way key-face picker, haptics toggle, theme picker) that write shared prefs consumed by the extension | `SleepTokenKB/ContentView.swift` | 2026-07-26 |
 | 18 | Theme system: Ritual & Even in Arcadia | Switchable app-wide aesthetic via `@Observable ThemeStore` (persisted): obsidian/gold vs pink-on-black with arcadian-green panels, drifting petal field, black-flamingo ornament, and a full-screen SLEEP TOKEN wordmark ceremony on switch (Reduce Motion gets a crossfade). Host app only; strictly cosmetic | `SleepTokenKB/Theme.swift`, `SleepTokenKB/ArcadiaRevealView.swift` | 2026-07-26 |
+| 20 | Jerry hunt Easter egg | Ten near-invisible Jerrys (black body, white beak, pink legs) hidden across all four screens; each find pops a counter and persists. Finding all ten plays a one-time Damocles ceremony (petal storm, champagne wordmark) and opens the song on Apple Music. VoiceOver users get labels, announcements, and the full hunt | `SleepTokenKB/JerryHunt.swift`, `SleepTokenKB/Theme.swift` | 2026-07-26 |
 
 ### B. Rune Pad (host-app composer)
 

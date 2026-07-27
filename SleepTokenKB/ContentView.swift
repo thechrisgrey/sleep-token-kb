@@ -4,6 +4,7 @@ struct ContentView: View {
     /// `@State` so the observable store's identity is stable for this view tree;
     /// reads of `Theme` colours inside any body register against it automatically.
     @State private var store = ThemeStore.shared
+    @State private var hunt = JerryHunt.shared
     @State private var ceremonyActive = false
     /// Selection the picker shows while the ceremony's curtain is still rising
     /// (the real mode flips only once the curtain is opaque).
@@ -58,6 +59,9 @@ struct ContentView: View {
                             )
                         }
                         .ritualCard()
+                        .overlay(alignment: .bottomTrailing) {
+                            HiddenJerry(spot: .waysCard, height: 13)
+                        }
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -71,6 +75,9 @@ struct ContentView: View {
                             .pickerStyle(.segmented)
                         }
                         .ritualCard()
+                        .overlay(alignment: .topTrailing) {
+                            HiddenJerry(spot: .appearanceCard, height: 12)
+                        }
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -112,10 +119,10 @@ struct ContentView: View {
             }
         }
         .tint(Theme.gold)
-        // While the ceremony's curtain covers the app, the controls beneath must
-        // leave the accessibility tree too — invisible but activatable is worse
-        // than invisible.
-        .accessibilityHidden(ceremonyActive)
+        // While either ceremony's curtain covers the app, the controls beneath
+        // must leave the accessibility tree too — invisible but activatable is
+        // worse than invisible.
+        .accessibilityHidden(ceremonyActive || hunt.celebrationPending)
         .overlay {
             if ceremonyActive {
                 ArcadiaRevealView(
@@ -125,6 +132,13 @@ struct ContentView: View {
                     },
                     onFinished: { ceremonyActive = false }
                 )
+            }
+        }
+        // The tenth Jerry can land on any screen; this overlay sits on the
+        // NavigationStack, so it covers pushed children too.
+        .overlay {
+            if hunt.celebrationPending {
+                DamoclesRevealView(onFinished: { hunt.celebrationDidFinish() })
             }
         }
     }
@@ -170,8 +184,12 @@ struct ContentView: View {
                 .foregroundStyle(Theme.ink)
 
             // The app demonstrating its own purpose: the name, spelled in the alphabet.
-            RuneWordRow(word: "sleep token", glyphSize: 15)
-                .padding(.top, 2)
+            // Jerry perches at the end of the wordmark, if you look closely.
+            HStack(spacing: 14) {
+                RuneWordRow(word: "sleep token", glyphSize: 15)
+                HiddenJerry(spot: .heroRow, height: 14)
+            }
+            .padding(.top, 2)
 
             Text("Type English everywhere with ritual keycaps. When you want real runes, compose in Rune Pad and carry them out as images.")
                 .font(.subheadline)
@@ -211,6 +229,9 @@ struct ContentView: View {
         .frame(maxWidth: .infinity)
         .padding(.top, 12)
         .padding(.bottom, 8)
+        .overlay(alignment: .bottomTrailing) {
+            HiddenJerry(spot: .homeFooter, height: 12)
+        }
     }
 
 }

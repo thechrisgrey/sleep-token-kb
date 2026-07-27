@@ -37,6 +37,10 @@ struct RunePadView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { _ = RuneFont.registerIfNeeded() }
         .toolbar {
+            // Jerry roosts beside the back button, where nobody looks.
+            ToolbarItem(placement: .topBarLeading) {
+                HiddenJerry(spot: .runeToolbar, height: 12)
+            }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button("Clear", role: .destructive) { confirmClear = true }
                     .disabled(text.isEmpty)
@@ -111,6 +115,11 @@ struct RunePadView: View {
         // Translucent in Arcadia so the petals falling down the background
         // stay visible behind the composed runes.
         .ritualCard(padding: 0, fill: Theme.canvasSurface)
+        // Jerry wades in the plaque's lower-right shallows.
+        .overlay(alignment: .bottomTrailing) {
+            HiddenJerry(spot: .runeCanvas, height: 13)
+                .padding(4)
+        }
         // Status rides the canvas card instead of stacking below the pad, so its
         // appearance never nudges the pad away from the bottom edge.
         .overlay(alignment: .bottomLeading) {

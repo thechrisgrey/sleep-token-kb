@@ -411,8 +411,9 @@ struct PetalField: View {
     }
 }
 
-/// The black flamingo, drawn as an original silhouette (no album art is embedded).
-/// Near-black body, the era's rose on the legs.
+/// Jerry, the black flamingo — drawn as an original silhouette (no album art is
+/// embedded). Black body, white beak, pink legs: the era's mascot, anatomically
+/// as the fans know him.
 struct BlackFlamingo: View {
     var height: CGFloat = 60
 
@@ -428,6 +429,7 @@ struct BlackFlamingo: View {
 
             let body = Color(red: 0.075, green: 0.078, blue: 0.088)
             let rose = Color(red: 0.76, green: 0.31, blue: 0.38)
+            let bone = Color(red: 0.92, green: 0.89, blue: 0.82)
 
             // Legs first, so the body overlaps their tops.
             var legs = Path()
@@ -463,7 +465,7 @@ struct BlackFlamingo: View {
                 style: StrokeStyle(lineWidth: 7, lineCap: .round)
             )
 
-            // Head and the downturned bill.
+            // Head, and Jerry's white downturned bill.
             context.fill(
                 Path(ellipseIn: CGRect(x: 57, y: 11, width: 13, height: 13)),
                 with: .color(body)
@@ -472,7 +474,7 @@ struct BlackFlamingo: View {
             bill.move(to: CGPoint(x: 65, y: 16))
             bill.addQuadCurve(to: CGPoint(x: 71, y: 30), control: CGPoint(x: 74, y: 18))
             context.stroke(
-                bill, with: .color(body),
+                bill, with: .color(bone),
                 style: StrokeStyle(lineWidth: 4, lineCap: .round)
             )
         }

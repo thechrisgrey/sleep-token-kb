@@ -24,6 +24,7 @@ After you install the host app once, **Sleep Token KB** appears under:
 | 123 page | Numbers and punctuation |
 | Themes | **Ritual** (obsidian and gold) or **Even in Arcadia** (pink on black stone, arcadian-green panels, drifting petals, the black flamingo). Switch under Appearance in the host app — choosing Arcadia plays a full-screen Sleep Token wordmark ceremony. Strictly cosmetic; the keyboard extension always mirrors the system look |
 | Haptics | Toggle in host app |
+| Jerry | He is in the app. Ten times. Find him |
 | Full Access | **Off** by default (`RequestsOpenAccess = false`) |
 
 Shared code lives in `Shared/` (alphabet map, layout prefs, glyph renderer, rune font loader).

@@ -73,6 +73,9 @@ struct EnableKeyboardView: View {
                         }
                     }
                     .ritualCard()
+                    .overlay(alignment: .bottomTrailing) {
+                        HiddenJerry(spot: .setupCard, height: 13)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -83,6 +86,9 @@ struct EnableKeyboardView: View {
                         bullet("On Simulator, press Command-K if the software keyboard is hidden.")
                     }
                     .ritualCard()
+                    .overlay(alignment: .topTrailing) {
+                        HiddenJerry(spot: .troubleshooting, height: 12)
+                    }
                 }
             }
             .padding(16)

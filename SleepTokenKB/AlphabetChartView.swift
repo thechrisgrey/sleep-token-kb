@@ -15,16 +15,23 @@ struct AlphabetChartView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text("Twenty-six glyphs, one per letter. The keyboard and Rune Pad both draw from this set.")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.inkDim)
-                    .lineSpacing(3)
+                HStack(alignment: .bottom, spacing: 10) {
+                    Text("Twenty-six glyphs, one per letter. The keyboard and Rune Pad both draw from this set.")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.inkDim)
+                        .lineSpacing(3)
+                    HiddenJerry(spot: .chartIntro, height: 13)
+                }
 
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(SleepTokenLetter.allCases) { letter in
                         GlyphCard(letter: letter)
                     }
                 }
+
+                // A twenty-seventh resident of the chart, for those who count.
+                HiddenJerry(spot: .chartFoot, height: 14)
+                    .frame(maxWidth: .infinity)
             }
             .padding(16)
         }
