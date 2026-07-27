@@ -62,17 +62,19 @@ jobs:
       # into the shell text. For the secrets that keeps them out of the command
       # line; for the inputs it means a workflow input can never be parsed as
       # shell syntax.
+      # Runs for every stage, including archive. A fresh runner has no Apple account
+      # signed in, so there is no other way for it to obtain a distribution
+      # certificate -- archiving without this key dies at the CodeSign step several
+      # minutes in, with a much worse error than the one below.
       - name: Install App Store Connect API key
-        if: inputs.stage != 'archive'
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-          STAGE: ${{ inputs.stage }}
         run: |
           set -euo pipefail
           if [ -z "${ASC_KEY_ID:-}" ] || [ -z "${ASC_ISSUER_ID:-}" ] || [ -z "${ASC_KEY_P8:-}" ]; then
-            echo "::error::The $STAGE stage needs the ASC_KEY_ID, ASC_ISSUER_ID, and ASC_KEY_P8 secrets. See docs/RELEASE.md."
+            echo "::error::Set the ASC_KEY_ID, ASC_ISSUER_ID, and ASC_KEY_P8 repository secrets first. Every stage needs them: a runner has no signed-in Apple account, so it cannot sign a build without an API key. See docs/RELEASE.md."
             exit 1
           fi
 
