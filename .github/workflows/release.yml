@@ -6,7 +6,8 @@
 # builds and signs but uploads nothing -- an accidental "Run workflow" is a
 # no-op against App Store Connect.
 #
-# Required repository secrets for the validate and upload stages:
+# Required repository secrets for every stage (a runner has no signed-in Apple
+# account, so even archiving needs the API key to sign):
 #
 #   ASC_KEY_ID      the App Store Connect API key identifier
 #   ASC_ISSUER_ID   the issuer UUID from Users and Access -> Integrations
@@ -45,7 +46,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # scripts/release.sh derives the build number from the commit count, so
           # a shallow clone would produce a number that resets between runs and
@@ -58,10 +59,10 @@ jobs:
           echo "Simulator SDK: $(xcrun --sdk iphonesimulator --show-sdk-version)"
           echo "Build number:  $(git rev-list --count HEAD)"
 
-      # Every value below arrives through `env:` rather than being interpolated
-      # into the shell text. For the secrets that keeps them out of the command
-      # line; for the inputs it means a workflow input can never be parsed as
-      # shell syntax.
+      # Secrets and inputs reach the shell through `env:` rather than expression
+      # interpolation, so no workflow input can be parsed as shell syntax and no
+      # secret lands on a command line.
+      #
       # Runs for every stage, including archive. A fresh runner has no Apple account
       # signed in, so there is no other way for it to obtain a distribution
       # certificate -- archiving without this key dies at the CodeSign step several
@@ -103,7 +104,7 @@ jobs:
 
       - name: Keep the .ipa
         if: success() || failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SleepTokenKB-ipa
           path: build/release/export/*.ipa
