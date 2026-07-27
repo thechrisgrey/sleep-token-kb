@@ -56,6 +56,18 @@ targets:
         # Without this key iOS runs the app in legacy compatibility mode:
         # letterboxed, and reporting a shorter screen that squeezes every layout.
         UILaunchScreen: {}
+        # TARGETED_DEVICE_FAMILY is "1,2", and an iPad build must declare all four
+        # orientations or App Store Connect rejects the upload outright:
+        #   Invalid bundle. No orientations were specified ... (90474)
+        # iPhone stays portrait-only, which is what the keyboard and Rune Pad are
+        # laid out for; iPad takes all four so multitasking works.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         UIAppFonts:
           - SleepTokenRunes.ttf
 

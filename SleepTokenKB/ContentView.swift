@@ -221,10 +221,24 @@ struct ContentView: View {
             } else {
                 RuneWordRow(word: "worship", glyphSize: 10, spacing: 8, color: Theme.inkFaint)
             }
-            Text("Unofficial fan project. Not affiliated with, endorsed by, or connected to Sleep Token or their rights holders.")
-                .font(.caption2)
-                .foregroundStyle(Theme.inkFaint)
-                .multilineTextAlignment(.center)
+            // A dedication is not a legal notice, so it does not share the legal
+            // notice's voice: serif rather than system, and set above the rule that
+            // separates it from the fine print. Quiet, but deliberately not hidden.
+            VStack(spacing: 10) {
+                Text("Dedicated to Erikka Rose")
+                    .font(Theme.display(13, weight: .regular))
+                    .italic()
+                    .foregroundStyle(Theme.inkDim)
+
+                Rectangle()
+                    .fill(Theme.hairline)
+                    .frame(width: 44, height: 1)
+
+                Text("Unofficial fan project. Not affiliated with, endorsed by, or connected to Sleep Token or their rights holders.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.inkFaint)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 12)
