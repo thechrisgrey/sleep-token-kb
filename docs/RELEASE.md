@@ -64,8 +64,38 @@ update apps but not create them, so it is the web UI or nothing.
 
 Users and Access -> Integrations -> App Store Connect API -> plus.
 
-Give it the **App Manager** role. Developer is not enough: creating the distribution
-certificate on first archive requires App Manager.
+Give it the **Admin** role. Apple's guidance and the developer forums agree that
+cloud-managed distribution signing needs Admin; App Manager and Developer keys are
+documented to fail at that step.
+
+### A caveat, learned the hard way
+
+An Admin key is necessary but was **not sufficient** to bootstrap this project's
+signing assets from scratch. With no App IDs, no App Group and no distribution
+certificate yet in existence, `xcodebuild -allowProvisioningUpdates` reported:
+
+    error: Authentication failed: Make sure a bearer token was provided, it is
+           properly configured and signed, and it has not expired.
+
+That message is misleading. The same key authenticated fine against the App Store
+Connect API at the same moment -- `/v1/bundleIds`, `/v1/certificates` and
+`/v1/profiles` all returned 200. Xcode reaches the *provisioning* service, which is
+a separate system, and it declined to mint the assets.
+
+Ruled out, in case it recurs: wrong team, an unaccepted program agreement, key role,
+argument order (build settings must come last), and key location (both
+`~/.appstoreconnect/private_keys` and `~/Library/MobileDevice/Private Keys`).
+
+The way through is to create the signing assets **once** through a signed-in Xcode
+account (Xcode -> Settings -> Accounts, then select the Altivum Inc team), and let
+the API key take over afterwards. Fetching existing assets is a far lighter
+operation than creating them, and that is all the release pipeline needs from then
+on.
+
+Note also that App Groups are not exposed by the App Store Connect API at all --
+`/v1/appGroups` returns 404, "The path provided does not match a defined resource
+type." The group can only come from Xcode or from developer.apple.com by hand. No
+amount of scripting against the public API will create it.
 
 You can download the `.p8` exactly once. Put it where altool and the release script
 both look by default:
