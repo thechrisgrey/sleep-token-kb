@@ -21,11 +21,7 @@
 
 <br>
 
-<img src="docs/screenshots/home-arcadia.png" width="240" alt="Home screen in the Even in Arcadia theme">
-<img src="docs/screenshots/runepad-arcadia.png" width="240" alt="Rune Pad composing SLEEP TOKEN in vertical runes">
-<img src="docs/screenshots/alphabet-arcadia.png" width="240" alt="The alphabet chart">
-
-<sub><i>Even in Arcadia theme — home, Rune Pad, and the alphabet chart</i></sub>
+<img src="docs/og-image.png" width="880" alt="Sleep Token KB — the ritual alphabet, on every key">
 
 </div>
 
@@ -48,6 +44,7 @@
 - [Accessibility](#accessibility)
 - [Privacy & Full Access](#privacy--full-access)
 - [Regenerating the glyph assets](#regenerating-the-glyph-assets)
+- [Social preview](#social-preview)
 - [Legal](#legal)
 
 ---
@@ -515,6 +512,29 @@ python3 scripts/build_rune_font.py
 ```
 
 The script expands every stroked centerline into a filled outline (TrueType has no strokes), centers each glyph like a keycap icon, and maps it into the PUA block.
+
+---
+
+## Social preview
+
+Three 1280×640 social cards ship with the repo, each generated from source by a script in
+`scripts/og/` — no design tool, no external assets. They composite real app captures, real
+rune glyphs set from `SleepTokenRunes.ttf`, and Jerry drawn from the same geometry the app
+uses, over the Even in Arcadia palette.
+
+| Card | File | Direction |
+|---|---|---|
+| **Editorial hero** (in use) | [`docs/og-image.png`](docs/og-image.png) | Serif wordmark and rune row over two tilted devices; Jerry in the lower gap |
+| Device showcase | [`docs/og-devices.png`](docs/og-devices.png) | Three fanned screens showing the gold/pink theme duality |
+| Glyph-forward | [`docs/og-glyph.png`](docs/og-glyph.png) | One enormous inscription band of runes; maximum restraint |
+
+```bash
+python3 scripts/og/editorial.py   # or devices.py / glyph.py
+```
+
+To change which one GitHub serves in link unfurls: **Settings → General → Social preview →
+Upload an image**. GitHub exposes no API for this, so it is the one step that must be done
+in the web UI.
 
 ---
 

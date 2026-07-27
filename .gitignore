@@ -27,3 +27,7 @@ Secrets.xcconfig
 # Third-party reference art (album/press imagery used only as local design
 # reference). Not ours to redistribute — never commit it.
 even-in-arcadia(theme)/
+
+# Python bytecode
+__pycache__/
+*.pyc
