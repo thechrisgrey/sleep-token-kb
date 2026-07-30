@@ -25,7 +25,7 @@ struct EnableKeyboardView: View {
         ),
         SetupStep(
             title: "Optional: Full Access",
-            detail: "Not required for typing. Only turn on Full Access if a future version needs network or advanced pasteboard features. This build works with Full Access off."
+            detail: "Only needed for key press haptics — iOS will not deliver haptic feedback from a keyboard extension without it. Everything else works either way: both layouts, all three key faces, the themes, and Rune Pad. It stays off until you turn it on."
         ),
         SetupStep(
             title: "Use it",

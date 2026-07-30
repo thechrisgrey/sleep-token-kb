@@ -15,6 +15,7 @@ This document separates the two so it is always obvious which is which.
 | Archive, sign, export `.ipa` | Yes | `scripts/release.sh archive` |
 | App Store validation | Yes | `scripts/release.sh validate` |
 | Upload to App Store Connect | Yes | `scripts/release.sh upload` |
+| Read back review and submission state | Yes | `scripts/release.sh status` |
 | Build number management | Yes | commit count, see below |
 | Distribution certificate and profiles | Yes, on demand | Xcode, via the API key |
 | Register the two bundle IDs | Once, by hand | App Store Connect |
@@ -148,6 +149,33 @@ wired to build settings, and the version and build number this run would produce
 Safe to run at any time, including with no credentials configured at all.
 
 ```bash
+./scripts/release.sh status
+```
+
+Builds nothing and changes nothing. Asks App Store Connect where the app actually
+stands: the current version and its state, whether anything has been submitted to
+App Review, the last five builds with their TestFlight beta-review state, the beta
+groups and their public links, and -- while the version is still editable -- the
+list of metadata fields that must be filled in before it can be submitted at all.
+
+It reports the two Apple reviews **separately**, because they are routinely
+confused and "approved" against the wrong one is the easy mistake to make:
+
+| | Beta App Review | App Review |
+|---|---|---|
+| Gates | external TestFlight | the App Store |
+| Turnaround | hours, often same day | days |
+| Bar | does it launch, is it not obviously broken | the full Review Guidelines |
+| Shown as | `external=BETA_APPROVED` | a submission under *App Store review* |
+
+Passing the first says nothing about the second. Guideline 5.2 in particular is
+not applied at beta review.
+
+Unlike the other stages this one skips preflight and needs no Xcode: it only
+needs the API key, `curl`, `jq` and `openssl`. It signs its own ES256 JWT rather
+than pulling in a JWT library, so there is nothing to install.
+
+```bash
 ./scripts/release.sh archive
 ```
 
@@ -200,15 +228,29 @@ That is deliberate, and preflight enforces it: with a hardcoded `CFBundleVersion
 ## Review notes specific to this app
 
 **It is a custom keyboard.** Reviewers treat those as high risk and will exercise
-the privacy story directly. This one is in good shape: `RequestsOpenAccess` is
-`false`, so iOS denies the extension both network access and the shared container.
-There is no networking anywhere in either target.
+the privacy story directly. Expect to be asked why Full Access is requested, and
+answer with the specific reason rather than a general one.
 
-**Full Access is never requested,** which is why `Shared/LayoutMode.swift` falls
-back to `UserDefaults.standard` when the App Group container is unavailable. That
-is a real functional constraint, not a workaround: preferences set in the app do
-not reach the keyboard unless the user grants Full Access. Do not describe the app
-as syncing settings automatically.
+**Full Access is requested, for haptics and nothing else.**
+`RequestsOpenAccess` is `true` because iOS refuses to deliver
+`UIFeedbackGenerator` events from a keyboard extension without it — the toggle in
+the app was a silent no-op for as long as the flag was `false`. No other feature
+depends on it, there is still no networking code in either target, and
+`KeyboardRootView.haptic()` checks `hasFullAccess` before firing rather than
+assuming the grant.
+
+This is a real weakening of the privacy claim and the copy has been changed to
+match: `PRIVACY.md` and the README used to say the OS made exfiltration
+impossible, which was true at `false` and is not true now. Do not restore that
+wording. The honest version is "no networking code, public source, check it
+yourself."
+
+**Full Access is opt-in and usually off,** which is why `Shared/LayoutMode.swift`
+still falls back to `UserDefaults.standard` when the App Group container is
+unreachable. That fallback is not dead code: declaring the flag only makes the
+Settings toggle appear, and most users never turn it on. Preferences set in the
+app reach the keyboard only once they do. Do not describe the app as syncing
+settings automatically.
 
 **Privacy manifests are required.** Both bundles declare the `UserDefaults`
 required-reason API (`1C8F.1` for the App Group suite, `CA92.1` for their own

@@ -84,6 +84,12 @@ targets:
       - path: Shared/KeyboardMetrics.swift
       - path: Shared/ShiftState.swift
       - path: Shared/SymbolGlyphView.swift
+      # Text-entry rules. Pure functions over the host field's state, kept out of the
+      # views so they can be tested without a live UITextDocumentProxy.
+      - path: Shared/Autocapitalization.swift
+      - path: Shared/ReturnKeyTitle.swift
+      - path: Shared/PeriodShortcut.swift
+      - path: Shared/KeyRepeat.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenKB.SleepTokenKeyboard
@@ -112,7 +118,16 @@ targets:
             IsASCIICapable: true
             PrefersRightToLeft: false
             PrimaryLanguage: en-US
-            RequestsOpenAccess: false
+            # Declaring this makes the Full Access toggle appear in Settings; it does not
+            # grant anything. iOS drops UIFeedbackGenerator events from a keyboard
+            # extension until the user turns it on, so key haptics are impossible without
+            # it -- the toggle in the app was a no-op while this was false.
+            #
+            # Everything still degrades: the keyboard checks hasFullAccess before firing
+            # feedback, and LayoutMode already falls back to its own UserDefaults when the
+            # App Group container is unreachable. There is still no networking code in
+            # either target.
+            RequestsOpenAccess: true
           NSExtensionPointIdentifier: com.apple.keyboard-service
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
 

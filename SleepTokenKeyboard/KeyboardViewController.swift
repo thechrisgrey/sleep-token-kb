@@ -14,6 +14,10 @@ final class KeyboardViewController: UIInputViewController {
     /// changes the row count and therefore the height the container must reserve.
     private var currentPage: KeyboardMetrics.Page = .letters
 
+    /// Last seen return key type, used to notice a field change without rebuilding the
+    /// view on every keystroke. See `textDidChange`.
+    private var lastReturnKeyType: UIReturnKeyType?
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = KeyPalette.fieldColor
@@ -86,11 +90,39 @@ final class KeyboardViewController: UIInputViewController {
                 self?.advanceToNextInputMode()
             },
             needsInputModeSwitchKey: needsInputModeSwitchKey,
+            host: HostField(
+                contextBefore: { [weak self] in
+                    self?.textDocumentProxy.documentContextBeforeInput
+                },
+                returnKeyType: { [weak self] in
+                    self?.textDocumentProxy.returnKeyType ?? .default
+                },
+                autocapitalization: { [weak self] in
+                    self?.textDocumentProxy.autocapitalizationType ?? .sentences
+                },
+                hasFullAccess: { [weak self] in
+                    self?.hasFullAccess ?? false
+                }
+            ),
             onHeightInputsChanged: { [weak self] page in
                 self?.currentPage = page
                 self?.applyHeight()
             }
         )
+    }
+
+    /// Rebuild only when the *field* changes, never per keystroke.
+    ///
+    /// `textDidChange` fires on every insert, and rebuilding the root view there would
+    /// throw away a frame's work on each tap. The return key title is the only thing in
+    /// the view that depends on which field is focused, so its type is the cheapest
+    /// available proxy for "the user moved to a different field".
+    override func textDidChange(_ textInput: (any UITextInput)?) {
+        super.textDidChange(textInput)
+        let current = textDocumentProxy.returnKeyType
+        guard current != lastReturnKeyType else { return }
+        lastReturnKeyType = current
+        refreshRoot()
     }
 
     /// Reassigning rootView only propagates the values passed into `makeRootView` —

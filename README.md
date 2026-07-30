@@ -15,7 +15,7 @@
 [![Themes](https://img.shields.io/badge/themes-2-DE9BA9?style=flat-square&labelColor=1A1820)](#two-themes)
 [![Key faces](https://img.shields.io/badge/key%20faces-3-DE9BA9?style=flat-square&labelColor=1A1820)](#the-keyboard)
 [![Export formats](https://img.shields.io/badge/export%20formats-5-DE9BA9?style=flat-square&labelColor=1A1820)](#rune-pad)
-[![Full Access](https://img.shields.io/badge/Full%20Access-not%20required-4F7A5C?style=flat-square&labelColor=1A1820)](#privacy--full-access)
+[![Full Access](https://img.shields.io/badge/Full%20Access-optional%2C%20haptics%20only-4F7A5C?style=flat-square&labelColor=1A1820)](#privacy--full-access)
 [![Build](https://img.shields.io/badge/build-xcodegen-C8A968?style=flat-square&labelColor=1A1820)](#getting-started)
 [![Status](https://img.shields.io/badge/status-unofficial%20fan%20project-8A8580?style=flat-square&labelColor=1A1820)](#legal)
 
@@ -77,7 +77,7 @@ The split exists because iOS keyboards can only insert text, and rune text would
 | **Two themes** | Ritual (obsidian and gold) or Even in Arcadia (pink on black stone) |
 | **Haptics** | Per-keystroke feedback, toggleable |
 | **Jerry** | He is in the app. Ten times. [Find him](#jerry) |
-| **Full Access** | **Not required.** `RequestsOpenAccess = false` |
+| **Full Access** | **Optional, off by default.** Needed only for haptics. `RequestsOpenAccess = true` |
 
 ---
 
@@ -511,10 +511,12 @@ Not an afterthought — the hunt included.
 
 ## Privacy & Full Access
 
-**The keyboard requests no Full Access** (`RequestsOpenAccess = false`), which means it has no network capability whatsoever.
+**The keyboard requests Full Access** (`RequestsOpenAccess = true`) for exactly one feature: key press haptics. iOS does not deliver haptic feedback from a keyboard extension unless Full Access has been granted, and there is no supported way around that.
 
-- Nothing you type is stored, logged, or transmitted. There is no analytics SDK, no crash reporter, no network code.
-- Preferences are shared between the app and the keyboard through a local App Group container.
+- **It is opt-in and off by default.** Everything except haptics works without it: both layouts, all three key faces, both themes, Rune Pad, and the alphabet chart. The keyboard checks `hasFullAccess` before firing feedback rather than assuming.
+- **Be precise about what this costs.** Earlier versions declared `RequestsOpenAccess = false`, which let this project claim the OS itself made exfiltration impossible. That enforced guarantee is gone. What replaces it is weaker but checkable: there is no networking code anywhere in either target — no `URLSession`, no sockets, no third-party SDK — and this repository is public, so you can verify it instead of trusting it.
+- Nothing you type is stored, logged, buffered, or transmitted, with or without Full Access.
+- Preferences are shared between the app and the keyboard through a local App Group container. Without Full Access the extension cannot reach it and falls back to its own `UserDefaults`, so settings changed in the app reach the keyboard only once Full Access is on.
 - Rune Pad's exports go to the system pasteboard or the share sheet — both user-initiated, both local.
 
 ---

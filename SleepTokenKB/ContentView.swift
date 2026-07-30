@@ -383,9 +383,18 @@ private struct HapticsToggle: View {
             write: { KeyboardPreferences.hapticsEnabled = $0 }
         ) { $enabled in
             Toggle(isOn: $enabled) {
-                Text("Haptic feedback")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.ink)
+                // The requirement is stated unconditionally: whether Full Access was
+                // granted is a property of the *extension's* process, and the host app
+                // cannot read it. Better a permanent caption than a toggle that silently
+                // does nothing, which is what shipped before.
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Haptic feedback")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.ink)
+                    Text("Needs Full Access, in Settings")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.inkFaint)
+                }
             }
             .tint(Theme.goldDeep)
         }

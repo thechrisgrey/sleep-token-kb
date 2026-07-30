@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Archive, export, and upload a signed build to App Store Connect.
 #
-# Stages are cumulative, and the default stage never uploads anything:
+# archive, validate and upload are cumulative, and the default stage never
+# uploads anything. preflight and status build nothing and change nothing:
 #
 #   scripts/release.sh preflight   inspect the environment; builds nothing
+#   scripts/release.sh status      ask App Store Connect where the app stands
 #   scripts/release.sh archive     archive and export a signed .ipa   (default)
 #   scripts/release.sh validate    ...then run App Store validation on it
 #   scripts/release.sh upload      ...then upload it to App Store Connect
@@ -53,9 +55,13 @@ BUILD_NUMBER="${BUILD_NUMBER:-$(git rev-list --count HEAD 2>/dev/null || echo 1)
 
 STAGE="${1:-archive}"
 case "$STAGE" in
-  preflight|archive|validate|upload) ;;
-  -h|--help|help) sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-  *) echo "Unknown stage: $STAGE (expected preflight, archive, validate, or upload)" >&2; exit 2 ;;
+  preflight|status|archive|validate|upload) ;;
+  # Print the header comment and stop at the first line that is not one, so the
+  # usage text cannot drift out of range as this file grows.
+  -h|--help|help)
+    awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"
+    exit 0 ;;
+  *) echo "Unknown stage: $STAGE (expected preflight, status, archive, validate, or upload)" >&2; exit 2 ;;
 esac
 
 TMP_ROOT="$(mktemp -d)"
@@ -157,6 +163,206 @@ marketing_version() {
   else
     awk '/MARKETING_VERSION:/ {gsub(/[" ]/, "", $2); print $2; exit}' project.yml
   fi
+}
+
+# ------------------------------------------------------------------- status ---
+#
+# Everything below talks to the App Store Connect API with the same key the
+# upload stage already uses, and only ever issues GETs. It answers the question
+# the web UI answers -- has Apple looked at this yet, and if not, why not --
+# without a browser and without a login.
+#
+# Two different Apple reviews exist and they are routinely confused. Beta App
+# Review gates a build for *external* TestFlight and takes hours. App Review
+# gates the App Store itself and is a different queue, a different submission,
+# and a different bar. This prints both, separately, because "approved" against
+# the wrong one is the easiest mistake to make here.
+
+b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+
+# Left-pad or trim a hex integer to exactly 32 bytes.
+#
+# DER stores integers minimally, dropping leading zero bytes and adding one back
+# whenever the top bit would otherwise make the value read as negative. JWS
+# wants neither: both halves are fixed-width. So a 33-byte half loses its pad
+# byte and a 31-byte half gains one.
+pad32() {
+  local h="$1"
+  while [ ${#h} -gt 64 ] && [ "${h:0:2}" = "00" ]; do h="${h:2}"; done
+  while [ ${#h} -lt 64 ]; do h="0$h"; done
+  printf '%s' "$h"
+}
+
+# openssl emits an ECDSA signature as DER -- SEQUENCE { INTEGER r, INTEGER s }.
+# JWS wants the raw 64-byte r||s concatenation instead. This is the only part of
+# the token that is not a straight base64 of something obvious.
+der_to_jose() {
+  local hex p rlen slen r s
+  hex="$(xxd -p -c 4096 | tr -d '\n')"
+  # A P-256 signature is ~70 bytes, so the length is short-form in practice, but
+  # honour the long form rather than silently mis-parsing if that ever changes.
+  p=4
+  [ "${hex:2:2}" = "81" ] && p=6
+  rlen=$(( 16#${hex:$((p + 2)):2} ))
+  r="${hex:$((p + 4)):$((2 * rlen))}"
+  p=$(( p + 4 + 2 * rlen ))
+  slen=$(( 16#${hex:$((p + 2)):2} ))
+  s="${hex:$((p + 4)):$((2 * slen))}"
+  printf '%s%s' "$(pad32 "$r")" "$(pad32 "$s")" | xxd -r -p
+}
+
+# Apple caps the lifetime at 20 minutes and rejects anything longer outright.
+asc_jwt() {
+  local now header payload signing_input sig
+  now="$(date +%s)"
+  header="$(printf '{"alg":"ES256","kid":"%s","typ":"JWT"}' "$ASC_KEY_ID" | b64url)"
+  payload="$(printf '{"iss":"%s","iat":%s,"exp":%s,"aud":"appstoreconnect-v1"}' \
+             "$ASC_ISSUER_ID" "$now" "$((now + 600))" | b64url)"
+  signing_input="$header.$payload"
+  sig="$(printf '%s' "$signing_input" \
+         | openssl dgst -sha256 -sign "$ASC_KEY_PATH" \
+         | der_to_jose | b64url)"
+  printf '%s.%s' "$signing_input" "$sig"
+}
+
+# Brackets are percent-encoded by every caller: curl will pass them through
+# literally, but Apple's gateway is inconsistent about accepting them raw.
+asc_get() {
+  curl -sS -H "Authorization: Bearer $ASC_TOKEN" \
+    "https://api.appstoreconnect.apple.com$1"
+}
+
+# Report a value that must be filled in before the app can be submitted.
+# Absent is the interesting case, so it is the one that gets the loud marker.
+required() {
+  local label="$1" value="$2"
+  if [ -z "$value" ] || [ "$value" = "null" ]; then
+    bad "$label -- not set"
+    return 1
+  fi
+  ok "$label: $value"
+}
+
+do_status() {
+  if ! have_asc_key; then
+    bad "status needs an App Store Connect API key"
+    note "set ASC_KEY_ID and ASC_ISSUER_ID, and put the .p8 at $ASC_KEY_PATH"
+    return 1
+  fi
+  command -v jq >/dev/null || { bad "status needs jq"; return 1; }
+
+  ASC_TOKEN="$(asc_jwt)"
+
+  step "App record"
+  local app app_id
+  app="$(asc_get "/v1/apps?filter%5BbundleId%5D=$APP_BUNDLE_ID&fields%5Bapps%5D=name,bundleId,contentRightsDeclaration")"
+  if [ -n "$(jq -r '.errors // empty' <<<"$app")" ]; then
+    bad "App Store Connect rejected the request:"
+    jq -r '.errors[] | "         \(.title): \(.detail)"' <<<"$app" >&2
+    return 1
+  fi
+  app_id="$(jq -r '.data[0].id // empty' <<<"$app")"
+  if [ -z "$app_id" ]; then
+    bad "no app record for $APP_BUNDLE_ID"
+    note "the app record is created by hand in App Store Connect; see docs/RELEASE.md"
+    return 1
+  fi
+  ok "$(jq -r '.data[0].attributes.name' <<<"$app") ($APP_BUNDLE_ID), Apple ID $app_id"
+
+  # ---- App Store ----------------------------------------------------------
+  step "App Store review"
+  local versions version_id version_state review
+  versions="$(asc_get "/v1/apps/$app_id/appStoreVersions?limit=5&fields%5BappStoreVersions%5D=versionString,appStoreState,appVersionState,createdDate")"
+  version_id="$(jq -r '.data[0].id // empty' <<<"$versions")"
+  version_state="$(jq -r '.data[0].attributes.appStoreState // empty' <<<"$versions")"
+  if [ -z "$version_id" ]; then
+    note "no App Store version exists yet"
+  else
+    note "version $(jq -r '.data[0].attributes.versionString' <<<"$versions") is $version_state"
+  fi
+
+  review="$(asc_get "/v1/reviewSubmissions?limit=10&filter%5Bapp%5D=$app_id&fields%5BreviewSubmissions%5D=state,platform,submittedDate")"
+  if [ "$(jq -r '.data | length' <<<"$review")" = "0" ]; then
+    note "nothing has ever been submitted to App Review"
+  else
+    jq -r '.data[] | "  [--]   submission \(.attributes.state) (submitted \(.attributes.submittedDate // "not yet"))"' <<<"$review"
+  fi
+
+  # ---- TestFlight ---------------------------------------------------------
+  step "TestFlight"
+  local builds
+  # buildBetaDetail has to appear in fields[builds] as well as in include: a
+  # restricted field list drops the relationships object entirely, and then
+  # there is nothing to join the included records against.
+  builds="$(asc_get "/v1/builds?limit=5&sort=-uploadedDate&filter%5Bapp%5D=$app_id&include=buildBetaDetail&fields%5Bbuilds%5D=version,uploadedDate,processingState,expired,buildBetaDetail&fields%5BbuildBetaDetails%5D=internalBuildState,externalBuildState")"
+  if [ "$(jq -r '.data | length' <<<"$builds")" = "0" ]; then
+    note "no builds uploaded"
+  else
+    jq -r '
+      (reduce (.included // [])[] as $i ({}; .[$i.id] = $i.attributes)) as $detail
+      | .data[]
+      | (.relationships.buildBetaDetail.data.id // "") as $bid
+      | (if $bid == "" then {} else ($detail[$bid] // {}) end) as $d
+      | "  [\(if .attributes.expired then "--" else "ok" end)]   build \(.attributes.version)"
+        + "  uploaded \(.attributes.uploadedDate[:10])"
+        + "  \(.attributes.processingState)"
+        + "  external=\($d.externalBuildState // "?")"
+        + (if .attributes.expired then "  EXPIRED" else "" end)
+    ' <<<"$builds"
+  fi
+
+  local groups
+  groups="$(asc_get "/v1/betaGroups?limit=20&filter%5Bapp%5D=$app_id&fields%5BbetaGroups%5D=name,isInternalGroup,publicLinkEnabled,publicLink")"
+  jq -r '.data[]
+    | "  [--]   group \"\(.attributes.name)\" (\(if .attributes.isInternalGroup then "internal" else "external" end))"
+      + (if .attributes.publicLink then "  \(.attributes.publicLink)"
+         else "  no public link" end)' <<<"$groups"
+
+  # ---- What is still missing ----------------------------------------------
+  #
+  # Only worth printing while the version is still editable. Once it is with
+  # Apple these fields are frozen and listing them reads as a problem when it
+  # is not.
+  [ "$version_state" = "PREPARE_FOR_SUBMISSION" ] || return 0
+  [ -n "$version_id" ] || return 0
+
+  step "Before this version can be submitted"
+  local loc loc_id shots infos
+
+  required "content rights declaration" \
+    "$(jq -r '.data[0].attributes.contentRightsDeclaration' <<<"$app")" || true
+
+  infos="$(asc_get "/v1/apps/$app_id/appInfos?fields%5BappInfos%5D=appStoreAgeRating")"
+  required "age rating" "$(jq -r '.data[0].attributes.appStoreAgeRating' <<<"$infos")" || true
+
+  if [ -n "$(jq -r ".data // empty" <<<"$(asc_get "/v1/appStoreVersions/$version_id/build")")" ]; then
+    ok "a build is attached to the version"
+  else
+    bad "no build attached to the version -- not set"
+  fi
+
+  loc="$(asc_get "/v1/appStoreVersions/$version_id/appStoreVersionLocalizations?fields%5BappStoreVersionLocalizations%5D=locale,description,keywords,supportUrl")"
+  loc_id="$(jq -r '.data[0].id // empty' <<<"$loc")"
+  required "description"  "$(jq -r '.data[0].attributes.description | if . == null then null else "\(.[:40])..." end' <<<"$loc")" || true
+  required "keywords"     "$(jq -r '.data[0].attributes.keywords'    <<<"$loc")" || true
+  required "support URL"  "$(jq -r '.data[0].attributes.supportUrl'  <<<"$loc")" || true
+
+  if [ -n "$loc_id" ]; then
+    shots="$(asc_get "/v1/appStoreVersionLocalizations/$loc_id/appScreenshotSets")"
+    if [ "$(jq -r '.data | length' <<<"$shots")" = "0" ]; then
+      bad "screenshots -- not set"
+    else
+      ok "screenshots: $(jq -r '.data | length' <<<"$shots") set(s)"
+    fi
+  fi
+
+  if [ -n "$(jq -r '.data // empty' <<<"$(asc_get "/v1/appStoreVersions/$version_id/appStoreReviewDetail")")" ]; then
+    ok "App Review contact details"
+  else
+    bad "App Review contact details -- not set"
+  fi
+
+  note "all of the above are web-UI only; the API cannot fill them in for you"
 }
 
 # Provisioning flags shared by archive and export.
@@ -297,6 +503,15 @@ do_upload() {
 }
 
 # --------------------------------------------------------------------- main ---
+
+# status asks Apple about a build that already exists, so it deliberately skips
+# preflight: none of the local toolchain matters, and requiring Xcode to answer
+# "did review finish" would make the stage useless from a machine that only has
+# the key.
+if [ "$STAGE" = "status" ]; then
+  do_status
+  exit $?
+fi
 
 if ! preflight; then
   step "Preflight failed"

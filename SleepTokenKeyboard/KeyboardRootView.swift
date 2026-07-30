@@ -11,6 +11,9 @@ struct KeyboardRootView: View {
     let onDeleteBackward: () -> Void
     let onNextKeyboard: () -> Void
     let needsInputModeSwitchKey: Bool
+    /// Live reads of the field being edited: what precedes the cursor, how it wants text
+    /// capitalised, what its return key means, and whether Full Access was granted.
+    let host: HostField
     /// Reports the visible page whenever something that changes the required height
     /// changes, so the container can re-reserve space.
     var onHeightInputsChanged: ((KeyboardMetrics.Page) -> Void)? = nil
@@ -24,6 +27,10 @@ struct KeyboardRootView: View {
 
     @State private var shift: ShiftState = .off
     @State private var page: KeyboardMetrics.Page = .letters
+
+    /// When the last space was inserted, for the double-space-for-period shortcut. Nil
+    /// after a substitution so a third space cannot produce a second period.
+    @State private var lastSpaceAt: Date?
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -61,7 +68,7 @@ struct KeyboardRootView: View {
                     keyHeight: keyHeight,
                     faceSize: symbolFaceSize,
                     onInsert: insert,
-                    onBackspace: deleteBackward
+                    onBackspace: { deleteBackward(isRepeat: $0) }
                 )
                 .frame(height: pageHeight)
             case .letters:
@@ -74,7 +81,7 @@ struct KeyboardRootView: View {
                     faceSize: letterFaceSize,
                     onLetter: insertLetter,
                     onShift: toggleShift,
-                    onBackspace: deleteBackward
+                    onBackspace: { deleteBackward(isRepeat: $0) }
                 )
                 .frame(height: pageHeight)
             }
@@ -157,17 +164,21 @@ struct KeyboardRootView: View {
                 label: "Space",
                 fill: KeyPalette.keycap
             ) {
-                insert(" ")
+                insertSpace()
             }
             .frame(maxWidth: .infinity)
 
+            // The cap names the host field's action -- Search, Send, Done -- rather than
+            // always reading "return". The controller rebuilds this view when the focused
+            // field changes; see KeyboardViewController.textDidChange.
             ChromeKeyButton(
-                content: .text("return"),
+                content: .text(ReturnKeyTitle.title(for: host.returnKeyType())),
                 fontSize: 13,
                 weight: .semibold,
-                label: "Return"
+                label: ReturnKeyTitle.accessibilityLabel(for: host.returnKeyType())
             ) {
                 insert("\n")
+                applyAutocapitalization()
             }
             .frame(width: 56)
         }
@@ -181,11 +192,13 @@ struct KeyboardRootView: View {
         hapticsEnabled = KeyboardPreferences.hapticsEnabled
         if hapticsEnabled { Self.impact.prepare() }
         onHeightInputsChanged?(page)
+        applyAutocapitalization()
     }
 
     private func insertLetter(_ letter: SleepTokenLetter) {
         insert(letter.englishInsert(shifted: shift.isUppercase))
         shift = shift.afterInsert()
+        applyAutocapitalization()
     }
 
     private func insert(_ text: String) {
@@ -193,9 +206,30 @@ struct KeyboardRootView: View {
         onInsert(text)
     }
 
-    private func deleteBackward() {
-        haptic()
+    /// Space is the one character key with a rule attached: a second space typed quickly
+    /// after a word replaces the first with ". ".
+    private func insertSpace() {
+        let elapsed = lastSpaceAt.map { Date().timeIntervalSince($0) } ?? .infinity
+
+        if PeriodShortcut.shouldSubstitute(contextBefore: host.contextBefore(), sinceLastSpace: elapsed) {
+            haptic()
+            onDeleteBackward()
+            onInsert(". ")
+            lastSpaceAt = nil
+        } else {
+            insert(" ")
+            lastSpaceAt = Date()
+        }
+
+        applyAutocapitalization()
+    }
+
+    /// `isRepeat` is false for the tap that begins a hold and true for every repeat after
+    /// it, so a held delete does not fire twenty haptics a second.
+    private func deleteBackward(isRepeat: Bool = false) {
+        if !isRepeat { haptic() }
         onDeleteBackward()
+        applyAutocapitalization()
     }
 
     private func toggleShift() {
@@ -203,8 +237,22 @@ struct KeyboardRootView: View {
         shift = shift.toggled()
     }
 
+    /// Re-reads the field and arms or releases shift accordingly. Runs after anything that
+    /// moves the cursor, never after a manual shift tap — the rule preserves a
+    /// deliberately engaged shift, but there is no reason to ask it.
+    private func applyAutocapitalization() {
+        shift = Autocapitalization.nextShift(
+            for: host.autocapitalization(),
+            contextBefore: host.contextBefore(),
+            current: shift
+        )
+    }
+
     private func haptic() {
-        guard hapticsEnabled else { return }
+        // Declaring RequestsOpenAccess is not enough: iOS drops feedback generator events
+        // from a keyboard extension until the user actually grants Full Access, so this
+        // has to check rather than assume. Without it the call is a silent no-op.
+        guard hapticsEnabled, host.hasFullAccess() else { return }
         Self.impact.impactOccurred(intensity: 0.7)
         // Re-arm for the next keystroke; a single warm-up only covers the first tap.
         Self.impact.prepare()
@@ -222,7 +270,7 @@ private struct LetterPage: View {
     let faceSize: CGFloat
     let onLetter: (SleepTokenLetter) -> Void
     let onShift: () -> Void
-    let onBackspace: () -> Void
+    let onBackspace: (Bool) -> Void
 
     private var rows: [[SleepTokenLetter]] {
         layoutMode == .qwerty ? KeyboardLayout.qwertyRows : KeyboardLayout.gridRows
@@ -293,7 +341,7 @@ private struct LetterPage: View {
     }
 
     private var backspaceKey: some View {
-        IconKeyButton(
+        RepeatingIconKeyButton(
             systemName: "delete.left",
             fill: KeyPalette.function,
             label: "Delete",
@@ -307,7 +355,7 @@ private struct SymbolsPage: View {
     let keyHeight: CGFloat
     let faceSize: CGFloat
     let onInsert: (String) -> Void
-    let onBackspace: () -> Void
+    let onBackspace: (Bool) -> Void
 
     private var rows: [[String]] { KeyboardLayout.symbolRows }
 
@@ -325,7 +373,7 @@ private struct SymbolsPage: View {
             }
             HStack {
                 Spacer(minLength: 0)
-                IconKeyButton(
+                RepeatingIconKeyButton(
                     systemName: "delete.left",
                     fill: KeyPalette.function,
                     label: "Delete",
@@ -463,6 +511,83 @@ private struct IconKeyButton: View {
         .accessibilityLabel(label)
         .accessibilityValue(value)
         .accessibilityAddTraits(traits)
+    }
+}
+
+/// Delete, which repeats while held.
+///
+/// Built on a zero-distance drag rather than `Button` plus `onLongPressGesture`, because a
+/// Button fires on release and this key has to fire on touch-down and keep firing until the
+/// finger lifts. The drag also survives the finger sliding off the keycap, which is exactly
+/// what happens when someone holds delete and their thumb relaxes.
+private struct RepeatingIconKeyButton: View {
+    let systemName: String
+    let fill: Color
+    let label: String
+    /// `false` for the tap that starts the hold, `true` for every repeat after it, so the
+    /// caller can fire feedback once rather than twenty times a second.
+    let action: (Bool) -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isPressed = false
+    @State private var repeater: Task<Void, Never>?
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.body.weight(.semibold))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .keycap(fill: fill)
+            // Matches KeyPressStyle rather than reusing it: that is a ButtonStyle, and
+            // this key is deliberately not a Button.
+            .opacity(isPressed ? 0.55 : 1)
+            .scaleEffect(reduceMotion ? 1 : (isPressed ? 0.97 : 1))
+            .animation(
+                isPressed ? nil : (reduceMotion ? nil : .easeOut(duration: 0.08)),
+                value: isPressed
+            )
+            // The glyph does not fill the keycap, so without this the corners of the key
+            // are visually part of it but not touchable.
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        // onChanged fires for every movement within the key, not only for
+                        // touch-down, so the hold must be started exactly once.
+                        guard !isPressed else { return }
+                        isPressed = true
+                        action(false)
+                        startRepeating()
+                    }
+                    .onEnded { _ in
+                        isPressed = false
+                        stopRepeating()
+                    }
+            )
+            // The keyboard can be dismissed mid-hold, which never delivers onEnded.
+            .onDisappear(perform: stopRepeating)
+            .accessibilityLabel(label)
+            .accessibilityAddTraits(.isKeyboardKey)
+    }
+
+    private func startRepeating() {
+        repeater?.cancel()
+        repeater = Task { @MainActor in
+            // The gap that separates a tap from a hold. Cancelling during it leaves the
+            // single delete already emitted on touch-down and nothing more.
+            try? await Task.sleep(for: .seconds(KeyRepeat.initialDelay))
+
+            var fired = 1
+            while !Task.isCancelled {
+                action(true)
+                try? await Task.sleep(for: .seconds(KeyRepeat.interval(forRepeat: fired)))
+                fired += 1
+            }
+        }
+    }
+
+    private func stopRepeating() {
+        repeater?.cancel()
+        repeater = nil
     }
 }
 

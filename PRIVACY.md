@@ -1,7 +1,7 @@
 # Privacy Policy
 
 **Ritual Keyboard** (Sleep Token KB)
-Last updated: 27 July 2026
+Last updated: 30 July 2026
 
 ## The short version
 
@@ -14,17 +14,31 @@ recorded, stored, or transmitted anywhere.
 Custom keyboards on iOS are the most privacy-sensitive extension Apple offers,
 so this is worth stating precisely rather than in general terms.
 
-This keyboard **does not request Full Access**. In the app's `Info.plist`,
-`RequestsOpenAccess` is set to `false`. That is not a promise — it is a setting
-iOS enforces. With Full Access withheld, the operating system denies the
-keyboard extension:
+This keyboard **requests Full Access**. It is worth being exact about why, about
+what it changes, and about what it does not.
 
-- any network access whatsoever, and
-- access to the shared container it would otherwise share with the app.
+**Why it is requested.** One reason: key press haptics. iOS does not deliver
+haptic feedback from a keyboard extension unless Full Access has been granted.
+There is no supported way around that, and no other feature depends on it.
 
-So even if this app wanted to send your keystrokes somewhere, iOS would not
-permit it. It also does not want to. There is no networking code anywhere in
-either the app or the keyboard extension.
+**Granting it is your choice, and the keyboard is complete without it.** Full
+Access is off until you turn it on in Settings, and most people never will.
+Everything except haptics works either way — both layouts, all three key faces,
+both themes, Rune Pad, and the alphabet chart.
+
+**What changes if you grant it.** iOS stops blocking two things it otherwise
+denies the extension: network access, and access to the container it shares with
+the app. Earlier versions of this policy claimed that the operating system made
+sending your keystrokes anywhere *impossible*. With Full Access granted that is
+no longer an enforced guarantee, and it would be dishonest to keep saying so.
+
+What remains is a weaker claim, but a checkable one: there is no networking code
+anywhere in this app or its keyboard extension. No URLSession, no sockets, no
+third-party SDK that could carry data off the device. The source is public, so
+this is something you can verify rather than take on trust.
+
+Nothing you type is recorded, buffered, logged, or transmitted — with or without
+Full Access.
 
 ## What is stored, and where
 
