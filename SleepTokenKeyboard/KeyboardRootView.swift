@@ -25,7 +25,10 @@ struct KeyboardRootView: View {
     @State private var keyFaceStyle: KeyFaceStyle = .runeArt
     @State private var hapticsEnabled = true
 
-    @State private var shift: ShiftState = .off
+    /// Shift plus its provenance. The pairing matters: an auto-armed shift re-derives
+    /// from context on every call while a manual one is preserved, which is what breaks
+    /// the ratchet the 2026-07-31 audit found (delete back into a word, shift stayed up).
+    @State private var autoShift = AutoShift()
     @State private var page: KeyboardMetrics.Page = .letters
 
     /// When the last space was inserted, for the double-space-for-period shortcut. Nil
@@ -67,7 +70,10 @@ struct KeyboardRootView: View {
                 SymbolsPage(
                     keyHeight: keyHeight,
                     faceSize: symbolFaceSize,
-                    onInsert: insert,
+                    // Digits and punctuation move the cursor like any other insert, so
+                    // they re-derive too — this was the one mutation path that skipped
+                    // it and left shift stale on the 123 page.
+                    onInsert: { insert($0); applyAutocapitalization() },
                     onBackspace: { deleteBackward(isRepeat: $0) }
                 )
                 .frame(height: pageHeight)
@@ -75,7 +81,7 @@ struct KeyboardRootView: View {
                 LetterPage(
                     layoutMode: layoutMode,
                     keyFaceStyle: keyFaceStyle,
-                    shift: shift,
+                    shift: autoShift.state,
                     keyHeight: keyHeight,
                     hintSize: hintSize,
                     faceSize: letterFaceSize,
@@ -196,8 +202,8 @@ struct KeyboardRootView: View {
     }
 
     private func insertLetter(_ letter: SleepTokenLetter) {
-        insert(letter.englishInsert(shifted: shift.isUppercase))
-        shift = shift.afterInsert()
+        insert(letter.englishInsert(shifted: autoShift.state.isUppercase))
+        autoShift.didInsertLetter()
         applyAutocapitalization()
     }
 
@@ -234,18 +240,18 @@ struct KeyboardRootView: View {
 
     private func toggleShift() {
         haptic()
-        shift = shift.toggled()
+        // Deliberately no re-derivation after the tap: cancelling an auto-armed shift
+        // must stick until the next keystroke, and re-deriving here would instantly
+        // re-arm it at the very sentence start the user just cancelled.
+        autoShift.userTappedShift()
     }
 
-    /// Re-reads the field and arms or releases shift accordingly. Runs after anything that
-    /// moves the cursor, never after a manual shift tap — the rule preserves a
-    /// deliberately engaged shift, but there is no reason to ask it.
+    /// Re-reads the field and arms or releases shift accordingly. Runs after anything
+    /// that moves the cursor — every insert path, delete, and return — never after a
+    /// manual shift tap. Manual states pass through untouched; auto-armed ones are
+    /// recomputed, so calling this can only ever correct, not clobber.
     private func applyAutocapitalization() {
-        shift = Autocapitalization.nextShift(
-            for: host.autocapitalization(),
-            contextBefore: host.contextBefore(),
-            current: shift
-        )
+        autoShift.apply(type: host.autocapitalization(), contextBefore: host.contextBefore())
     }
 
     private func haptic() {

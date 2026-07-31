@@ -87,6 +87,7 @@ targets:
       # Text-entry rules. Pure functions over the host field's state, kept out of the
       # views so they can be tested without a live UITextDocumentProxy.
       - path: Shared/Autocapitalization.swift
+      - path: Shared/AutoShift.swift
       - path: Shared/ReturnKeyTitle.swift
       - path: Shared/PeriodShortcut.swift
       - path: Shared/KeyRepeat.swift
