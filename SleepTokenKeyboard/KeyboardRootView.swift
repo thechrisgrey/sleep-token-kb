@@ -364,13 +364,7 @@ private struct LetterPage: View {
     }
 
     private var backspaceKey: some View {
-        RepeatingIconKeyButton(
-            systemName: "delete.left",
-            fill: KeyPalette.function,
-            label: "Delete",
-            action: onBackspace
-        )
-        .frame(width: KeyboardMetrics.functionKeyWidth, height: keyHeight)
+        BackspaceKey(keyHeight: keyHeight, onBackspace: onBackspace)
     }
 }
 
@@ -396,19 +390,55 @@ private struct SymbolsPage: View {
             }
             HStack {
                 Spacer(minLength: 0)
-                RepeatingIconKeyButton(
-                    systemName: "delete.left",
-                    fill: KeyPalette.function,
-                    label: "Delete",
-                    action: onBackspace
-                )
-                .frame(width: KeyboardMetrics.functionKeyWidth, height: keyHeight)
+                BackspaceKey(keyHeight: keyHeight, onBackspace: onBackspace)
             }
         }
     }
 }
 
 // MARK: - Keycap chassis
+
+/// The shared press feedback: highlight lands on touch-down, only the release fades
+/// out, and Reduce Motion drops the scale. One definition serves the Button-based keys
+/// (through KeyPressStyle) and the gesture-driven delete key alike — previously the
+/// same four lines existed twice and had to be retuned in lockstep.
+private struct PressAppearance: ViewModifier {
+    let isPressed: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isPressed ? 0.55 : 1)
+            .scaleEffect(reduceMotion ? 1 : (isPressed ? 0.97 : 1))
+            .animation(
+                isPressed ? nil : (reduceMotion ? nil : .easeOut(duration: 0.08)),
+                value: isPressed
+            )
+    }
+}
+
+private extension View {
+    func pressAppearance(_ isPressed: Bool) -> some View {
+        modifier(PressAppearance(isPressed: isPressed))
+    }
+}
+
+/// The one delete key, shared by both pages so its icon, label, width, and repeat
+/// behaviour cannot drift apart — the construction previously existed verbatim twice.
+private struct BackspaceKey: View {
+    let keyHeight: CGFloat
+    let onBackspace: (Bool) -> Void
+
+    var body: some View {
+        RepeatingIconKeyButton(
+            systemName: "delete.left",
+            fill: KeyPalette.function,
+            label: "Delete",
+            action: onBackspace
+        )
+        .frame(width: KeyboardMetrics.functionKeyWidth, height: keyHeight)
+    }
+}
 
 /// The one keycap shape. Four key structs previously re-declared it independently.
 private struct KeycapBackground: ViewModifier {
@@ -551,8 +581,13 @@ private struct RepeatingIconKeyButton: View {
     /// caller can fire feedback once rather than twenty times a second.
     let action: (Bool) -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isPressed = false
+    /// `@GestureState`, not `@State`, and the difference is the whole point: its reset
+    /// closure runs when the system CANCELS the touch (incoming call banner,
+    /// Notification Center pulled over the keyboard) as well as when it ends. With
+    /// `@State`, `onEnded` never arrived in those cases, the view stayed visible so
+    /// `onDisappear` never fired either, and delete ran away at repeat rate while the
+    /// user looked at the banner.
+    @GestureState private var isPressed = false
     @State private var repeater: Task<Void, Never>?
 
     var body: some View {
@@ -560,36 +595,32 @@ private struct RepeatingIconKeyButton: View {
             .font(.body.weight(.semibold))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .keycap(fill: fill)
-            // Matches KeyPressStyle rather than reusing it: that is a ButtonStyle, and
-            // this key is deliberately not a Button.
-            .opacity(isPressed ? 0.55 : 1)
-            .scaleEffect(reduceMotion ? 1 : (isPressed ? 0.97 : 1))
-            .animation(
-                isPressed ? nil : (reduceMotion ? nil : .easeOut(duration: 0.08)),
-                value: isPressed
-            )
+            .pressAppearance(isPressed)
             // The glyph does not fill the keycap, so without this the corners of the key
             // are visually part of it but not touchable.
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
-                    .onChanged { _ in
-                        // onChanged fires for every movement within the key, not only for
-                        // touch-down, so the hold must be started exactly once.
-                        guard !isPressed else { return }
-                        isPressed = true
-                        action(false)
-                        startRepeating()
-                    }
-                    .onEnded { _ in
-                        isPressed = false
-                        stopRepeating()
-                    }
+                    .updating($isPressed) { _, pressed, _ in pressed = true }
             )
-            // The keyboard can be dismissed mid-hold, which never delivers onEnded.
+            // All lifecycle flows from the one pressed flag: touch-down fires the first
+            // delete and starts the repeater; end, cancellation, and (below) removal
+            // all stop it. No path exists where the repeater outlives the touch.
+            .onChange(of: isPressed) { _, pressed in
+                if pressed {
+                    action(false)
+                    startRepeating()
+                } else {
+                    stopRepeating()
+                }
+            }
             .onDisappear(perform: stopRepeating)
             .accessibilityLabel(label)
-            .accessibilityAddTraits(.isKeyboardKey)
+            // A gesture-only view exposes no activate action of its own, and VoiceOver,
+            // Switch Control, and Full Keyboard Access all depend on one. This restores
+            // what the Button-based key provided: one deletion per activation.
+            .accessibilityAction { action(false) }
+            .accessibilityAddTraits([.isKeyboardKey, .isButton])
     }
 
     private func startRepeating() {
@@ -653,16 +684,7 @@ private struct ChromeKeyButton: View {
 }
 
 private struct KeyPressStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.55 : 1)
-            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.97 : 1))
-            // Highlight lands immediately on touch-down; only the release fades out.
-            .animation(
-                configuration.isPressed ? nil : (reduceMotion ? nil : .easeOut(duration: 0.08)),
-                value: configuration.isPressed
-            )
+        configuration.label.pressAppearance(configuration.isPressed)
     }
 }

@@ -14,15 +14,18 @@ public enum KeyRepeat {
     /// The steady rate, roughly eight characters a second.
     public static let baseInterval: TimeInterval = 0.12
 
-    /// The accelerated rate, and the floor: fast enough to clear a paragraph, slow enough
-    /// that the user can still release before overshooting.
+    /// The accelerated rate once the hold is clearly deliberate: fast enough to clear a
+    /// paragraph, slow enough that the user can still release before overshooting.
     public static let fastInterval: TimeInterval = 0.05
 
-    /// Repeats at the base rate before acceleration kicks in — about a second and a half
-    /// of holding, or one short word.
+    /// How many repeats fire at the base rate before acceleration — about a second and a
+    /// half of holding, or one short word.
     public static let accelerateAfter: Int = 12
 
-    /// The wait before the `count`-th repeat, counting from 1.
+    /// The pause AFTER the `count`-th repeat has fired (counting from 1) — the gap before
+    /// repeat `count + 1`. Callers fire first and sleep second; this is that sleep. The
+    /// schedule is a two-step function, not a curve: `baseInterval` through
+    /// `accelerateAfter`, `fastInterval` beyond it.
     public static func interval(forRepeat count: Int) -> TimeInterval {
         count > accelerateAfter ? fastInterval : baseInterval
     }
