@@ -14,7 +14,9 @@
 
     1C8F.1  reads and writes the App Group suite shared with the keyboard
             extension (Shared/LayoutMode.swift) - both bundles are members of
-            group.ai.altivum.SleepTokenFanKB.
+            group.ai.altivum.SleepTokenKB. The extension reaches this suite
+            only once the user grants Full Access, which is opt-in and gates
+            key press haptics alone; otherwise it uses its CA92.1 fallback.
     CA92.1  reads and writes defaults visible only to this app: the appearance
             theme (SleepTokenKB/Theme.swift), the Jerry hunt state
             (SleepTokenKB/JerryHunt.swift), and the local fallback suite used

@@ -25,7 +25,7 @@ struct EnableKeyboardView: View {
         ),
         SetupStep(
             title: "Optional: Full Access",
-            detail: "Only needed for key press haptics — iOS will not deliver haptic feedback from a keyboard extension without it. Everything else works either way: both layouts, all three key faces, the themes, and Rune Pad. It stays off until you turn it on."
+            detail: "The Allow Full Access switch sits on the same Ritual Keyboard screen as the switch from the last step. Only needed for key press haptics — iOS will not deliver haptic feedback from a keyboard extension without it. Everything else works either way: both layouts, all three key faces, the themes, and Rune Pad. It stays off until you turn it on."
         ),
         SetupStep(
             title: "Use it",
