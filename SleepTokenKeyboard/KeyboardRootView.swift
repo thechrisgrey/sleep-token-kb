@@ -38,9 +38,12 @@ struct KeyboardRootView: View {
     @State private var autoShift = AutoShift()
     @State private var page: KeyboardMetrics.Page = .letters
 
-    /// When the last space was inserted, for the double-space-for-period shortcut. Nil
-    /// after a substitution so a third space cannot produce a second period.
-    @State private var lastSpaceAt: Date?
+    /// Bookkeeping for the double-space shortcut. A reference type held in `@State` on
+    /// purpose, twice over: the reference never changes, so recording a timestamp does
+    /// not invalidate the view tree (nothing renders it — the old `Date?` in `@State`
+    /// re-diffed the whole keyboard per space press), while `@State` keeps the instance
+    /// stable across the per-keystroke rootView reassignments the controller performs.
+    @State private var spaceTracker = SpaceTracker()
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -113,7 +116,7 @@ struct KeyboardRootView: View {
             // A different field: the old field's shift provenance and double-space
             // window are meaningless here. Start clean and derive for the new field.
             autoShift = AutoShift()
-            lastSpaceAt = nil
+            spaceTracker.interrupt()
             applyAutocapitalization()
         }
         .onChange(of: hostTextGeneration) {
@@ -224,24 +227,29 @@ struct KeyboardRootView: View {
         applyAutocapitalization()
     }
 
+    /// Every non-space keystroke interrupts the double-space window: the shortcut's
+    /// rule is blind to interleaving by design, so consecutiveness is enforced here,
+    /// where the keystrokes actually happen.
     private func insert(_ text: String) {
         haptic()
         onInsert(text)
+        spaceTracker.interrupt()
     }
 
     /// Space is the one character key with a rule attached: a second space typed quickly
     /// after a word replaces the first with ". ".
     private func insertSpace() {
-        let elapsed = lastSpaceAt.map { Date().timeIntervalSince($0) } ?? .infinity
-
-        if PeriodShortcut.shouldSubstitute(contextBefore: host.contextBefore(), sinceLastSpace: elapsed) {
+        if PeriodShortcut.shouldSubstitute(
+            contextBefore: host.contextBefore(),
+            sinceLastSpace: spaceTracker.sinceLastSpace
+        ) {
             haptic()
             onDeleteBackward()
             onInsert(". ")
-            lastSpaceAt = nil
+            spaceTracker.interrupt()
         } else {
             insert(" ")
-            lastSpaceAt = Date()
+            spaceTracker.recordSpace()
         }
 
         applyAutocapitalization()
@@ -252,6 +260,7 @@ struct KeyboardRootView: View {
     private func deleteBackward(isRepeat: Bool = false) {
         if !isRepeat { haptic() }
         onDeleteBackward()
+        spaceTracker.interrupt()
         applyAutocapitalization()
     }
 

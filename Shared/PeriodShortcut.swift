@@ -13,19 +13,21 @@ public enum PeriodShortcut {
     /// thumb without firing on two deliberately separate spaces.
     public static let window: TimeInterval = 1.0
 
+    /// The rule is deliberately blind to interleaving: it sees only (context, elapsed).
+    /// Consecutiveness is the CALLER's obligation — any keystroke between the two
+    /// spaces must reset the clock, because given a qualifying context and a fresh
+    /// elapsed this rule will fire. The keyboard resets in `insert()`, `deleteBackward()`
+    /// and on field changes.
     public static func shouldSubstitute(contextBefore: String?, sinceLastSpace: TimeInterval) -> Bool {
         guard sinceLastSpace <= window else { return false }
 
-        // Two characters minimum: the space to be replaced, and the word character that
-        // proves a word actually ended here.
-        guard let contextBefore, contextBefore.count >= 2 else { return false }
-
-        var characters = Array(contextBefore)
-        guard characters.removeLast() == " " else { return false }
-        guard let preceding = characters.last else { return false }
-
-        // Only a letter or digit ends a word. Anything else — punctuation, another space,
-        // a newline — means there is nothing here that wants a full stop.
+        // Two characters answer everything: the space to be replaced, and the word
+        // character that proves a word actually ended here. Only a letter or digit ends
+        // a word — punctuation, another space, or a newline means nothing here wants a
+        // full stop.
+        guard let contextBefore,
+              contextBefore.last == " ",
+              let preceding = contextBefore.dropLast().last else { return false }
         return preceding.isLetter || preceding.isNumber
     }
 }

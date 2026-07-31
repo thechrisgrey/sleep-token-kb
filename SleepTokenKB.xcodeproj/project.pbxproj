@@ -51,6 +51,7 @@
 		B313D78914B713A9790D6574 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3027B80208E51D6B3304FA50 /* Assets.xcassets */; };
 		BAFF2A479A23DB3D53CB07FC /* SleepTokenKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BD67C38107529CFBD5DFA9A8 /* SleepTokenKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BDC6D6F80A76F4E000DCBB0E /* AutoShift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4A8A0CAA11A6BA7792C758 /* AutoShift.swift */; };
+		BE1D38896676EDF6E4B111C0 /* SpaceTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 574C1FFE6DAD72C7F83F011B /* SpaceTracker.swift */; };
 		CCF933829EDB4A1151A60E03 /* KeyboardPreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D3D861BDF2AC3FE450D9A0 /* KeyboardPreferencesTests.swift */; };
 		CF02186A21A344E4500C8337 /* CanvasMetricsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC6AA14C3002A819481F7D6 /* CanvasMetricsTests.swift */; };
 		D552F6CA2BFC07986E539B0C /* ShiftStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF380D63C799184E6A67B59 /* ShiftStateTests.swift */; };
@@ -112,6 +113,7 @@
 		538EF89B2D7012D02DCC0639 /* RuneExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuneExportTests.swift; sourceTree = "<group>"; };
 		552C9BA590F343156D99A70D /* EnableKeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnableKeyboardView.swift; sourceTree = "<group>"; };
 		5640E5146F360D6A5E47DD36 /* AutoShiftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoShiftTests.swift; sourceTree = "<group>"; };
+		574C1FFE6DAD72C7F83F011B /* SpaceTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceTracker.swift; sourceTree = "<group>"; };
 		588BCFC4A4EB5774183C06C3 /* SleepTokenKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SleepTokenKeyboard.entitlements; sourceTree = "<group>"; };
 		5B1217EEFF5F8964823A8706 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
 		6B4A8A0CAA11A6BA7792C758 /* AutoShift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoShift.swift; sourceTree = "<group>"; };
@@ -183,6 +185,7 @@
 				B7FFDCF2286E61D11706D975 /* KeyPalette.swift */,
 				EEF43754E7EFEBEE3DBE885E /* PrivacyInfo.xcprivacy */,
 				588BCFC4A4EB5774183C06C3 /* SleepTokenKeyboard.entitlements */,
+				574C1FFE6DAD72C7F83F011B /* SpaceTracker.swift */,
 			);
 			path = SleepTokenKeyboard;
 			sourceTree = "<group>";
@@ -447,6 +450,7 @@
 				03EB26005A8829D9833BC73E /* PeriodShortcut.swift in Sources */,
 				00EF03446C33D104BB5A7987 /* ReturnKeyTitle.swift in Sources */,
 				17A9D58D634C22CCD79F2885 /* ShiftState.swift in Sources */,
+				BE1D38896676EDF6E4B111C0 /* SpaceTracker.swift in Sources */,
 				E7603E6FDDF6B258CCA53197 /* SymbolGlyphView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
