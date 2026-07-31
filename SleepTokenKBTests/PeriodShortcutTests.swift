@@ -49,6 +49,24 @@ final class PeriodShortcutTests: XCTestCase {
         XCTAssertFalse(PeriodShortcut.shouldSubstitute(contextBefore: "hello\n", sinceLastSpace: 0.2))
     }
 
+    /// An expired window must short-circuit before the host document is read at all:
+    /// the context arrives as an autoclosure precisely so the common case (a space that
+    /// is not part of a double-tap) costs nothing.
+    func testTheContextIsNotReadWhenTheWindowAlreadyExpired() {
+        var reads = 0
+        _ = PeriodShortcut.shouldSubstitute(
+            contextBefore: { reads += 1; return "hello " }(),
+            sinceLastSpace: 5
+        )
+        XCTAssertEqual(reads, 0, "an expired window must not read the document")
+
+        _ = PeriodShortcut.shouldSubstitute(
+            contextBefore: { reads += 1; return "hello " }(),
+            sinceLastSpace: 0.2
+        )
+        XCTAssertEqual(reads, 1, "a live window reads the document exactly once")
+    }
+
     /// The boundary itself, so the window cannot be quietly narrowed to nothing.
     func testTheWindowIsInclusiveAtItsEdge() {
         XCTAssertTrue(

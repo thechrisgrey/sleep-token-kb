@@ -27,8 +27,9 @@ struct KeyboardRootView: View {
     var onHeightInputsChanged: ((KeyboardMetrics.HeightInputs) -> Void)? = nil
 
     // Preferences are deliberately declared with inert defaults and loaded in exactly one
-    // place — `loadPreferences()` on appear. Previously they were read both here and in
-    // onAppear, with neither identifiable as authoritative.
+    // place — `loadPreferences()`, called from `prepareForAppearance()` on appear.
+    // Previously they were read both here and in onAppear, with neither identifiable
+    // as authoritative.
     @State private var layoutMode: LayoutMode = .qwerty
     @State private var keyFaceStyle: KeyFaceStyle = .runeArt
     @State private var hapticsEnabled = true
@@ -112,7 +113,7 @@ struct KeyboardRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .background(KeyPalette.field)
         .dynamicTypeSize(...DynamicTypeSize.accessibility2)
-        .onAppear(perform: loadPreferences)
+        .onAppear(perform: prepareForAppearance)
         .onChange(of: fieldGeneration) {
             // A different field: the old field's shift provenance and double-space
             // window are meaningless here. Start clean and derive for the new field.
@@ -219,13 +220,23 @@ struct KeyboardRootView: View {
 
     // MARK: - Actions
 
+    /// Everything the view does exactly once per appearance, in named steps, so the
+    /// appear-time contract is explicit rather than smuggled into a loader: read the
+    /// shared preferences, report the initial height inputs, derive the opening shift.
+    private func prepareForAppearance() {
+        loadPreferences()
+        onHeightInputsChanged?(.init(page: page, mode: layoutMode))
+        applyAutocapitalization()
+    }
+
     private func loadPreferences() {
         layoutMode = KeyboardPreferences.layoutMode
         keyFaceStyle = KeyboardPreferences.keyFaceStyle
         hapticsEnabled = KeyboardPreferences.hapticsEnabled
-        if hapticsEnabled { Self.impact.prepare() }
-        onHeightInputsChanged?(.init(page: page, mode: layoutMode))
-        applyAutocapitalization()
+        // Warm the engine only for users who can actually feel it: iOS drops
+        // feedback-generator events from the extension without Full Access, so an
+        // ungated prepare() spins the taptic engine for nothing.
+        if hapticsEnabled && host.hasFullAccess() { Self.impact.prepare() }
     }
 
     private func insertLetter(_ letter: SleepTokenLetter) {
