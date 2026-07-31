@@ -9,15 +9,19 @@
 
   A custom keyboard is the most privacy-sensitive extension point on iOS, and
   the honest answer here is short: this one collects nothing and sends nothing.
-  It has no networking, and RequestsOpenAccess is false (project.yml), so iOS
-  denies it network access and shared-container access outright.
+  RequestsOpenAccess is true (project.yml) for one reason: key press haptics,
+  which iOS refuses to deliver from a keyboard extension without Full Access.
+  Granting it is the user's choice, it is off until turned on in Settings, and
+  everything except haptics works without it. There is no networking code
+  anywhere in this extension or its host app - no URLSession, no sockets, no
+  third-party SDK that could carry data off the device.
 
   Reason codes, both real:
 
     1C8F.1  reads the App Group suite for layout and key-face preferences
-            written by the host app (Shared/LayoutMode.swift). Only reachable
-            when the user grants Full Access, which this keyboard never asks
-            for - hence the fallback below.
+            written by the host app (Shared/LayoutMode.swift). Reachable once
+            the user grants Full Access; until then iOS denies the shared
+            container - hence the fallback below.
     CA92.1  reads and writes the extension's own standard defaults, the
             fallback path used whenever the shared container is unavailable.
 -->

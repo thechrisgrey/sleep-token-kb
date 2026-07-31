@@ -391,9 +391,9 @@ private struct HapticsToggle: View {
                     Text("Haptic feedback")
                         .font(.subheadline)
                         .foregroundStyle(Theme.ink)
-                    Text("Needs Full Access, in Settings")
+                    Text("Needs Allow Full Access, in Settings")
                         .font(.caption2)
-                        .foregroundStyle(Theme.inkFaint)
+                        .foregroundStyle(Theme.inkDim)
                 }
             }
             .tint(Theme.goldDeep)
@@ -416,7 +416,7 @@ private struct DefaultsRow<Control: View>: View {
             if let caption {
                 Text(caption)
                     .font(.caption2)
-                    .foregroundStyle(Theme.inkFaint)
+                    .foregroundStyle(Theme.inkDim)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
