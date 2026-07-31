@@ -89,11 +89,19 @@ preflight() {
   fi
 
   step "Signing"
+  # An empty local keychain is NOT a problem here, and saying so cost someone an
+  # afternoon. With cloud-managed signing the distribution identity stays on
+  # Apple's side and is never installed locally: builds 23 and 24 were both signed,
+  # exported and uploaded from this machine with no Apple Distribution identity in
+  # the keychain and no distribution certificate in the account at all. Only the
+  # case with neither a certificate nor a key is worth remarking on.
   if security find-identity -v -p codesigning 2>/dev/null | grep -q "Apple Distribution"; then
-    ok "an Apple Distribution certificate is installed"
+    ok "a local Apple Distribution certificate is installed"
+  elif have_asc_key; then
+    ok "no local distribution certificate, and none needed -- signing is cloud-managed via the API key"
   else
-    note "no Apple Distribution certificate installed yet"
-    note "Xcode will create one on first archive, given an API key and -allowProvisioningUpdates"
+    note "no distribution certificate and no API key"
+    note "archive may still work if Xcode is signed in to the team; validate and upload cannot"
   fi
 
   step "App Store Connect API key"

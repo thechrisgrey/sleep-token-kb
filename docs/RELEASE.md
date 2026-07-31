@@ -273,9 +273,32 @@ It is local design reference, not ours to redistribute.
 
 | Symptom | Cause |
 |---|---|
-| `No signing certificate "Apple Distribution" found` | API key missing, or its role is Developer rather than App Manager |
+| `No signing certificate "Apple Distribution" found` | Cloud-managed signing did not engage. The key is missing, is not Admin, or `-allowProvisioningUpdates` was dropped. An empty local keychain is **not** the cause — see below |
 | `The bundle version must be higher than the previously uploaded version` | `BUILD_NUMBER` did not increase. Shallow clone in CI, or an amended commit locally |
 | Upload rejected for a missing privacy manifest | `PrivacyInfo.xcprivacy` did not make it into the bundle. Run `xcodegen generate` |
 | `Invalid Bundle. ... extension ... version` | The extension and app disagree on a version key. Both come from build settings; regenerate |
 | `xcodebuild requires Xcode` | `xcode-select -p` points at the Command Line Tools. The scripts already override `DEVELOPER_DIR` |
 | Authentication fails in CI only | `ASC_KEY_P8` pasted raw instead of base64 encoded |
+
+### An empty keychain is the normal state
+
+`security find-identity -v -p codesigning` listing no **Apple Distribution**
+identity does not mean this machine cannot ship a build. With cloud-managed
+signing the distribution identity lives on Apple's side; Xcode fetches what it
+needs per archive and installs nothing locally.
+
+Build 24 was archived, exported, validated and uploaded from this Mac with:
+
+- no Apple Distribution identity in the login keychain, and
+- **zero** distribution certificates in the developer account
+  (`GET /v1/certificates` returned two `DEVELOPMENT` certs and nothing else).
+
+Preflight used to print `no Apple Distribution certificate installed yet` in that
+situation, which reads as a missing prerequisite and is not one. It now says so
+explicitly, and only remarks when there is neither a certificate nor an API key.
+
+This also softens the caveat above. The API key genuinely could not *bootstrap*
+signing assets from nothing — that needed one pass through a signed-in Xcode.
+Once the App IDs and App Group exist, it handles the steady state on its own,
+including minting distribution material that never touches the keychain. Do not
+read a bare keychain as a reason to go create a certificate by hand.
