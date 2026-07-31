@@ -17,6 +17,9 @@ struct RunePadView: View {
     @State private var shareItem: ShareItem?
     @State private var confirmClear = false
     @State private var deleteRepeater: Task<Void, Never>?
+    /// `@GestureState` rather than `@State`: SwiftUI resets it on gesture end *and* on
+    /// system touch-cancellation, where a drag's `onEnded` never arrives.
+    @GestureState private var isPressingDelete = false
 
     @Environment(\.displayScale) private var displayScale
 
@@ -294,29 +297,49 @@ struct RunePadView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Space, starts a new column")
 
-                Button(action: deleteBackward) {
-                    Image(systemName: "delete.left")
-                        .foregroundStyle(Theme.ink)
-                        .frame(width: 56, height: 40)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Theme.surface)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .strokeBorder(Theme.hairline, lineWidth: 1)
-                        )
-                }
-                .buttonStyle(.plain)
-                // Press-and-hold auto-repeats, like the system keyboard's delete.
-                // The zero-distance drag tracks press/release without stealing the
-                // plain tap, which still deletes exactly one rune.
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { _ in startDeleteRepeat() }
-                        .onEnded { _ in stopDeleteRepeat() }
-                )
-                .accessibilityLabel("Delete")
+                // Delete auto-repeats while held, like the system keyboard's key.
+                // Deliberately not a Button: a Button fires on release, so pairing one
+                // with a press-tracking gesture ends every hold with an extra deletion.
+                // The zero-distance drag owns the whole press — one delete on
+                // touch-down, repeats from the task, nothing on release.
+                Image(systemName: "delete.left")
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 56, height: 40)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Theme.surface)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(Theme.hairline, lineWidth: 1)
+                    )
+                    // Stands in for the pressed dim `.buttonStyle(.plain)` used to give.
+                    .opacity(isPressingDelete ? 0.55 : 1)
+                    // The glyph does not fill the keycap, so without this its corners
+                    // are visually part of the key but not touchable.
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .updating($isPressingDelete) { _, pressing, _ in
+                                pressing = true
+                            }
+                    )
+                    .onChange(of: isPressingDelete) { _, pressing in
+                        if pressing {
+                            deleteBackward()
+                            startDeleteRepeat()
+                        } else {
+                            stopDeleteRepeat()
+                        }
+                    }
+                    // The view can leave the screen mid-hold (back navigation, a
+                    // sheet), which never resets the gesture.
+                    .onDisappear(perform: stopDeleteRepeat)
+                    // No Button any more, so activation is restored explicitly:
+                    // VoiceOver and Switch Control activate deletes a single rune.
+                    .accessibilityLabel("Delete")
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityAction { deleteBackward() }
             }
         }
         .ritualCard(padding: 10)
@@ -373,12 +396,17 @@ struct RunePadView: View {
     }
 
     private func startDeleteRepeat() {
-        guard deleteRepeater == nil else { return }
+        deleteRepeater?.cancel()
         deleteRepeater = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(0.45))
+            // The gap that separates a tap from a hold. Cancelling during it leaves
+            // the single delete already fired on touch-down and nothing more.
+            try? await Task.sleep(for: .seconds(KeyRepeat.initialDelay))
+
+            var fired = 1
             while !Task.isCancelled {
                 deleteBackward()
-                try? await Task.sleep(for: .seconds(0.08))
+                try? await Task.sleep(for: .seconds(KeyRepeat.interval(forRepeat: fired)))
+                fired += 1
             }
         }
     }
