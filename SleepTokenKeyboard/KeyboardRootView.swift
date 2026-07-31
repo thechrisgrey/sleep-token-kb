@@ -11,6 +11,13 @@ struct KeyboardRootView: View {
     let onDeleteBackward: () -> Void
     let onNextKeyboard: () -> Void
     let needsInputModeSwitchKey: Bool
+    /// Bumped by the controller when focus moves to a different host field. Per-field
+    /// session state — shift provenance, the double-space window — resets on change.
+    let fieldGeneration: Int
+    /// Bumped on every host text change (including after this keyboard's own edits, once
+    /// the proxy context has settled); shift is re-derived on change. Manual states
+    /// survive by rule, so the re-derivation can only correct, never clobber.
+    let hostTextGeneration: Int
     /// Live reads of the field being edited: what precedes the cursor, how it wants text
     /// capitalised, what its return key means, and whether Full Access was granted.
     let host: HostField
@@ -102,6 +109,16 @@ struct KeyboardRootView: View {
         .background(KeyPalette.field)
         .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         .onAppear(perform: loadPreferences)
+        .onChange(of: fieldGeneration) {
+            // A different field: the old field's shift provenance and double-space
+            // window are meaningless here. Start clean and derive for the new field.
+            autoShift = AutoShift()
+            lastSpaceAt = nil
+            applyAutocapitalization()
+        }
+        .onChange(of: hostTextGeneration) {
+            applyAutocapitalization()
+        }
     }
 
     // MARK: - Bottom chrome

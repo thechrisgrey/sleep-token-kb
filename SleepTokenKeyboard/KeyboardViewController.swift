@@ -14,9 +14,29 @@ final class KeyboardViewController: UIInputViewController {
     /// changes the row count and therefore the height the container must reserve.
     private var currentPage: KeyboardMetrics.Page = .letters
 
-    /// Last seen return key type, used to notice a field change without rebuilding the
-    /// view on every keystroke. See `textDidChange`.
-    private var lastReturnKeyType: UIReturnKeyType?
+    /// Which host field the keyboard is serving, as far as the proxy can identify one.
+    /// Two fields with identical traits are indistinguishable, and that is acceptable:
+    /// identical traits mean identical derivation rules, so the per-field reset only
+    /// matters when the fingerprint actually changes.
+    private struct FieldFingerprint: Equatable {
+        let returnKey: UIReturnKeyType
+        let autocapitalization: UITextAutocapitalizationType
+    }
+
+    private var lastFingerprint: FieldFingerprint?
+
+    /// Counters delivered into the SwiftUI view as plain values; `.onChange` on them is
+    /// the controller-to-view channel. Reassigning `rootView` cannot touch the view's
+    /// `@State` (see `refreshRoot`), but a changed `let` is exactly what it CAN deliver.
+    private var fieldGeneration = 0
+    private var hostTextGeneration = 0
+
+    private var currentFingerprint: FieldFingerprint {
+        FieldFingerprint(
+            returnKey: textDocumentProxy.returnKeyType ?? .default,
+            autocapitalization: textDocumentProxy.autocapitalizationType ?? .sentences
+        )
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -51,6 +71,9 @@ final class KeyboardViewController: UIInputViewController {
 
     private func syncForAppearance() {
         applyHeight()
+        // Seed the fingerprint so the first textDidChange after presentation is not
+        // mistaken for a field switch (the audit's guaranteed-redundant rebuild).
+        lastFingerprint = currentFingerprint
         refreshRoot()
     }
 
@@ -90,6 +113,8 @@ final class KeyboardViewController: UIInputViewController {
                 self?.advanceToNextInputMode()
             },
             needsInputModeSwitchKey: needsInputModeSwitchKey,
+            fieldGeneration: fieldGeneration,
+            hostTextGeneration: hostTextGeneration,
             host: HostField(
                 contextBefore: { [weak self] in
                     self?.textDocumentProxy.documentContextBeforeInput
@@ -111,17 +136,24 @@ final class KeyboardViewController: UIInputViewController {
         )
     }
 
-    /// Rebuild only when the *field* changes, never per keystroke.
+    /// Every host-side text change re-derives autocapitalization in the view: the host
+    /// may have cleared its field (Messages after send) or the user moved the cursor,
+    /// and deriving from here also picks up the *settled* proxy context after this
+    /// keyboard's own edits. A changed fingerprint — a different field — additionally
+    /// resets the per-field session state (shift provenance, the double-space window).
     ///
-    /// `textDidChange` fires on every insert, and rebuilding the root view there would
-    /// throw away a frame's work on each tap. The return key title is the only thing in
-    /// the view that depends on which field is focused, so its type is the cheapest
-    /// available proxy for "the user moved to a different field".
+    /// Yes, this rebuilds the root view per keystroke. The rebuild is a value diff:
+    /// letter keys compare Equatable inputs and skip repainting, so the cost is bounded,
+    /// and it is the price of correctness — the earlier returnKeyType-only guard made
+    /// shift state leak across every field whose return key happened to match.
     override func textDidChange(_ textInput: (any UITextInput)?) {
         super.textDidChange(textInput)
-        let current = textDocumentProxy.returnKeyType
-        guard current != lastReturnKeyType else { return }
-        lastReturnKeyType = current
+        hostTextGeneration += 1
+        let fingerprint = currentFingerprint
+        if fingerprint != lastFingerprint {
+            lastFingerprint = fingerprint
+            fieldGeneration += 1
+        }
         refreshRoot()
     }
 
