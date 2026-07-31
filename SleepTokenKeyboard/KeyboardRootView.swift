@@ -21,9 +21,10 @@ struct KeyboardRootView: View {
     /// Live reads of the field being edited: what precedes the cursor, how it wants text
     /// capitalised, what its return key means, and whether Full Access was granted.
     let host: HostField
-    /// Reports the visible page whenever something that changes the required height
-    /// changes, so the container can re-reserve space.
-    var onHeightInputsChanged: ((KeyboardMetrics.Page) -> Void)? = nil
+    /// Reports the page and layout mode whenever something that changes the required
+    /// height changes, so the container re-reserves space from the same inputs the
+    /// content lays itself out with -- one value, one channel.
+    var onHeightInputsChanged: ((KeyboardMetrics.HeightInputs) -> Void)? = nil
 
     // Preferences are deliberately declared with inert defaults and loaded in exactly one
     // place — `loadPreferences()` on appear. Previously they were read both here and in
@@ -103,7 +104,7 @@ struct KeyboardRootView: View {
             }
 
             bottomBar
-                .frame(height: KeyboardMetrics.bottomBarHeight)
+                .frame(height: KeyboardMetrics.bottomBarHeight(compact: isCompact))
         }
         .padding(.horizontal, KeyboardMetrics.edgeInset)
         .padding(.top, KeyboardMetrics.topPadding)
@@ -151,7 +152,7 @@ struct KeyboardRootView: View {
                 haptic()
                 layoutMode = layoutMode.next
                 KeyboardPreferences.layoutMode = layoutMode
-                onHeightInputsChanged?(page)
+                onHeightInputsChanged?(.init(page: page, mode: layoutMode))
             }
             .frame(width: 54)
 
@@ -166,7 +167,7 @@ struct KeyboardRootView: View {
                 haptic()
                 keyFaceStyle = keyFaceStyle.next
                 KeyboardPreferences.keyFaceStyle = keyFaceStyle
-                onHeightInputsChanged?(page)
+                onHeightInputsChanged?(.init(page: page, mode: layoutMode))
             }
             .frame(width: 50)
 
@@ -178,7 +179,7 @@ struct KeyboardRootView: View {
             ) {
                 haptic()
                 page = (page == .symbols) ? .letters : .symbols
-                onHeightInputsChanged?(page)
+                onHeightInputsChanged?(.init(page: page, mode: layoutMode))
             }
             .frame(width: 44)
 
@@ -188,25 +189,31 @@ struct KeyboardRootView: View {
                 fontSize: 14,
                 weight: .regular,
                 label: "Space",
-                fill: KeyPalette.keycap
+                fill: KeyPalette.keycap,
+                isTypingKey: true
             ) {
                 insertSpace()
             }
             .frame(maxWidth: .infinity)
 
-            // The cap names the host field's action -- Search, Send, Done -- rather than
-            // always reading "return". The controller rebuilds this view when the focused
-            // field changes; see KeyboardViewController.textDidChange.
+            // The cap names the host field's action -- Search, Send, Done -- rather
+            // than always reading "return", and honours enablesReturnKeyAutomatically
+            // the way the system keyboard does: disabled until the field has text.
+            // The controller rebuilds this view on every host text change, so both
+            // stay current. One read serves the cap and the spoken label alike.
+            let returnKey = host.returnKeyType()
             ChromeKeyButton(
-                content: .text(ReturnKeyTitle.title(for: host.returnKeyType())),
+                content: .text(ReturnKeyTitle.title(for: returnKey)),
                 fontSize: 13,
                 weight: .semibold,
-                label: ReturnKeyTitle.accessibilityLabel(for: host.returnKeyType())
+                label: ReturnKeyTitle.accessibilityLabel(for: returnKey),
+                isTypingKey: true,
+                enabled: host.returnKeyEnabled()
             ) {
                 insert("\n")
                 applyAutocapitalization()
             }
-            .frame(width: 56)
+            .frame(width: 64)
         }
     }
 
@@ -217,7 +224,7 @@ struct KeyboardRootView: View {
         keyFaceStyle = KeyboardPreferences.keyFaceStyle
         hapticsEnabled = KeyboardPreferences.hapticsEnabled
         if hapticsEnabled { Self.impact.prepare() }
-        onHeightInputsChanged?(page)
+        onHeightInputsChanged?(.init(page: page, mode: layoutMode))
         applyAutocapitalization()
     }
 
@@ -324,6 +331,9 @@ private struct LetterPage: View {
                             LetterKeyButton(
                                 letter: letter,
                                 keyFaceStyle: keyFaceStyle,
+                                // Rune art carries no case, so those keys are pinned
+                                // to false and never repaint on a shift change.
+                                shifted: keyFaceStyle == .runeArt ? false : shift.isUppercase,
                                 keyHeight: keyHeight,
                                 hintSize: hintSize,
                                 faceSize: faceSize,
@@ -472,6 +482,11 @@ private extension View {
 private struct LetterKeyButton: View, Equatable {
     let letter: SleepTokenLetter
     let keyFaceStyle: KeyFaceStyle
+    /// Whether the Latin faces render uppercase. Keycaps flipping case with shift is
+    /// how the user reads what case comes next — vital now that autocapitalization
+    /// arms and releases shift silently. Normalised to `false` for the rune-art face
+    /// by the caller, so pure-glyph keys never repaint on a shift change.
+    let shifted: Bool
     let keyHeight: CGFloat
     let hintSize: CGFloat
     let faceSize: CGFloat
@@ -479,10 +494,12 @@ private struct LetterKeyButton: View, Equatable {
     let action: () -> Void
 
     /// Compares only the value inputs, ignoring the closure — which is freshly allocated
-    /// per key per render. Without this a shift tap repaints all 26 glyph keys.
+    /// per key per render. Keys repaint exactly when their rendered inputs change: a
+    /// shift tap repaints the Latin faces (whose case flips) and leaves rune art alone.
     static func == (lhs: LetterKeyButton, rhs: LetterKeyButton) -> Bool {
         lhs.letter == rhs.letter
             && lhs.keyFaceStyle == rhs.keyFaceStyle
+            && lhs.shifted == rhs.shifted
             && lhs.keyHeight == rhs.keyHeight
             && lhs.hintSize == rhs.hintSize
             && lhs.faceSize == rhs.faceSize
@@ -515,14 +532,14 @@ private struct LetterKeyButton: View, Equatable {
             VStack(spacing: 1) {
                 SymbolGlyphView(letter: letter)
                     .accessibilityHidden(true)
-                Text(letter.upperLatin)
+                Text(shifted ? letter.upperLatin : letter.latin)
                     .font(.system(size: hintSize, weight: .semibold, design: .rounded))
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
             }
             .padding(.vertical, 5)
         case .letters:
-            Text(letter.upperLatin)
+            Text(shifted ? letter.upperLatin : letter.latin)
                 .font(.system(size: faceSize, weight: .medium, design: .rounded))
                 .foregroundStyle(.primary)
         }
@@ -654,9 +671,11 @@ private struct RepeatingIconKeyButton: View {
     }
 }
 
-/// Bottom-bar keys. These are navigation actions rather than character emitters, so they
-/// deliberately do NOT take `.isKeyboardKey` — VoiceOver keeps its confirm-before-acting
-/// behaviour for them.
+/// Bottom-bar keys. Space and return EMIT characters, so they opt into `.isKeyboardKey`
+/// and VoiceOver's lift-to-type; the mode-switching keys (globe, layout, style, 123)
+/// deliberately do not — VoiceOver keeps its confirm-before-acting behaviour for actions
+/// that change the keyboard rather than the text. The July trait rollout opted the whole
+/// bar out; that over-included exactly the two most-typed keys.
 private struct ChromeKeyButton: View {
     enum Content {
         case text(String)
@@ -668,6 +687,10 @@ private struct ChromeKeyButton: View {
     var weight: Font.Weight = .regular
     let label: String
     var fill: Color = KeyPalette.function
+    /// True for keys that insert text (space, return): adds `.isKeyboardKey`.
+    var isTypingKey: Bool = false
+    /// Return honours `enablesReturnKeyAutomatically`; everything else is always on.
+    var enabled: Bool = true
     let action: () -> Void
 
     var body: some View {
@@ -682,13 +705,19 @@ private struct ChromeKeyButton: View {
                         .font(.system(size: fontSize, weight: weight, design: .rounded))
                         .lineLimit(1)
                         .minimumScaleFactor(0.65)
+                        // Breathing room before the cap edge: without it a long
+                        // adaptive return title ("Continue") renders edge-to-edge.
+                        .padding(.horizontal, 4)
                 }
             }
+            .opacity(enabled ? 1 : 0.35)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .keycap(fill: fill)
         }
         .buttonStyle(KeyPressStyle())
+        .disabled(!enabled)
         .accessibilityLabel(label)
+        .accessibilityAddTraits(isTypingKey ? .isKeyboardKey : [])
     }
 }
 

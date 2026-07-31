@@ -20,7 +20,13 @@ public enum KeyboardMetrics {
     public static let rowGap: CGFloat = 6
     public static let topPadding: CGFloat = 8
     public static let bottomPadding: CGFloat = 4
-    public static let bottomBarHeight: CGFloat = 42
+    /// The chrome bar shrinks alongside the keys in a compact height class: 32pt keys
+    /// under a fixed 42pt bar inverted the size hierarchy between typing keys and
+    /// chrome. It stays a shade taller than the compact keys because it hosts the
+    /// widest touch targets.
+    public static func bottomBarHeight(compact: Bool = false) -> CGFloat {
+        compact ? 34 : 42
+    }
     public static let keyCornerRadius: CGFloat = 6
 
     /// Width of shift and backspace. At least 44pt to meet the minimum touch target.
@@ -60,6 +66,20 @@ public enum KeyboardMetrics {
         case symbols
     }
 
+    /// Everything the container must know to reserve height, as one value over one
+    /// channel. Previously the page travelled a callback while the layout mode was
+    /// re-read from UserDefaults inside the controller — two transports for inputs to
+    /// a single derivation, which made it impossible to exercise end to end.
+    public struct HeightInputs: Equatable, Sendable {
+        public let page: Page
+        public let mode: LayoutMode
+
+        public init(page: Page, mode: LayoutMode) {
+            self.page = page
+            self.mode = mode
+        }
+    }
+
     /// Number of full-height rows the page renders.
     ///
     /// QWERTY carries shift and backspace inline on its last row; the grid and symbols
@@ -97,7 +117,7 @@ public enum KeyboardMetrics {
         compact: Bool = false
     ) -> CGFloat {
         let rows = pageHeight(page: page, mode: mode, style: style, compact: compact)
-        return topPadding + rows + rowGap + bottomBarHeight + bottomPadding
+        return topPadding + rows + rowGap + bottomBarHeight(compact: compact) + bottomPadding
     }
 
     /// Width of one letter key, so every row shares a unit and columns line up.

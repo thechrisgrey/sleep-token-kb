@@ -10,9 +10,14 @@ final class KeyboardViewController: UIInputViewController {
     private var hostingController: UIHostingController<KeyboardRootView>?
     private var heightConstraint: NSLayoutConstraint?
 
-    /// Which page the SwiftUI view is showing. The view reports it up, because the page
-    /// changes the row count and therefore the height the container must reserve.
-    private var currentPage: KeyboardMetrics.Page = .letters
+    /// What the SwiftUI view is showing, as the view itself reported it. The page and
+    /// layout mode change the row count and therefore the height the container must
+    /// reserve; carrying both on the one callback retires the second transport this
+    /// derivation used to have (a UserDefaults re-read at height time).
+    private var heightInputs = KeyboardMetrics.HeightInputs(
+        page: .letters,
+        mode: KeyboardPreferences.layoutMode
+    )
 
     /// Which host field the keyboard is serving, as far as the proxy can identify one.
     /// Two fields with identical traits are indistinguishable, and that is acceptable:
@@ -122,6 +127,10 @@ final class KeyboardViewController: UIInputViewController {
                 returnKeyType: { [weak self] in
                     self?.textDocumentProxy.returnKeyType ?? .default
                 },
+                returnKeyEnabled: { [weak self] in
+                    guard let proxy = self?.textDocumentProxy else { return true }
+                    return !(proxy.enablesReturnKeyAutomatically ?? false) || proxy.hasText
+                },
                 autocapitalization: { [weak self] in
                     self?.textDocumentProxy.autocapitalizationType ?? .sentences
                 },
@@ -129,8 +138,8 @@ final class KeyboardViewController: UIInputViewController {
                     self?.hasFullAccess ?? false
                 }
             ),
-            onHeightInputsChanged: { [weak self] page in
-                self?.currentPage = page
+            onHeightInputsChanged: { [weak self] inputs in
+                self?.heightInputs = inputs
                 self?.applyHeight()
             }
         )
@@ -170,8 +179,8 @@ final class KeyboardViewController: UIInputViewController {
         // Derived from the same metrics the SwiftUI content uses. Reserve the tallest
         // key style for the current page so toggling rune/ABC never clips a visible row.
         KeyboardMetrics.maxContentHeight(
-            page: currentPage,
-            mode: KeyboardPreferences.layoutMode,
+            page: heightInputs.page,
+            mode: heightInputs.mode,
             compact: traitCollection.verticalSizeClass == .compact
         )
     }

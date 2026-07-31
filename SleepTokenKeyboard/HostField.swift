@@ -9,6 +9,10 @@ import UIKit
 struct HostField {
     var contextBefore: () -> String?
     var returnKeyType: () -> UIReturnKeyType
+
+    /// False when the field asked for `enablesReturnKeyAutomatically` and holds no
+    /// text yet — the system keyboard dims and disables return there, so this one does.
+    var returnKeyEnabled: () -> Bool
     var autocapitalization: () -> UITextAutocapitalizationType
 
     /// Whether the user has granted Full Access in Settings.

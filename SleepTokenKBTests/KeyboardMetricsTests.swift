@@ -74,7 +74,31 @@ final class KeyboardMetricsTests: XCTestCase {
         let expected = KeyboardMetrics.topPadding
             + (rows * KeyboardMetrics.baseKeyHeight + (rows - 1) * KeyboardMetrics.rowGap)
             + KeyboardMetrics.rowGap
-            + KeyboardMetrics.bottomBarHeight
+            + KeyboardMetrics.bottomBarHeight(compact: false)
+            + KeyboardMetrics.bottomPadding
+        XCTAssertEqual(height, expected, accuracy: 0.001)
+    }
+
+    /// Landscape shrinks the keys to 32pt; a fixed 42pt bar would tower over them and
+    /// invert the size hierarchy between typing keys and chrome.
+    func testCompactBottomBarShrinksWithTheKeys() {
+        XCTAssertLessThan(
+            KeyboardMetrics.bottomBarHeight(compact: true),
+            KeyboardMetrics.bottomBarHeight(compact: false)
+        )
+        XCTAssertGreaterThanOrEqual(
+            KeyboardMetrics.bottomBarHeight(compact: true),
+            KeyboardMetrics.compactBaseKeyHeight,
+            "the bar hosts the widest touch targets; it must not drop below key height"
+        )
+    }
+
+    func testCompactContentHeightUsesTheCompactBar() {
+        let height = KeyboardMetrics.contentHeight(page: .letters, mode: .qwerty, style: .letters, compact: true)
+        let expected = KeyboardMetrics.topPadding
+            + KeyboardMetrics.pageHeight(page: .letters, mode: .qwerty, style: .letters, compact: true)
+            + KeyboardMetrics.rowGap
+            + KeyboardMetrics.bottomBarHeight(compact: true)
             + KeyboardMetrics.bottomPadding
         XCTAssertEqual(height, expected, accuracy: 0.001)
     }
