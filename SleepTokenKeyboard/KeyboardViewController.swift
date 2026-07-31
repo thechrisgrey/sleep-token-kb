@@ -76,9 +76,16 @@ final class KeyboardViewController: UIInputViewController {
 
     private func syncForAppearance() {
         applyHeight()
-        // Seed the fingerprint so the first textDidChange after presentation is not
-        // mistaken for a field switch (the audit's guaranteed-redundant rebuild).
-        lastFingerprint = currentFingerprint
+        // Field switches can cross a dismiss/re-present boundary: the controller is
+        // retained, so tapping a different field after dismissing the keyboard arrives
+        // here, not at textDidChange. A blind seed swallowed exactly those switches and
+        // let a manual caps lock (and the double-space window) leak into the new field.
+        // First presentation stays a seed, not a switch.
+        let fingerprint = currentFingerprint
+        if let previous = lastFingerprint, previous != fingerprint {
+            fieldGeneration += 1
+        }
+        lastFingerprint = fingerprint
         refreshRoot()
     }
 

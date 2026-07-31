@@ -122,6 +122,10 @@ struct KeyboardRootView: View {
             applyAutocapitalization()
         }
         .onChange(of: hostTextGeneration) {
+            // A change this keyboard did not cause -- a cursor jump, a host-side clear,
+            // a same-trait field switch -- breaks double-space consecutiveness; the echo
+            // of our own keystroke passes through the tracker silently.
+            spaceTracker.hostTextDidChange()
             applyAutocapitalization()
         }
     }
@@ -252,6 +256,7 @@ struct KeyboardRootView: View {
         haptic()
         onInsert(text)
         spaceTracker.interrupt()
+        spaceTracker.noteLocalChange()
     }
 
     /// Space is the one character key with a rule attached: a second space typed quickly
@@ -265,7 +270,10 @@ struct KeyboardRootView: View {
             onDeleteBackward()
             onInsert(". ")
             spaceTracker.interrupt()
+            spaceTracker.noteLocalChange()
         } else {
+            // insert() interrupts and re-opens are not its business; the record comes
+            // after so the window belongs to this space.
             insert(" ")
             spaceTracker.recordSpace()
         }
@@ -279,6 +287,7 @@ struct KeyboardRootView: View {
         if !isRepeat { haptic() }
         onDeleteBackward()
         spaceTracker.interrupt()
+        spaceTracker.noteLocalChange()
         applyAutocapitalization()
     }
 
