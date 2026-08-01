@@ -114,10 +114,16 @@ enum Theme {
     /// Tertiary ink for ornament and legal copy. Arcadia's carries a faint rose
     /// cast, so the pink reaches the quiet corners (pad hints, chevrons, legal
     /// copy) without shouting.
+    ///
+    /// Lightness is set by the AA floor, not by taste: this role carries the
+    /// unaffiliated notice and Rune Pad's empty state, and at its previous value it
+    /// measured 2.8:1 against `surfaceHigh`. Both themes keep their original channel
+    /// ratios exactly — only the level moved — so the neutral-warm and rose casts are
+    /// unchanged. `ThemeContrastTests` pins the result.
     static var inkFaint: Color {
         switch mode {
-        case .ritual: Color(red: 0.42, green: 0.41, blue: 0.39)
-        case .evenInArcadia: Color(red: 0.49, green: 0.42, blue: 0.45)
+        case .ritual: Color(red: 0.561, green: 0.547, blue: 0.521)
+        case .evenInArcadia: Color(red: 0.627, green: 0.538, blue: 0.576)
         }
     }
 
@@ -183,13 +189,72 @@ enum Theme {
 
     /// Display face: the system serif (New York). Distinctive against the glyphs
     /// without bundling a second custom font next to SleepTokenRunes.
-    static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight, design: .serif)
+    ///
+    /// Takes a text *style* rather than a point size, because `.system(size:)` does
+    /// not participate in Dynamic Type. The whole serif layer used to be frozen while
+    /// the captions beside it scaled, so at accessibility sizes the alphabet chart's
+    /// description grew past the letter it was describing — the hierarchy inverted on
+    /// the one screen whose job is teaching the alphabet. The keyboard extension had
+    /// this right all along (`@ScaledMetric` in `KeyboardRootView`); the host app did
+    /// not.
+    static func display(_ style: Font.TextStyle, weight: Font.Weight = .semibold) -> Font {
+        .system(style, design: .serif, weight: weight)
     }
 
-    /// Tracked uppercase label, the section voice of the whole app.
-    static func overline(_ size: CGFloat = 11) -> Font {
-        .system(size: size, weight: .semibold)
+    /// Serif at an explicit point size, for the two display moments whose size does not
+    /// land on a text style (the 40pt hero, the 38pt Damocles title) and which would
+    /// visibly shrink if rounded down to `.largeTitle`.
+    ///
+    /// Only for callers that have already scaled the value with `@ScaledMetric` — the
+    /// same arrangement the keyboard extension uses for its keycaps. A raw literal
+    /// passed here does not scale, which is the bug this API exists to avoid.
+    static func display(scaledSize: CGFloat, weight: Font.Weight = .semibold) -> Font {
+        .system(size: scaledSize, weight: weight, design: .serif)
+    }
+
+    /// Tracked uppercase label, the section voice of the whole app. Defaults to the
+    /// smallest style that still clears the platform's 11pt floor — the previous
+    /// 9pt and 10pt callers were below it.
+    static func overline(_ style: Font.TextStyle = .caption2) -> Font {
+        .system(style, weight: .semibold)
+    }
+
+    // MARK: Measure
+
+    /// Cap for a single column of body copy on a regular-width screen. The app ships
+    /// to iPad, where an uncapped column ran card prose to the full window width —
+    /// far past a readable measure at body size.
+    static let readableWidth: CGFloat = 620
+
+    /// Width cap for the current horizontal size class, or nil where the layout should
+    /// use every point it is given. Driven by size class rather than a device check,
+    /// so iPad Split View and Slide Over — which hand a tablet a phone-width window —
+    /// get the phone answer without a special case.
+    static func contentWidth(for sizeClass: UserInterfaceSizeClass?) -> CGFloat? {
+        sizeClass == .regular ? readableWidth : nil
+    }
+}
+
+// MARK: - Measure
+
+/// Caps and centres a screen's content column on regular-width screens, leaving
+/// compact widths exactly as they were.
+private struct ReadableColumn: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    func body(content: Content) -> some View {
+        content
+            // Inner frame caps the measure; outer frame re-expands so the capped
+            // column centres itself instead of hugging the leading edge.
+            .frame(maxWidth: Theme.contentWidth(for: sizeClass) ?? .infinity)
+            .frame(maxWidth: .infinity)
+    }
+}
+
+extension View {
+    /// Constrain this content to a readable measure on iPad and other regular widths.
+    func readableColumn() -> some View {
+        modifier(ReadableColumn())
     }
 }
 

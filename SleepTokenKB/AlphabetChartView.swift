@@ -34,6 +34,7 @@ struct AlphabetChartView: View {
                     .frame(maxWidth: .infinity)
             }
             .padding(16)
+            .readableColumn()
         }
         .background(RitualBackground())
         .navigationTitle("Alphabet")
@@ -44,17 +45,23 @@ struct AlphabetChartView: View {
 private struct GlyphCard: View {
     let letter: SleepTokenLetter
 
+    /// The glyph scales with the letter beneath it. Left fixed, it would shrink
+    /// relative to its own caption as the reading size grows — on the one screen
+    /// whose entire subject is the shape of the glyph.
+    @ScaledMetric(relativeTo: .title3) private var glyphSize: CGFloat = 40
+    @ScaledMetric(relativeTo: .caption2) private var descriptionFloor: CGFloat = 42
+
     var body: some View {
         VStack(spacing: 10) {
             // Decorative here: the card's own label already carries letter and
             // description, so the glyph's built-in label/hint must not double up.
             SymbolGlyphView(letter: letter, foreground: Theme.ink)
-                .frame(width: 40, height: 40)
+                .frame(width: glyphSize, height: glyphSize)
                 .padding(.top, 6)
                 .accessibilityHidden(true)
 
             Text(letter.upperLatin)
-                .font(Theme.display(20, weight: .bold))
+                .font(Theme.display(.title3, weight: .bold))
                 .foregroundStyle(Theme.gold)
 
             // No line limit: the description IS this screen's content, so at large
@@ -64,7 +71,7 @@ private struct GlyphCard: View {
                 .font(.caption2)
                 .foregroundStyle(Theme.inkDim)
                 .multilineTextAlignment(.center)
-                .frame(minHeight: 42, alignment: .top)
+                .frame(minHeight: descriptionFloor, alignment: .top)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)

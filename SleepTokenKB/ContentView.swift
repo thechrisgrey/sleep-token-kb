@@ -10,6 +10,9 @@ struct ContentView: View {
     /// (the real mode flips only once the curtain is opaque).
     @State private var pendingMode: ThemeMode?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The root screen has no navigation title — the hero *is* the title — so it keeps
+    /// its 40pt rather than rounding down to `.largeTitle`'s 34, and scales from there.
+    @ScaledMetric(relativeTo: .largeTitle) private var heroTitleSize: CGFloat = 40
 
     var body: some View {
         NavigationStack {
@@ -95,6 +98,7 @@ struct ContentView: View {
                     footer
                 }
                 .padding(20)
+                .readableColumn()
             }
             .background(RitualBackground())
             // The root deliberately has no navigation title (the hero is the title),
@@ -180,7 +184,7 @@ struct ContentView: View {
                 .foregroundStyle(Theme.gold)
 
             Text("Ritual Keyboard")
-                .font(Theme.display(40, weight: .bold))
+                .font(Theme.display(scaledSize: heroTitleSize, weight: .bold))
                 .foregroundStyle(Theme.ink)
 
             // The app demonstrating its own purpose: the name, spelled in the alphabet.
@@ -203,7 +207,7 @@ struct ContentView: View {
     private func waysRow(title: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(Theme.display(17))
+                .font(Theme.display(.body))
                 .foregroundStyle(Theme.ink)
             Text(detail)
                 .font(.caption)
@@ -226,7 +230,7 @@ struct ContentView: View {
             // separates it from the fine print. Quiet, but deliberately not hidden.
             VStack(spacing: 10) {
                 Text("Dedicated to Erikka Rose")
-                    .font(Theme.display(13, weight: .regular))
+                    .font(Theme.display(.footnote, weight: .regular))
                     .italic()
                     .foregroundStyle(Theme.inkDim)
 
@@ -273,7 +277,7 @@ private struct DestinationCard: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(Theme.display(17))
+                    .font(Theme.display(.body))
                     .foregroundStyle(Theme.ink)
                 Text(detail)
                     .font(.caption)

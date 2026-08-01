@@ -3,6 +3,10 @@ import UIKit
 
 /// Walks the user through Settings so the extension appears in the system keyboard list.
 struct EnableKeyboardView: View {
+    /// The numeral medallion scales with the numeral inside it; fixed, the roman
+    /// numeral outgrows its circle at large reading sizes.
+    @ScaledMetric(relativeTo: .footnote) private var numeralSize: CGFloat = 34
+
     private struct SetupStep {
         let title: String
         let detail: String
@@ -57,10 +61,10 @@ struct EnableKeyboardView: View {
                             openSettings()
                         } label: {
                             Text("Open Settings")
-                                .font(Theme.display(16))
+                                .font(Theme.display(.callout))
                                 .foregroundStyle(Theme.field)
                                 .frame(maxWidth: .infinity)
-                                .frame(height: 48)
+                                .frame(minHeight: 48)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                                         .fill(Theme.gold)
@@ -92,6 +96,7 @@ struct EnableKeyboardView: View {
                 }
             }
             .padding(16)
+            .readableColumn()
         }
         .background(RitualBackground())
         .navigationTitle("Enable keyboard")
@@ -102,9 +107,9 @@ struct EnableKeyboardView: View {
         let step = Self.steps[index]
         return HStack(alignment: .top, spacing: 14) {
             Text(Self.numeral(index))
-                .font(Theme.display(14, weight: .bold))
+                .font(Theme.display(.footnote, weight: .bold))
                 .foregroundStyle(Theme.gold)
-                .frame(width: 34, height: 34)
+                .frame(width: numeralSize, height: numeralSize)
                 .background(
                     Circle().fill(Theme.surfaceHigh)
                 )
@@ -114,7 +119,7 @@ struct EnableKeyboardView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(step.title)
-                    .font(Theme.display(16))
+                    .font(Theme.display(.callout))
                     .foregroundStyle(Theme.ink)
                 Text(step.detail)
                     .font(.caption)

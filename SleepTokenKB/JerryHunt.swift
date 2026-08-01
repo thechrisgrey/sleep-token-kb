@@ -93,7 +93,7 @@ struct HiddenJerry: View {
                     radius: pop ? 8 : 3
                 )
                 .scaleEffect(pop ? 1.3 : 1)
-                .frame(minWidth: 32, minHeight: 32)
+                .frame(minWidth: 44, minHeight: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -157,6 +157,10 @@ struct DamoclesRevealView: View {
     private let champagne = Theme.arcadiaChampagne
     private let rose = Theme.arcadiaRose
 
+    /// The reward title keeps its 38pt rather than rounding down to `.largeTitle`'s 34,
+    /// and scales from there. `minimumScaleFactor` below absorbs the largest sizes.
+    @ScaledMetric(relativeTo: .largeTitle) private var titleSize: CGFloat = 38
+
     var body: some View {
         ZStack {
             Color(red: 0.016, green: 0.024, blue: 0.020)
@@ -172,7 +176,7 @@ struct DamoclesRevealView: View {
 
             VStack(spacing: 20) {
                 Text("ALL TEN JERRYS FOUND")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(.caption, weight: .semibold))
                     .tracking(5)
                     .foregroundStyle(rose)
                     .offset(x: 2.5)
@@ -184,7 +188,7 @@ struct DamoclesRevealView: View {
                     .scaleEffect(jerryVisible ? 1 : 0.92)
 
                 Text("DAMOCLES")
-                    .font(.system(size: 38, weight: .semibold, design: .serif))
+                    .font(Theme.display(scaledSize: titleSize))
                     .kerning(titleKerning)
                     .foregroundStyle(champagne)
                     .shadow(color: champagne.opacity(0.45), radius: 14)
@@ -194,7 +198,7 @@ struct DamoclesRevealView: View {
                     .minimumScaleFactor(0.6)
 
                 Text("SLEEP TOKEN · EVEN IN ARCADIA")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(.caption2, weight: .semibold))
                     .tracking(3.4)
                     .foregroundStyle(Theme.inkDim)
                     .offset(x: 1.7)

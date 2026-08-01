@@ -14,6 +14,7 @@
 		06F3C1E6FB78687C12D35980 /* RuneExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 538EF89B2D7012D02DCC0639 /* RuneExportTests.swift */; };
 		09992AB3A35C1B588264CDDF /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E015BC4EB2125A6F597E6DA /* KeyboardViewController.swift */; };
 		10C6F47ED4334ADFA54454F7 /* KeyboardMetricsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169A4EB79EEE4BB091880928 /* KeyboardMetricsTests.swift */; };
+		150178E1D5BE55C1EE0DF45B /* SpellCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62E7F5B096A51669B58B9C7C /* SpellCheckerTests.swift */; };
 		1538BBE1F8EF0C458D8C86A5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EEF43754E7EFEBEE3DBE885E /* PrivacyInfo.xcprivacy */; };
 		17A9D58D634C22CCD79F2885 /* ShiftState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CAFEA8E748BFEF65ED884D4 /* ShiftState.swift */; };
 		1C069107C79837E2C3297973 /* Alphabet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F8B191D3CC54F363C6833E /* Alphabet.swift */; };
@@ -41,6 +42,7 @@
 		7FF7C55EF2E686EBDCCE5C37 /* AlphabetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8F398F5432EDA25CEFEA211 /* AlphabetTests.swift */; };
 		84B430F0F3178703A108A20D /* SleepTokenRunes.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8E64D0C4BB44067FF9654EC3 /* SleepTokenRunes.ttf */; };
 		84C7D4FF9A9275386565E4E8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A54E051FC5420CE3A2B6B172 /* Assets.xcassets */; };
+		86A589639603B13DC7653154 /* ReadableWidthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5602A7FD096023BA0CAFC4 /* ReadableWidthTests.swift */; };
 		8CCA69B7F95473DF3EAEF8E0 /* RuneExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D34CF559D2C60AEE4558833F /* RuneExport.swift */; };
 		8CDF1518E5AF4A7B8385C199 /* KeyRepeat.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3C3E2E099208283DFD8B528 /* KeyRepeat.swift */; };
 		93F1C84E847CB3E7121A9814 /* KeyboardRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A6A4EC0AD28FD24AE067D6 /* KeyboardRootView.swift */; };
@@ -53,11 +55,13 @@
 		BAFF2A479A23DB3D53CB07FC /* SleepTokenKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BD67C38107529CFBD5DFA9A8 /* SleepTokenKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BDC6D6F80A76F4E000DCBB0E /* AutoShift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4A8A0CAA11A6BA7792C758 /* AutoShift.swift */; };
 		CCF933829EDB4A1151A60E03 /* KeyboardPreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D3D861BDF2AC3FE450D9A0 /* KeyboardPreferencesTests.swift */; };
+		CCF9E44C714ED245513AB569 /* SpellChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C893AC6C6DCB65953F46EEA9 /* SpellChecker.swift */; };
 		CF02186A21A344E4500C8337 /* CanvasMetricsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC6AA14C3002A819481F7D6 /* CanvasMetricsTests.swift */; };
 		D552F6CA2BFC07986E539B0C /* ShiftStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF380D63C799184E6A67B59 /* ShiftStateTests.swift */; };
 		DA5D79D9C79DD6B933A75042 /* JerryHuntTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB174ED028252D27375F7E3C /* JerryHuntTests.swift */; };
 		DCAB232C8F6D8D6F81AE0552 /* LayoutModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FFDCB708F5C31C5A3A08C77 /* LayoutModeTests.swift */; };
 		DD4214EEAAA250B612B47B23 /* SpaceTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A88EA39EABC548CE19DBF3F /* SpaceTracker.swift */; };
+		E02D1A18B5F4B915AE14E8B4 /* ThemeContrastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 470F58C1F47DF1878016A2CF /* ThemeContrastTests.swift */; };
 		E7603E6FDDF6B258CCA53197 /* SymbolGlyphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F8987716A1302DDC384C178 /* SymbolGlyphView.swift */; };
 		E94ACC45286AF4F3790D9804 /* AutoShiftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5640E5146F360D6A5E47DD36 /* AutoShiftTests.swift */; };
 		EB6C02B83B7D5AAE2E33D972 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A8C769BA84F84C9A399166F /* ContentView.swift */; };
@@ -109,8 +113,10 @@
 		2DC71CFEE0A72F1981885FAD /* LayoutMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutMode.swift; sourceTree = "<group>"; };
 		2FEF2D03A1421B388A159704 /* ReturnKeyTitleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnKeyTitleTests.swift; sourceTree = "<group>"; };
 		3027B80208E51D6B3304FA50 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		3A5602A7FD096023BA0CAFC4 /* ReadableWidthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadableWidthTests.swift; sourceTree = "<group>"; };
 		3CAD573554E150B9EB32650B /* PeriodShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeriodShortcutTests.swift; sourceTree = "<group>"; };
 		434AC2364F4B983B3DD35DB4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		470F58C1F47DF1878016A2CF /* ThemeContrastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeContrastTests.swift; sourceTree = "<group>"; };
 		4CAFEA8E748BFEF65ED884D4 /* ShiftState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShiftState.swift; sourceTree = "<group>"; };
 		4F8987716A1302DDC384C178 /* SymbolGlyphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolGlyphView.swift; sourceTree = "<group>"; };
 		538EF89B2D7012D02DCC0639 /* RuneExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuneExportTests.swift; sourceTree = "<group>"; };
@@ -118,6 +124,7 @@
 		5640E5146F360D6A5E47DD36 /* AutoShiftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoShiftTests.swift; sourceTree = "<group>"; };
 		588BCFC4A4EB5774183C06C3 /* SleepTokenKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SleepTokenKeyboard.entitlements; sourceTree = "<group>"; };
 		5B1217EEFF5F8964823A8706 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
+		62E7F5B096A51669B58B9C7C /* SpellCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpellCheckerTests.swift; sourceTree = "<group>"; };
 		6B4A8A0CAA11A6BA7792C758 /* AutoShift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoShift.swift; sourceTree = "<group>"; };
 		6E2C60A1ED5255A7B399E354 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		75BF6E6C381599E1617A8935 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -143,6 +150,7 @@
 		B7FFDCF2286E61D11706D975 /* KeyPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPalette.swift; sourceTree = "<group>"; };
 		BD67C38107529CFBD5DFA9A8 /* SleepTokenKeyboard.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SleepTokenKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		C027840CED3A4DB8DD9A917B /* KeyboardLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardLayoutTests.swift; sourceTree = "<group>"; };
+		C893AC6C6DCB65953F46EEA9 /* SpellChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpellChecker.swift; sourceTree = "<group>"; };
 		D1C5A0DCB6F05CB00209375A /* SleepTokenKB.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SleepTokenKB.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D34CF559D2C60AEE4558833F /* RuneExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuneExport.swift; sourceTree = "<group>"; };
 		D869B07816C79E1AA3784CE4 /* SleepTokenKB.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SleepTokenKB.entitlements; sourceTree = "<group>"; };
@@ -207,11 +215,14 @@
 				F26CE74A2AB7629489EC2649 /* KeyRepeatTests.swift */,
 				9FFDCB708F5C31C5A3A08C77 /* LayoutModeTests.swift */,
 				3CAD573554E150B9EB32650B /* PeriodShortcutTests.swift */,
+				3A5602A7FD096023BA0CAFC4 /* ReadableWidthTests.swift */,
 				2FEF2D03A1421B388A159704 /* ReturnKeyTitleTests.swift */,
 				538EF89B2D7012D02DCC0639 /* RuneExportTests.swift */,
 				FE688E260CB2E0F3E5B8BA0C /* RuneFontTests.swift */,
 				FFF380D63C799184E6A67B59 /* ShiftStateTests.swift */,
 				B30913B9CC2CF7896B3DA7EA /* SpaceTrackerTests.swift */,
+				62E7F5B096A51669B58B9C7C /* SpellCheckerTests.swift */,
+				470F58C1F47DF1878016A2CF /* ThemeContrastTests.swift */,
 				5B1217EEFF5F8964823A8706 /* ThemeTests.swift */,
 			);
 			path = SleepTokenKBTests;
@@ -245,6 +256,7 @@
 				D869B07816C79E1AA3784CE4 /* SleepTokenKB.entitlements */,
 				91AD1321AFA7CBB8EA75619E /* SleepTokenKBApp.swift */,
 				8E64D0C4BB44067FF9654EC3 /* SleepTokenRunes.ttf */,
+				C893AC6C6DCB65953F46EEA9 /* SpellChecker.swift */,
 				FAD366C12A527A2E0266EEE1 /* Theme.swift */,
 			);
 			path = SleepTokenKB;
@@ -410,6 +422,7 @@
 				F574B07F87156C0EDE13C0C4 /* ShiftState.swift in Sources */,
 				5497021A6F0AC323C422A947 /* SleepTokenKBApp.swift in Sources */,
 				F6A48E898292917D44243D10 /* SpaceTracker.swift in Sources */,
+				CCF9E44C714ED245513AB569 /* SpellChecker.swift in Sources */,
 				4F9B122D7FBE549ABDC74519 /* SymbolGlyphView.swift in Sources */,
 				76BDD0A698E5BCD375F27517 /* Theme.swift in Sources */,
 			);
@@ -430,11 +443,14 @@
 				CCF933829EDB4A1151A60E03 /* KeyboardPreferencesTests.swift in Sources */,
 				DCAB232C8F6D8D6F81AE0552 /* LayoutModeTests.swift in Sources */,
 				FF245544F3A2999030474BEC /* PeriodShortcutTests.swift in Sources */,
+				86A589639603B13DC7653154 /* ReadableWidthTests.swift in Sources */,
 				3E32ACB8A0357F9BF9B701EC /* ReturnKeyTitleTests.swift in Sources */,
 				06F3C1E6FB78687C12D35980 /* RuneExportTests.swift in Sources */,
 				B2A1A3D335F4B0C06EDAB91B /* RuneFontTests.swift in Sources */,
 				D552F6CA2BFC07986E539B0C /* ShiftStateTests.swift in Sources */,
 				355E2A621A40DD358C643D33 /* SpaceTrackerTests.swift in Sources */,
+				150178E1D5BE55C1EE0DF45B /* SpellCheckerTests.swift in Sources */,
+				E02D1A18B5F4B915AE14E8B4 /* ThemeContrastTests.swift in Sources */,
 				6F15561AF34EE3F7E4BBB854 /* ThemeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

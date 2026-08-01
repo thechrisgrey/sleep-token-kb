@@ -43,7 +43,7 @@ struct ArcadiaRevealView: View {
 
             VStack(spacing: 18) {
                 Text("SLEEP TOKEN")
-                    .font(.system(size: 34, weight: .semibold, design: .serif))
+                    .font(.system(.largeTitle, design: .serif, weight: .semibold))
                     .kerning(wordmarkKerning)
                     .foregroundStyle(champagne)
                     .shadow(color: champagne.opacity(0.45), radius: 14)
@@ -57,7 +57,7 @@ struct ArcadiaRevealView: View {
                 HStack(spacing: 12) {
                     ornamentLine
                     Text("EVEN IN ARCADIA")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(.footnote, weight: .semibold))
                         .tracking(6)
                         .foregroundStyle(rose)
                         .offset(x: 3)

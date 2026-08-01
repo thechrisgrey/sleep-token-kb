@@ -20,6 +20,9 @@ struct RunePadView: View {
     /// `@GestureState` rather than `@State`: SwiftUI resets it on gesture end *and* on
     /// system touch-cancellation, where a drag's `onEnded` never arrives.
     @GestureState private var isPressingDelete = false
+    /// One checker for the view's lifetime. The read-back is recomputed during `body`,
+    /// so this must outlive a single evaluation to be worth anything.
+    @State private var spellChecker = SpellChecker()
 
     @Environment(\.displayScale) private var displayScale
 
@@ -35,6 +38,7 @@ struct RunePadView: View {
             letterPad
         }
         .padding(16)
+        .readableColumn()
         .background(RitualBackground())
         .navigationTitle("Rune Pad")
         .navigationBarTitleDisplayMode(.inline)
@@ -161,29 +165,14 @@ struct RunePadView: View {
             .map { SleepTokenLetter.latinTranslation(of: $0) }
     }
 
-    /// Words the system dictionary does not recognise. Only *finished* columns are
-    /// judged — the trailing column is still being typed until a space ends it, so
-    /// flagging it mid-word would just flicker amber on every keystroke. A word
-    /// passes if either its lowercase or capitalized form is accepted, so proper
-    /// nouns (EUCLID, ARCADIA) are not false-flagged.
+    /// Words the system dictionary does not recognise. The rules — which columns count
+    /// as finished, and how proper nouns pass — live in `SpellChecker`, along with the
+    /// one `UITextChecker` they share. This is reached from `body`, so constructing a
+    /// checker here (as it used to) meant paying for one on every keystroke.
     private func misspelledWords(in words: [String]) -> Set<String> {
-        let completed = text.hasSuffix(" ") ? words : Array(words.dropLast())
-        let checker = UITextChecker()
-        var flagged: Set<String> = []
-        for word in completed where word.count > 1 {
-            if isMisspelled(word, checker), isMisspelled(word.capitalized, checker) {
-                flagged.insert(word)
-            }
-        }
-        return flagged
-    }
-
-    private func isMisspelled(_ word: String, _ checker: UITextChecker) -> Bool {
-        let range = NSRange(location: 0, length: word.utf16.count)
-        let miss = checker.rangeOfMisspelledWord(
-            in: word, range: range, startingAt: 0, wrap: false, language: "en_US"
+        spellChecker.misspelled(
+            in: SpellChecker.completedWords(words, textEndsWithSpace: text.hasSuffix(" "))
         )
-        return miss.location != NSNotFound
     }
 
     @ViewBuilder
@@ -194,11 +183,11 @@ struct RunePadView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text("READS")
-                        .font(Theme.overline(9))
+                        .font(Theme.overline())
                         .tracking(2.2)
                         .foregroundStyle(Theme.inkDim)
                     Self.translationText(words: words, flagged: flagged)
-                        .font(Theme.display(16, weight: .medium))
+                        .font(Theme.display(.callout, weight: .medium))
                         .kerning(1.4)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -259,7 +248,7 @@ struct RunePadView: View {
                                     .frame(height: 20)
                                     .accessibilityHidden(true)
                                 Text(letter.upperLatin)
-                                    .font(.system(size: 8, weight: .semibold, design: .rounded))
+                                    .font(.system(.caption2, design: .rounded, weight: .semibold))
                                     .foregroundStyle(Theme.inkFaint)
                                     .accessibilityHidden(true)
                             }
@@ -280,11 +269,13 @@ struct RunePadView: View {
             HStack(spacing: 8) {
                 Button(action: startNewColumn) {
                     Text("SPACE · NEW COLUMN")
-                        .font(Theme.overline(10))
+                        .font(Theme.overline())
                         .tracking(1.8)
                         .foregroundStyle(Theme.inkDim)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 40)
+                        // minHeight, not height: 44pt is the platform floor, and the
+                        // label scales with Dynamic Type now.
+                        .frame(minHeight: 44)
                         .background(
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .fill(Theme.surface)
