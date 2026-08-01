@@ -1,0 +1,436 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-01T00:00:00Z",
+  "title": "Design System: Ritual Keyboard",
+  "extensions": {
+    "colorMeta": {
+      "antique-gold": {
+        "role": "primary",
+        "displayName": "Antique Gold",
+        "canonical": "oklch(74% 0.09 85)",
+        "tonalRamp": [
+          "oklch(15% 0.03 85)",
+          "oklch(26% 0.05 85)",
+          "oklch(38% 0.07 85)",
+          "oklch(50% 0.085 85)",
+          "oklch(62% 0.09 85)",
+          "oklch(74% 0.09 85)",
+          "oklch(85% 0.06 85)",
+          "oklch(95% 0.03 85)"
+        ]
+      },
+      "dusty-rose": {
+        "role": "primary",
+        "displayName": "Dusty Rose",
+        "canonical": "oklch(75% 0.09 0)",
+        "tonalRamp": [
+          "oklch(15% 0.03 0)",
+          "oklch(26% 0.05 0)",
+          "oklch(38% 0.07 0)",
+          "oklch(50% 0.085 0)",
+          "oklch(62% 0.09 0)",
+          "oklch(75% 0.09 0)",
+          "oklch(86% 0.055 0)",
+          "oklch(95% 0.025 0)"
+        ]
+      },
+      "champagne-gilt": {
+        "role": "secondary",
+        "displayName": "Champagne Gilt",
+        "canonical": "oklch(76% 0.07 90)",
+        "tonalRamp": [
+          "oklch(15% 0.025 90)",
+          "oklch(27% 0.04 90)",
+          "oklch(39% 0.055 90)",
+          "oklch(51% 0.065 90)",
+          "oklch(63% 0.07 90)",
+          "oklch(76% 0.07 90)",
+          "oklch(86% 0.045 90)",
+          "oklch(95% 0.02 90)"
+        ]
+      },
+      "sage": {
+        "role": "tertiary",
+        "displayName": "Sage",
+        "canonical": "oklch(66% 0.03 150)",
+        "tonalRamp": [
+          "oklch(15% 0.015 150)",
+          "oklch(26% 0.02 150)",
+          "oklch(38% 0.025 150)",
+          "oklch(50% 0.03 150)",
+          "oklch(58% 0.03 150)",
+          "oklch(66% 0.03 150)",
+          "oklch(80% 0.022 150)",
+          "oklch(95% 0.012 150)"
+        ]
+      },
+      "caution-amber": {
+        "role": "tertiary",
+        "displayName": "Caution Amber",
+        "canonical": "oklch(72% 0.12 55)",
+        "tonalRamp": [
+          "oklch(15% 0.04 55)",
+          "oklch(27% 0.07 55)",
+          "oklch(39% 0.09 55)",
+          "oklch(50% 0.11 55)",
+          "oklch(61% 0.12 55)",
+          "oklch(72% 0.12 55)",
+          "oklch(84% 0.08 55)",
+          "oklch(95% 0.035 55)"
+        ]
+      },
+      "obsidian": {
+        "role": "neutral",
+        "displayName": "Obsidian",
+        "canonical": "oklch(13% 0.004 300)",
+        "tonalRamp": [
+          "oklch(13% 0.004 300)",
+          "oklch(20% 0.004 300)",
+          "oklch(30% 0.004 300)",
+          "oklch(42% 0.004 300)",
+          "oklch(55% 0.004 300)",
+          "oklch(68% 0.004 300)",
+          "oklch(82% 0.004 300)",
+          "oklch(95% 0.004 300)"
+        ]
+      },
+      "arcadian-green": {
+        "role": "neutral",
+        "displayName": "Arcadian Green",
+        "canonical": "oklch(20% 0.02 155)",
+        "tonalRamp": [
+          "oklch(13% 0.015 155)",
+          "oklch(20% 0.02 155)",
+          "oklch(30% 0.025 155)",
+          "oklch(42% 0.03 155)",
+          "oklch(55% 0.03 155)",
+          "oklch(68% 0.025 155)",
+          "oklch(82% 0.018 155)",
+          "oklch(95% 0.01 155)"
+        ]
+      },
+      "bone": {
+        "role": "neutral",
+        "displayName": "Bone",
+        "canonical": "oklch(93% 0.015 85)",
+        "tonalRamp": [
+          "oklch(15% 0.008 85)",
+          "oklch(26% 0.01 85)",
+          "oklch(38% 0.012 85)",
+          "oklch(50% 0.014 85)",
+          "oklch(62% 0.015 85)",
+          "oklch(74% 0.015 85)",
+          "oklch(85% 0.015 85)",
+          "oklch(93% 0.015 85)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display Serif",
+        "purpose": "Ceremony wordmarks only: SLEEP TOKEN and DAMOCLES. Letterspacing animates from 14pt to 5pt as blur burns off. Anchored via @ScaledMetric to .largeTitle so it scales."
+      },
+      "headline": {
+        "displayName": "Glyph Letter",
+        "purpose": "The Latin letter beneath each glyph in the alphabet chart, in the accent color."
+      },
+      "title": {
+        "displayName": "Destination Title",
+        "purpose": "Card titles and the Rune Pad read-back line. Serif names things."
+      },
+      "body": {
+        "displayName": "Control Label",
+        "purpose": "Toggle and picker labels. System sans, never serif."
+      },
+      "caption": {
+        "displayName": "Detail Copy",
+        "purpose": "Card detail, glyph construction notes, requirement captions, legal copy."
+      },
+      "label": {
+        "displayName": "Section Voice",
+        "purpose": "Tracked uppercase section headings. Deliberate brand grammar, not an eyebrow reflex. Anchored to .caption2 (11pt), the platform floor."
+      },
+      "keycap": {
+        "displayName": "Keycap",
+        "purpose": "Letter faces in the extension. Rounded system sans, size derived from key width. Already @ScaledMetric in the extension; the host app now matches."
+      },
+      "glyph": {
+        "displayName": "Rune Glyph",
+        "purpose": "PUA-mapped ritual alphabet, U+E900 to U+E919. Rune Pad only; the extension renders vector assets."
+      }
+    },
+    "shadows": [
+      {
+        "name": "wordmark-bloom",
+        "value": "0 0 14px rgba(199,181,122,0.45)",
+        "purpose": "Behind ceremony display type (SLEEP TOKEN, DAMOCLES). Nowhere else."
+      },
+      {
+        "name": "silhouette-rim",
+        "value": "0 0 18px rgba(222,148,171,0.35)",
+        "purpose": "Behind the black flamingo. Keeps a near-black silhouette legible on black without breaking the shape."
+      },
+      {
+        "name": "silhouette-rim-strong",
+        "value": "0 0 24px rgba(222,148,171,0.5)",
+        "purpose": "The flamingo at full height during the Damocles ceremony."
+      },
+      {
+        "name": "found-pulse",
+        "value": "0 0 10px rgba(222,148,171,0.45)",
+        "purpose": "The one interactive glow: a hidden Jerry gains this permanently once found."
+      }
+    ],
+    "motion": [
+      {
+        "name": "press-release",
+        "value": "ease-out 80ms",
+        "purpose": "Key press fade-OUT only. Touch-down highlight lands instantly with no animation."
+      },
+      {
+        "name": "readback",
+        "value": "ease-out 150ms",
+        "purpose": "Rune Pad Latin read-back updating on every keystroke."
+      },
+      {
+        "name": "found-pop",
+        "value": "spring 350ms",
+        "purpose": "The N of 10 counter appearing when a Jerry is found."
+      },
+      {
+        "name": "found-settle",
+        "value": "ease-out 400ms",
+        "purpose": "The found counter's pop releasing."
+      },
+      {
+        "name": "curtain-in",
+        "value": "ease-in 300ms",
+        "purpose": "Ceremony curtain rising to opaque. The theme flips behind it."
+      },
+      {
+        "name": "curtain-out",
+        "value": "ease-in-out 850ms",
+        "purpose": "Ceremony dissolving into the re-themed app. Damocles uses 700ms."
+      },
+      {
+        "name": "wordmark-breathe",
+        "value": "ease-out 1050ms",
+        "purpose": "Display type arriving: opacity, kerning 14pt to 5pt, blur 7 to 0, together."
+      },
+      {
+        "name": "ornament-arrive",
+        "value": "ease-out 500-700ms",
+        "purpose": "Ceremony subtitle and flamingo entrances, staged behind the wordmark."
+      },
+      {
+        "name": "key-repeat",
+        "value": "400ms delay, 120ms interval, 50ms after 12 repeats",
+        "purpose": "Hold-to-repeat on backspace and arrow-style keys."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "regular-height",
+        "value": "portrait iPhone \u2014 40pt keys, 44pt hinted, 42pt chrome bar"
+      },
+      {
+        "name": "compact-height",
+        "value": "landscape iPhone \u2014 32pt keys, 36pt hinted, 34pt chrome bar"
+      },
+      {
+        "name": "accessibility-type",
+        "value": "Dynamic Type accessibility sizes \u2014 alphabet chart drops from three columns to two"
+      },
+      {
+        "name": "readable-width",
+        "value": "620pt cap on regular horizontal size class",
+        "purpose": "Content measure cap applied by readableColumn(); compact widths are uncapped."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Destination Card",
+      "kind": "card",
+      "refersTo": "destination-card",
+      "description": "The home screen's navigation primitive: glyph tile, serif title, caption, chevron.",
+      "html": "<a class=\"ds-destination-card\" href=\"#\"><span class=\"ds-destination-tile\"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"><circle cx=\"12\" cy=\"10\" r=\"6\"/><circle cx=\"12\" cy=\"10\" r=\"1.5\" fill=\"currentColor\" stroke=\"none\"/><path d=\"M7 17l10 5M17 17L7 22\"/></svg></span><span class=\"ds-destination-text\"><span class=\"ds-destination-title\">Rune Pad</span><span class=\"ds-destination-detail\">Compose vertical ritual text, read it back in Latin, export it anywhere.</span></span><svg class=\"ds-destination-chevron\" viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9 18l6-6-6-6\"/></svg></a>",
+      "css": ".ds-destination-card { display: flex; align-items: center; gap: 14px; padding: 14px; background: #181619; border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; text-decoration: none; transition: background 150ms ease-out, transform 80ms ease-out; } .ds-destination-card:hover { background: #1d1b1f; } .ds-destination-card:active { transform: scale(0.99); } .ds-destination-card:focus-visible { outline: 2px solid #CCAB66; outline-offset: 2px; } .ds-destination-tile { display: flex; align-items: center; justify-content: center; flex: 0 0 46px; width: 46px; height: 46px; border-radius: 12px; background: #252327; border: 1px solid rgba(204,171,102,0.22); color: #CCAB66; } .ds-destination-text { display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; } .ds-destination-title { font-family: 'New York', Georgia, serif; font-size: 17px; font-weight: 600; color: #EBE6D9; } .ds-destination-detail { font-family: -apple-system, system-ui, sans-serif; font-size: 12px; line-height: 1.35; color: #9E998F; } .ds-destination-chevron { flex: 0 0 auto; color: #8F8B85; }"
+    },
+    {
+      "name": "Ritual Card",
+      "kind": "card",
+      "refersTo": "card-ritual",
+      "description": "The base container. Hairline-bordered, flat at rest, never nested; internal rows separate with hairline rules.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-row\"><span class=\"ds-card-title\">System keyboard</span><span class=\"ds-card-detail\">Rune or ABC keycaps &mdash; always inserts normal English, so it works in Messages, Notes, everywhere.</span></div><div class=\"ds-card-rule\"></div><div class=\"ds-card-row\"><span class=\"ds-card-title\">Rune Pad</span><span class=\"ds-card-detail\">Real vertical runes, exported as images or text for apps that accept pictures.</span></div></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 14px; padding: 16px; background: #181619; border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; } .ds-card-row { display: flex; flex-direction: column; gap: 4px; } .ds-card-title { font-family: 'New York', Georgia, serif; font-size: 17px; font-weight: 600; color: #EBE6D9; } .ds-card-detail { font-family: -apple-system, system-ui, sans-serif; font-size: 12px; line-height: 1.35; color: #9E998F; } .ds-card-rule { height: 1px; background: rgba(255,255,255,0.09); }"
+    },
+    {
+      "name": "Section Label",
+      "kind": "custom",
+      "refersTo": "section-label",
+      "description": "The app's named section voice: 11pt semibold uppercase tracked 2.6pt. Deliberate brand grammar, committed before DESIGN.md existed.",
+      "html": "<span class=\"ds-section-label\">Keyboard defaults</span>",
+      "css": ".ds-section-label { display: block; font-family: -apple-system, system-ui, sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 2.6px; text-transform: uppercase; color: #9E998F; }"
+    },
+    {
+      "name": "Keycap (letter)",
+      "kind": "button",
+      "refersTo": "keycap-letter",
+      "description": "Extension key. Always the lightest surface in both appearances. Press highlight is instant; only the release fades.",
+      "html": "<button class=\"ds-keycap\">A</button><button class=\"ds-keycap ds-keycap-hinted\"><span class=\"ds-keycap-glyph\">&#9671;</span><span class=\"ds-keycap-hint\">a</span></button>",
+      "css": ".ds-keycap { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 40px; margin-right: 5px; padding: 0 6px; background: #525252; color: #FFFFFF; border: none; border-radius: 6px; font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 17px; font-weight: 500; transition: opacity 80ms ease-out, transform 80ms ease-out; } .ds-keycap:hover { background: #5a5a5a; } .ds-keycap:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; } .ds-keycap:active { opacity: 0.55; transform: scale(0.97); transition: none; } .ds-keycap-hinted { flex-direction: column; gap: 1px; height: 44px; } .ds-keycap-glyph { font-size: 18px; line-height: 1; } .ds-keycap-hint { font-size: 9px; font-weight: 600; line-height: 1; opacity: 0.75; }"
+    },
+    {
+      "name": "Keycap (function)",
+      "kind": "button",
+      "refersTo": "keycap-function",
+      "description": "Shift and backspace. Dimmer than a letter key but still lighter than the field; 44pt wide minimum touch target. Engaged shift brightens to the active color.",
+      "html": "<button class=\"ds-keycap-fn\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 4l7 7h-4v6H9v-6H5z\"/></svg></button><button class=\"ds-keycap-fn ds-keycap-fn-active\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"currentColor\"><path d=\"M12 3l8 8h-4.5v5h-7v-5H4z\"/><rect x=\"8.5\" y=\"18\" width=\"7\" height=\"2.5\" rx=\"0.8\"/></svg></button>",
+      "css": ".ds-keycap-fn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 40px; margin-right: 5px; background: #383838; color: #FFFFFF; border: none; border-radius: 6px; transition: opacity 80ms ease-out, transform 80ms ease-out; } .ds-keycap-fn:hover { background: #414141; } .ds-keycap-fn:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; } .ds-keycap-fn:active { opacity: 0.55; transform: scale(0.97); transition: none; } .ds-keycap-fn-active { background: #757575; }"
+    },
+    {
+      "name": "Rune Pad Key",
+      "kind": "button",
+      "refersTo": "runepad-key",
+      "description": "The composer's letter pad: glyph over a small Latin hint, anchored to the bottom like a real keyboard.",
+      "html": "<button class=\"ds-pad-key\"><span class=\"ds-pad-glyph\">&#9671;</span><span class=\"ds-pad-hint\">B</span></button>",
+      "css": ".ds-pad-key { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 44px; height: 46px; background: #252327; border: none; border-radius: 8px; color: #EBE6D9; transition: opacity 80ms ease-out, transform 80ms ease-out; } .ds-pad-key:hover { background: #2b292d; } .ds-pad-key:focus-visible { outline: 2px solid #CCAB66; outline-offset: 2px; } .ds-pad-key:active { opacity: 0.55; transform: scale(0.97); transition: none; } .ds-pad-glyph { font-size: 20px; line-height: 1; } .ds-pad-hint { font-family: ui-rounded, -apple-system, system-ui, sans-serif; font-size: 8px; font-weight: 600; color: #8F8B85; }"
+    },
+    {
+      "name": "Segmented Picker",
+      "kind": "input",
+      "refersTo": "section-label",
+      "description": "System segmented control, accent-tinted, not restyled. Visible labels carry the chrome-key short form; VoiceOver gets the full name.",
+      "html": "<div class=\"ds-segmented\" role=\"radiogroup\"><button class=\"ds-segment ds-segment-on\" role=\"radio\" aria-checked=\"true\">Rune</button><button class=\"ds-segment\" role=\"radio\" aria-checked=\"false\">Rune&middot;A</button><button class=\"ds-segment\" role=\"radio\" aria-checked=\"false\">Aa</button></div>",
+      "css": ".ds-segmented { display: inline-flex; gap: 2px; padding: 2px; background: #252327; border-radius: 9px; } .ds-segment { flex: 1 1 0; padding: 6px 14px; background: transparent; color: #9E998F; border: none; border-radius: 7px; font-family: -apple-system, system-ui, sans-serif; font-size: 13px; font-weight: 500; transition: background 150ms ease-out, color 150ms ease-out; } .ds-segment:hover { color: #EBE6D9; } .ds-segment:focus-visible { outline: 2px solid #CCAB66; outline-offset: 2px; } .ds-segment-on { background: #3a373d; color: #EBE6D9; }"
+    },
+    {
+      "name": "Found Counter",
+      "kind": "chip",
+      "refersTo": "jerry-counter",
+      "description": "The N of 10 capsule that pops when a hidden Jerry is found, then fades. The only place the accent appears as a filled chip.",
+      "html": "<span class=\"ds-jerry-counter\">3 of 10</span>",
+      "css": ".ds-jerry-counter { display: inline-block; padding: 4px 10px; background: rgba(14,13,15,0.92); color: #DE94AB; border-radius: 999px; font-family: -apple-system, system-ui, sans-serif; font-size: 11px; font-weight: 600; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Candlelight on Stone",
+    "overview": "One light source, from above, falling on cold material. Everything in this system answers to that image. The field is obsidian; a single radial bloom of gold sits just off the top of the fold at 8.5% opacity and nothing else in the app glows. Surfaces are stone that has been cut and raised, never lit \u2014 depth is three tonal steps and a one-pixel hairline, never a shadow. The accent is rare enough to read as flame rather than paint.\n\nThe system wears two aesthetics over identical structure. Ritual is obsidian and antique gold: warm bone ink on near-black, the original ceremony. Even in Arcadia is black stone with a breath of green, deep arcadian-green card panels taken from the merch flag, champagne ink, and dusty rose in the accent role. Switching between them changes color and ornament only \u2014 not one screen, control, layout, or behavior differs. Any new component must resolve correctly in both without a conditional, which is why every color is a role that resolves against the active mode rather than a literal.\n\nThere is a second, deliberately separate system inside the same repository. The keyboard extension is a guest in other apps, so it does not use this palette at all: it mirrors the system keyboard through dynamic light/dark colors, keeps primary keys the lightest element in both appearances, and carries no theme. Do not unify these two systems. The separation is the design.",
+    "keyCharacteristics": [
+      "One light source: a single gold radial bloom, 8.5% opacity, above the fold",
+      "Flat at rest \u2014 tonal layering plus a 1px hairline; zero resting shadows",
+      "Two complete themes over one structure, resolved by role, never by literal",
+      "Serif reserved for names and titles; system sans for every control and label",
+      "Rune glyphs as ornament, always with a text equivalent for VoiceOver",
+      "Restrained accent: gold or rose appears on interaction and identity, not decor"
+    ],
+    "rules": [
+      {
+        "name": "The One Light Rule",
+        "body": "There is a single light source in this app: one gold radial bloom at 8.5% opacity, centered above the fold. Arcadia adds exactly one more, lower and dimmer. A third glow is a bug.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Stones Rule",
+        "body": "Every color is a role that resolves against the active theme. The only hardcoded values are the four fixed Arcadia constants the ceremonies depend on, and they are fixed because the theme flips beneath them. A literal color in a new component is a defect.",
+        "section": "colors"
+      },
+      {
+        "name": "The Different Temperature Rule",
+        "body": "Caution Amber never rethemes. In Arcadia the accent is pink, so a warning has to stay a clearly different temperature from the thing it is warning about.",
+        "section": "colors"
+      },
+      {
+        "name": "The Serif-For-Sacred Rule",
+        "body": "The serif names things. It carries titles, wordmarks, letters, and the dedication. It never carries a control label, a caption, a keycap, or an error.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tracked Caps Rule",
+        "body": "Section labels are 11pt semibold uppercase tracked 2.6pt, in Bone Dim (Ritual) or Sage (Arcadia). This is the app's named section voice and it predates this document \u2014 deliberate brand grammar, not an eyebrow reflex. Do not add a new scaffold on top of it, and do not retrofit it away.",
+        "section": "typography"
+      },
+      {
+        "name": "The No-Caps-Body Rule",
+        "body": "Uppercase is for section labels, ceremony subtitles, and the READS strip. Never for body copy or captions.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Geometry Rule",
+        "body": "Keyboard geometry lives in KeyboardMetrics and nowhere else. A hardcoded key height, gap, or row total anywhere in the extension is a defect \u2014 that exact drift previously under-allocated the grid layout by ~48pt and pushed its top row off the edge of the input view.",
+        "section": "layout"
+      },
+      {
+        "name": "The Tallest Face Rule",
+        "body": "The container reserves the tallest key face available for the current page, not the current one, so cycling the key face mid-session can never clip an already-visible row.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat-At-Rest Rule",
+        "body": "Surfaces are flat. Depth is field to surface to surfaceHigh plus a 1px hairline at 9% white (Ritual) or 16% rose (Arcadia). If a new component needs a shadow to read, its tonal step is wrong.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Glow-Is-Ceremony Rule",
+        "body": "A shadow means something is being revealed. If nothing is being revealed, there is no shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Continuous-Corner Rule",
+        "body": "Every rounded shape is .continuous. A default RoundedRectangle corner is a visual defect in this system, even though it looks almost right.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Radius-Follows-Size Rule",
+        "body": "6 / 8 / 12 / 16. A 46pt tile does not get a card's 16pt radius, and a card does not get a keycap's 6pt.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Destination Rule",
+        "body": "Every switch key names where the next tap takes you, never its current state. This is why no two adjacent chrome keys can ever show the same label, and it applies to any new mode control.",
+        "section": "components"
+      },
+      {
+        "name": "The Touch-Down Rule",
+        "body": "Press feedback lands instantly and un-animated; only the release is allowed to fade. An animated press-in makes a keyboard feel slow no matter how short the duration.",
+        "section": "components"
+      },
+      {
+        "name": "The No-Frozen-Type Rule",
+        "body": "Every font resolves from a text style, or from a @ScaledMetric value anchored to one. A bare .system(size:) with a literal does not scale, and mixing frozen titles with scaling captions inverts the hierarchy at accessibility sizes rather than merely looking small. Theme.display(scaledSize:) exists only for callers that have already scaled the number themselves.",
+        "section": "typography"
+      },
+      {
+        "name": "The 44pt Rule",
+        "body": "Every tappable control clears 44x44pt, including the ones whose visible mark is much smaller. Use minHeight/minWidth rather than a fixed height, so a control still clears the floor once its label scales.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do resolve every color through a Theme role so it rethemes automatically. A new component must render correctly in both themes with no conditional.",
+      "Do read all keyboard geometry from KeyboardMetrics, including any new key, gap, or reserved height.",
+      "Do use .continuous corners at 6 / 8 / 12 / 16pt, matched to element size.",
+      "Do carry depth with the three tonal steps and the 1px hairline.",
+      "Do give every glyph a text equivalent \u2014 RuneWordRow labels itself with the plain word, and glyphs inside a labeled card are marked decorative so VoiceOver does not read them twice.",
+      "Do ship a Reduce Motion alternative with every animation: petals freeze at speed 0, key presses stop scaling, ceremonies become crossfades.",
+      "Do keep press feedback instant on touch-down and faded only on release.",
+      "Do anchor every font to a text style so it scales; verify by running the app at the largest accessibility size, not by reading the code.",
+      "Do wrap new screens in readableColumn() so iPad gets a measure instead of a stretched phone layout.",
+      "Do keep tappable controls at 44pt minimum, sized with minHeight so they grow with their label."
+    ],
+    "donts": [
+      "Don't redesign. Palette, glyphs, both themes, and the form language are settled decisions; work here sharpens execution \u2014 contrast, spacing, state coverage, motion timing, copy \u2014 and does not re-open identity.",
+      "Don't put a shadow on a resting surface. If a component needs one to read, its tonal step is wrong.",
+      "Don't apply this palette to the keyboard extension. It mirrors the system keyboard by design and carries no theme; unifying the two systems would break the one component that has to feel native inside other people's apps.",
+      "Don't hardcode a color literal in a component. The four fixed Arcadia constants are the only exception and they exist because the ceremonies play while the theme flips beneath them.",
+      "Don't nest cards, or reach for a card when a hairline-separated row inside an existing card would do.",
+      "Don't set control labels, captions, keycaps, or errors in the serif.",
+      "Don't add entrance motion to sections. Motion here marks a state change or a revealed moment; there is no fade-on-scroll anywhere in this app and there should not be.",
+      "Don't add a third light source, or a glow to anything that is not being revealed.",
+      "Don't use real randomness in ornament. Seed deterministically per index or the layout jitters on every render.",
+      "Don't set type below 11pt. Three call sites did (8pt, 9pt, 10pt) and all three were unreadable rather than subtle.",
+      "Don't pick an ink for a text role by eye. ThemeContrastTests holds the 4.5:1 floor across both themes and all three surfaces; run it before trusting a value."
+    ]
+  }
+}
