@@ -141,6 +141,19 @@ final class KeyboardViewController: UIInputViewController {
                 autocapitalization: { [weak self] in
                     self?.textDocumentProxy.autocapitalizationType ?? .sentences
                 },
+                correctionAllowed: { [weak self] in
+                    guard let proxy = self?.textDocumentProxy else { return false }
+                    // Any one of these is the field saying "leave my text alone".
+                    if proxy.autocorrectionType == .no { return false }
+                    if proxy.spellCheckingType == .no { return false }
+                    switch proxy.keyboardType {
+                    case .some(.emailAddress), .some(.URL), .some(.numberPad),
+                         .some(.phonePad), .some(.decimalPad), .some(.asciiCapableNumberPad):
+                        return false
+                    default:
+                        return true
+                    }
+                },
                 hasFullAccess: { [weak self] in
                     self?.hasFullAccess ?? false
                 }

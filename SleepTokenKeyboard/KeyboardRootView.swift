@@ -60,6 +60,11 @@ struct KeyboardRootView: View {
     /// bottom bar and cost it a stock-width space key.
     @State private var showsKeyboardOptions = false
 
+    /// Spelling correction. The engine holds one `UITextChecker` and memoises per word,
+    /// so it must outlive a single body evaluation — this is reached on every keystroke.
+    @State private var suggestionEngine = SuggestionEngine()
+    @State private var suggestions = SuggestionSet(literal: "", candidates: [])
+
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// Scaled within the keyboard's fixed height budget, clamped at the root so the
@@ -94,6 +99,13 @@ struct KeyboardRootView: View {
 
     var body: some View {
         VStack(spacing: KeyboardMetrics.rowGap) {
+            SuggestionBar(
+                suggestions: suggestions,
+                onKeepLiteral: keepTypedWord,
+                onAccept: acceptSuggestion
+            )
+            .frame(height: KeyboardMetrics.suggestionBarHeight(compact: isCompact))
+
             switch page {
             case .symbols, .symbolsAlt:
                 SymbolsPage(
@@ -161,6 +173,7 @@ struct KeyboardRootView: View {
             spaceTracker.interrupt()
             capsLockTap.interrupt()
             applyAutocapitalization()
+            refreshSuggestions()
         }
         .onChange(of: hostTextGeneration) {
             // A change this keyboard did not cause -- a cursor jump, a host-side clear,
@@ -168,6 +181,10 @@ struct KeyboardRootView: View {
             // of our own keystroke passes through the tracker silently.
             spaceTracker.hostTextDidChange()
             applyAutocapitalization()
+            // Driven from here rather than from each insert path: the controller bumps
+            // this once the proxy context has actually settled, and the proxy is the only
+            // place the word in progress can be read from.
+            refreshSuggestions()
         }
     }
 
@@ -370,6 +387,11 @@ struct KeyboardRootView: View {
     /// Space is the one character key with a rule attached: a second space typed quickly
     /// after a word replaces the first with ". ".
     private func insertSpace() {
+        // Correct before the space lands, the way stock does: the word is finished the
+        // moment you reach for space, and replacing it afterwards would fight the
+        // double-space shortcut for the same keystroke.
+        autoCorrectFinishedWord()
+
         if PeriodShortcut.shouldSubstitute(
             contextBefore: host.contextBefore(),
             sinceLastSpace: spaceTracker.sinceLastSpace
@@ -422,6 +444,60 @@ struct KeyboardRootView: View {
         emojiRecents = EmojiCatalog.recents(after: emoji, in: emojiRecents)
         KeyboardPreferences.emojiRecents = emojiRecents
         applyAutocapitalization()
+    }
+
+    // MARK: - Correction
+
+    /// Recomputes the bar from the word in progress. Called after every mutation, for
+    /// the same reason `applyAutocapitalization` is: the proxy is the only truth, and it
+    /// has just moved.
+    private func refreshSuggestions() {
+        guard host.correctionAllowed() else {
+            if !suggestions.isEmpty { suggestions = SuggestionSet(literal: "", candidates: []) }
+            return
+        }
+        let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
+        let updated = suggestionEngine.suggestions(forPartialWord: word)
+        if updated != suggestions { suggestions = updated }
+    }
+
+    /// Replaces the word in progress with `replacement`, by deleting exactly as many
+    /// characters as the user typed. There is no range-replace on the proxy — delete and
+    /// insert is the whole write surface.
+    private func replaceCurrentWord(with replacement: String) {
+        let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
+        guard !word.isEmpty else { return }
+        for _ in 0..<word.count { onDeleteBackward() }
+        onInsert(replacement)
+        spaceTracker.noteLocalChange()
+    }
+
+    /// The user tapped a correction.
+    private func acceptSuggestion(_ replacement: String) {
+        haptic()
+        replaceCurrentWord(with: replacement)
+        refreshSuggestions()
+        applyAutocapitalization()
+    }
+
+    /// The user tapped their own spelling. Keep it, and stop offering to change it —
+    /// otherwise the keyboard argues with them about their own vocabulary forever.
+    private func keepTypedWord() {
+        haptic()
+        let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
+        guard !word.isEmpty else { return }
+        suggestionEngine.keepAsTyped(word)
+        refreshSuggestions()
+    }
+
+    /// Applies a high-confidence correction as the word ends. Deliberately stricter than
+    /// the bar: an ignored suggestion costs nothing, a wrong silent replacement is the
+    /// worst thing this feature can do.
+    private func autoCorrectFinishedWord() {
+        guard host.correctionAllowed() else { return }
+        let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
+        guard let replacement = suggestionEngine.autoReplacement(for: word) else { return }
+        replaceCurrentWord(with: replacement)
     }
 
     /// Re-reads the field and arms or releases shift accordingly. Runs after anything
@@ -529,6 +605,67 @@ private struct LetterPage: View {
 
     private var backspaceKey: some View {
         BackspaceKey(keyHeight: keyHeight, onBackspace: onBackspace)
+    }
+}
+
+/// The candidate strip above the keys.
+///
+/// Stock marks a correction inside the text field itself, in blue, with alternatives
+/// underneath. That is first-party: a keyboard extension can write text into a document
+/// but never style it, so this bar is the same substitute every third-party keyboard
+/// uses. The user's own spelling always occupies the first slot, quoted, so a correction
+/// can be declined rather than merely undone.
+private struct SuggestionBar: View {
+    let suggestions: SuggestionSet
+    let onKeepLiteral: () -> Void
+    let onAccept: (String) -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            if suggestions.candidates.isEmpty {
+                // Nothing to offer. The strip stays, because collapsing it would move
+                // the keys under the thumb mid-word.
+                Color.clear
+            } else {
+                slot(title: "\u{201C}\(suggestions.literal)\u{201D}", isLiteral: true) {
+                    onKeepLiteral()
+                }
+                ForEach(suggestions.candidates, id: \.self) { candidate in
+                    divider
+                    slot(title: candidate, isLiteral: false) { onAccept(candidate) }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var divider: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.18))
+            .frame(width: 1, height: 16)
+    }
+
+    private func slot(
+        title: String,
+        isLiteral: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 16, weight: isLiteral ? .regular : .semibold))
+                .foregroundStyle(Color.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            isLiteral ? "Keep \(suggestions.literal)" : "Replace with \(title)"
+        )
+        .accessibilityHint(
+            isLiteral ? "Keeps what you typed and stops correcting it" : ""
+        )
     }
 }
 

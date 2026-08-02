@@ -27,6 +27,15 @@ public enum KeyboardMetrics {
     public static func bottomBarHeight(compact: Bool = false) -> CGFloat {
         compact ? 34 : 42
     }
+
+    /// The candidate strip above the keys.
+    ///
+    /// Reserved unconditionally, even when there is nothing to show. The alternative —
+    /// growing the keyboard only when a correction exists — would make it jump under the
+    /// thumb mid-word, which is the exact behaviour the constant-height work removed.
+    public static func suggestionBarHeight(compact: Bool = false) -> CGFloat {
+        compact ? 34 : 40
+    }
     public static let keyCornerRadius: CGFloat = 6
 
     /// Width of shift and backspace. At least 44pt to meet the minimum touch target.
@@ -142,7 +151,11 @@ public enum KeyboardMetrics {
         compact: Bool = false
     ) -> CGFloat {
         let rows = pageHeight(page: page, mode: mode, style: style, compact: compact)
-        return topPadding + rows + rowGap + bottomBarHeight(compact: compact) + bottomPadding
+        return topPadding
+            + suggestionBarHeight(compact: compact) + rowGap
+            + rows + rowGap
+            + bottomBarHeight(compact: compact)
+            + bottomPadding
     }
 
     /// Width of one letter key, so every row shares a unit and columns line up.

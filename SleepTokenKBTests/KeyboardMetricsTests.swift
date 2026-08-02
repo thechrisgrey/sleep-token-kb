@@ -69,11 +69,15 @@ final class KeyboardMetricsTests: XCTestCase {
         )
     }
 
-    /// Pins the composition: padding + rows + gap + bottom bar + padding.
+    /// Pins the composition: padding + suggestion bar + gap + rows + gap + bottom bar
+    /// + padding. The suggestion strip is reserved unconditionally, so it belongs in the
+    /// arithmetic rather than appearing only when a correction exists.
     func testContentHeightMatchesExplicitArithmetic() {
         let height = KeyboardMetrics.contentHeight(page: .letters, mode: .qwerty, style: .runeArt)
         let rows: CGFloat = 3
         let expected = KeyboardMetrics.topPadding
+            + KeyboardMetrics.suggestionBarHeight(compact: false)
+            + KeyboardMetrics.rowGap
             + (rows * KeyboardMetrics.baseKeyHeight + (rows - 1) * KeyboardMetrics.rowGap)
             + KeyboardMetrics.rowGap
             + KeyboardMetrics.bottomBarHeight(compact: false)
@@ -98,6 +102,8 @@ final class KeyboardMetricsTests: XCTestCase {
     func testCompactContentHeightUsesTheCompactBar() {
         let height = KeyboardMetrics.contentHeight(page: .letters, mode: .qwerty, style: .letters, compact: true)
         let expected = KeyboardMetrics.topPadding
+            + KeyboardMetrics.suggestionBarHeight(compact: true)
+            + KeyboardMetrics.rowGap
             + KeyboardMetrics.pageHeight(page: .letters, mode: .qwerty, style: .letters, compact: true)
             + KeyboardMetrics.rowGap
             + KeyboardMetrics.bottomBarHeight(compact: true)

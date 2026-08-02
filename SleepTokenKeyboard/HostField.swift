@@ -15,6 +15,14 @@ struct HostField {
     var returnKeyEnabled: () -> Bool
     var autocapitalization: () -> UITextAutocapitalizationType
 
+    /// Whether this field wants spelling help at all.
+    ///
+    /// False for passwords, one-time codes, URLs, email addresses, and anything that
+    /// declares `autocorrectionType == .no` or `spellCheckingType == .no`. The stock
+    /// keyboard goes quiet in those fields; correcting a password would be worse than
+    /// offering nothing.
+    var correctionAllowed: () -> Bool
+
     /// Whether the user has granted Full Access in Settings.
     ///
     /// The extension declares `RequestsOpenAccess`, but declaring it only makes the toggle
