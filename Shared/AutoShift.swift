@@ -44,6 +44,16 @@ public struct AutoShift {
 
     /// After a letter lands: a one-shot shift is consumed (and its provenance with it),
     /// caps lock persists with whatever provenance it had.
+    /// Jump straight to caps lock — stock's double-tap-shift gesture.
+    ///
+    /// Manual by definition, so it clears the auto-armed provenance exactly as a tap
+    /// does; otherwise the next context re-derivation could drop the lock the user just
+    /// asked for.
+    public mutating func setCapsLock() {
+        state = .capsLocked
+        isAutoArmed = false
+    }
+
     public mutating func didInsertLetter() {
         state = state.afterInsert()
         if state == .off {

@@ -95,10 +95,23 @@ public enum KeyboardLayout {
     ]
 
     /// Digits and punctuation for the 123 page. Lives here beside the letter tables so
-    /// all three key layouts are in one place and reachable from the test target.
+    /// all key layouts are in one place and reachable from the test target.
+    ///
+    /// Row three is deliberately short. Stock flanks it with the page-switch key and
+    /// delete; ours used to run ten keys wide and push delete onto a row of its own,
+    /// which is what made the keyboard grow 46pt whenever you tapped 123.
     public static let symbolRows: [[String]] = [
         ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
         ["-", "/", ":", ";", "(", ")", "$", "&", "@", "\""],
-        [".", ",", "?", "!", "'", "#", "%", "*", "+", "="]
+        [".", ",", "?", "!", "'"]
+    ]
+
+    /// The #+= page. The five characters that used to share row three of the 123 page
+    /// (`# % * + =`) live here, joined by the brackets and math symbols stock offers and
+    /// we did not — so the split adds characters rather than losing any.
+    public static let symbolAltRows: [[String]] = [
+        ["[", "]", "{", "}", "#", "%", "^", "*", "+", "="],
+        ["_", "\\", "|", "~", "<", ">", "€", "£", "¥", "•"],
+        [".", ",", "?", "!", "'"]
     ]
 }

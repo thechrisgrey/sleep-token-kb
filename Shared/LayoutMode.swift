@@ -133,6 +133,21 @@ public enum KeyboardPreferences {
         set { store(newValue.rawValue, layoutModeKey) }
     }
 
+    private static let emojiRecentsKey = "emojiRecents"
+
+    /// Recently used emoji, most recent first. Stored as a plain string array through the
+    /// same App-Group-then-local path as every other preference, so recents built in the
+    /// keyboard survive without Full Access.
+    public static var emojiRecents: [String] {
+        get {
+            if let shared, let value = shared.stringArray(forKey: emojiRecentsKey) {
+                return value
+            }
+            return local.stringArray(forKey: emojiRecentsKey) ?? []
+        }
+        set { store(newValue, emojiRecentsKey) }
+    }
+
     public static var keyFaceStyle: KeyFaceStyle {
         get {
             guard let raw = storedString(keyFaceStyleKey),

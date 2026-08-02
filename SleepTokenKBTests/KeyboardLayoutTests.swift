@@ -41,12 +41,20 @@ final class KeyboardLayoutTests: XCTestCase {
         XCTAssertEqual(KeyboardLayout.qwertyRows.first?.count, 10, "top row defines the key unit")
     }
 
-    func testSymbolRowsHaveNoDuplicates() {
-        let flat = KeyboardLayout.symbolRows.flatMap { $0 }
-        // ForEach(id: \.self) over these requires uniqueness.
-        XCTAssertEqual(Set(flat).count, flat.count, "symbol keys must be unique for ForEach(id: \\.self)")
-        XCTAssertEqual(flat.count, 30)
-        XCTAssertTrue(KeyboardLayout.symbolRows.allSatisfy { !$0.isEmpty })
-        XCTAssertEqual(KeyboardLayout.symbolRows.count, 3)
+    /// Uniqueness is per page, because `ForEach(id: \.self)` renders one page at a
+    /// time. The two pages deliberately SHARE `. , ? ! '`, exactly as stock does, so
+    /// uniqueness across the union is not the invariant — `PageParityTests` owns the
+    /// cross-page rules (nothing lost in the split, row three short enough for an
+    /// inline delete).
+    func testSymbolRowsHaveNoDuplicatesWithinAPage() {
+        for rows in [KeyboardLayout.symbolRows, KeyboardLayout.symbolAltRows] {
+            let flat = rows.flatMap { $0 }
+            XCTAssertEqual(
+                Set(flat).count, flat.count,
+                "symbol keys must be unique for ForEach(id: \\.self)"
+            )
+            XCTAssertTrue(rows.allSatisfy { !$0.isEmpty })
+            XCTAssertEqual(rows.count, 3)
+        }
     }
 }

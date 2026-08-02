@@ -47,6 +47,19 @@ struct KeyboardRootView: View {
     /// stable across the per-keystroke rootView reassignments the controller performs.
     @State private var spaceTracker = SpaceTracker()
 
+    /// Double-tap-shift-for-caps-lock, the gesture an iPhone thumb already knows. The
+    /// three-tap cycle still works; this is a shortcut into the same state.
+    @State private var capsLockTap = CapsLockTap()
+
+    /// Emoji page session state. Recents are persisted; the selected tab is not, because
+    /// stock reopens on recents too.
+    @State private var emojiCategory: EmojiCategory = .recents
+    @State private var emojiRecents: [String] = []
+
+    /// Shown when the emoji key is long-pressed: the two switches that used to sit on the
+    /// bottom bar and cost it a stock-width space key.
+    @State private var showsKeyboardOptions = false
+
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// Scaled within the keyboard's fixed height budget, clamped at the root so the
@@ -62,8 +75,12 @@ struct KeyboardRootView: View {
 
     private var isCompact: Bool { verticalSizeClass == .compact }
 
+    /// Page-aware, and it has to be: `pageHeight` budgets symbol and emoji rows at the
+    /// base height because those cells never carry a Latin hint. Sizing the rows from the
+    /// key face while the page was budgeted from the base would overflow the page by 12pt
+    /// whenever the hinted face was selected.
     private var keyHeight: CGFloat {
-        KeyboardMetrics.keyHeight(style: keyFaceStyle, compact: isCompact)
+        KeyboardMetrics.keyHeight(page: page, style: keyFaceStyle, compact: isCompact)
     }
 
     private var pageHeight: CGFloat {
@@ -78,14 +95,31 @@ struct KeyboardRootView: View {
     var body: some View {
         VStack(spacing: KeyboardMetrics.rowGap) {
             switch page {
-            case .symbols:
+            case .symbols, .symbolsAlt:
                 SymbolsPage(
+                    rows: page == .symbols
+                        ? KeyboardLayout.symbolRows
+                        : KeyboardLayout.symbolAltRows,
+                    switchTitle: page == .symbols ? "#+=" : "123",
                     keyHeight: keyHeight,
                     faceSize: symbolFaceSize,
                     // Digits and punctuation move the cursor like any other insert, so
                     // they re-derive too — this was the one mutation path that skipped
                     // it and left shift stale on the 123 page.
                     onInsert: { insert($0); applyAutocapitalization() },
+                    onSwitchPage: {
+                        haptic()
+                        page = (page == .symbols) ? .symbolsAlt : .symbols
+                    },
+                    onBackspace: { deleteBackward(isRepeat: $0) }
+                )
+                .frame(height: pageHeight)
+            case .emoji:
+                EmojiPage(
+                    category: $emojiCategory,
+                    recents: emojiRecents,
+                    cellHeight: keyHeight,
+                    onInsert: insertEmoji,
                     onBackspace: { deleteBackward(isRepeat: $0) }
                 )
                 .frame(height: pageHeight)
@@ -112,6 +146,12 @@ struct KeyboardRootView: View {
         .padding(.bottom, KeyboardMetrics.bottomPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .background(KeyPalette.field)
+        // Rendered inside the input view rather than as a popover or sheet: a keyboard
+        // extension has no window of its own to present into, and system presentation
+        // from an input view is where keyboards go to hang.
+        .overlay {
+            if showsKeyboardOptions { keyboardOptionsPanel }
+        }
         .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         .onAppear(perform: prepareForAppearance)
         .onChange(of: fieldGeneration) {
@@ -119,6 +159,7 @@ struct KeyboardRootView: View {
             // window are meaningless here. Start clean and derive for the new field.
             autoShift = AutoShift()
             spaceTracker.interrupt()
+            capsLockTap.interrupt()
             applyAutocapitalization()
         }
         .onChange(of: hostTextGeneration) {
@@ -138,55 +179,49 @@ struct KeyboardRootView: View {
 
     private var bottomBar: some View {
         HStack(spacing: KeyboardMetrics.keyGap) {
-            if needsInputModeSwitchKey {
-                ChromeKeyButton(
-                    content: .symbol("globe"),
-                    weight: .medium,
-                    label: "Next keyboard",
-                    action: onNextKeyboard
-                )
-                .frame(width: 38)
-            }
-
+            // Stock puts the page key at the far left; ours used to sit fourth, behind
+            // two switches stock has no equivalent for. Those now live behind a long
+            // press on the emoji key, which is what buys the space bar its stock width.
             ChromeKeyButton(
-                content: .text(layoutMode.next.shortTitle),
-                fontSize: 12,
-                weight: .semibold,
-                label: "Switch to \(layoutMode.next.accessibilityLabel)"
-            ) {
-                haptic()
-                layoutMode = layoutMode.next
-                KeyboardPreferences.layoutMode = layoutMode
-                onHeightInputsChanged?(.init(page: page, mode: layoutMode))
-            }
-            .frame(width: 54)
-
-            // Cycles the key face: runes -> runes with Latin hints -> plain ABC.
-            // Text is always English regardless of the face.
-            ChromeKeyButton(
-                content: .text(keyFaceStyle.next.shortTitle),
-                fontSize: 12,
-                weight: .semibold,
-                label: "Switch to \(keyFaceStyle.next.title)"
-            ) {
-                haptic()
-                keyFaceStyle = keyFaceStyle.next
-                KeyboardPreferences.keyFaceStyle = keyFaceStyle
-                onHeightInputsChanged?(.init(page: page, mode: layoutMode))
-            }
-            .frame(width: 50)
-
-            ChromeKeyButton(
-                content: .text(page == .symbols ? "ABC" : "123"),
+                content: .text(page == .letters ? "123" : "ABC"),
                 fontSize: 14,
                 weight: .semibold,
-                label: page == .symbols ? "Switch to letters" : "Switch to numbers"
+                label: page == .letters ? "Switch to numbers" : "Switch to letters"
             ) {
                 haptic()
-                page = (page == .symbols) ? .letters : .symbols
+                page = (page == .letters) ? .symbols : .letters
                 onHeightInputsChanged?(.init(page: page, mode: layoutMode))
             }
-            .frame(width: 44)
+            .frame(width: KeyboardMetrics.functionKeyWidth)
+
+            if needsInputModeSwitchKey {
+                // UIKit, not a SwiftUI Button: `handleInputModeList(from:with:)` needs
+                // both the originating view and the UIEvent, and only a UIControl action
+                // hands us those. Tap still advances; long press opens the picker, which
+                // is the stock gesture and the only supported route to Apple's Emoji
+                // keyboard for a third-party extension.
+                GlobeKey(onTap: onNextKeyboard)
+                    .frame(width: 38)
+            }
+
+            ChromeKeyButton(
+                content: .symbol(page == .emoji ? "keyboard" : "face.smiling"),
+                weight: .medium,
+                label: page == .emoji ? "Switch to letters" : "Emoji",
+                fill: page == .emoji ? KeyPalette.active : KeyPalette.function
+            ) {
+                haptic()
+                page = (page == .emoji) ? .letters : .emoji
+                onHeightInputsChanged?(.init(page: page, mode: layoutMode))
+            }
+            .frame(width: 38)
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.4).onEnded { _ in
+                    haptic()
+                    showsKeyboardOptions = true
+                }
+            )
+            .accessibilityHint("Double tap and hold for layout and key face")
 
             // The space bar is a primary key, so it takes the primary keycap fill.
             ChromeKeyButton(
@@ -222,6 +257,78 @@ struct KeyboardRootView: View {
         }
     }
 
+    /// Layout and key face, reachable by long-pressing the emoji key. Both are still in
+    /// the host app's settings; this is the in-keyboard shortcut they used to have as two
+    /// permanent chrome keys.
+    private var keyboardOptionsPanel: some View {
+        ZStack {
+            KeyPalette.field.opacity(0.96)
+                .contentShape(Rectangle())
+                .onTapGesture { showsKeyboardOptions = false }
+
+            VStack(spacing: 10) {
+                optionRow(
+                    title: "Layout",
+                    options: LayoutMode.allCases.map { ($0.shortTitle, $0 == layoutMode) }
+                ) { index in
+                    layoutMode = LayoutMode.allCases[index]
+                    KeyboardPreferences.layoutMode = layoutMode
+                    onHeightInputsChanged?(.init(page: page, mode: layoutMode))
+                }
+
+                optionRow(
+                    title: "Key face",
+                    options: KeyFaceStyle.allCases.map { ($0.shortTitle, $0 == keyFaceStyle) }
+                ) { index in
+                    keyFaceStyle = KeyFaceStyle.allCases[index]
+                    KeyboardPreferences.keyFaceStyle = keyFaceStyle
+                    onHeightInputsChanged?(.init(page: page, mode: layoutMode))
+                }
+
+                Button("Done") { showsKeyboardOptions = false }
+                    .font(.footnote.weight(.semibold))
+                    .padding(.top, 2)
+            }
+            .padding(.horizontal, 12)
+        }
+        .accessibilityAddTraits(.isModal)
+    }
+
+    private func optionRow(
+        title: String,
+        options: [(String, Bool)],
+        select: @escaping (Int) -> Void
+    ) -> some View {
+        VStack(spacing: 4) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            HStack(spacing: KeyboardMetrics.keyGap) {
+                ForEach(options.indices, id: \.self) { index in
+                    let (label, isSelected) = options[index]
+                    Button {
+                        haptic()
+                        select(index)
+                    } label: {
+                        Text(label)
+                            .font(.footnote.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: KeyboardMetrics.functionKeyWidth)
+                            .background(
+                                RoundedRectangle(
+                                    cornerRadius: KeyboardMetrics.keyCornerRadius,
+                                    style: .continuous
+                                )
+                                .fill(isSelected ? KeyPalette.active : KeyPalette.function)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+                }
+            }
+        }
+    }
+
     // MARK: - Actions
 
     /// Everything the view does exactly once per appearance, in named steps, so the
@@ -237,6 +344,7 @@ struct KeyboardRootView: View {
         layoutMode = KeyboardPreferences.layoutMode
         keyFaceStyle = KeyboardPreferences.keyFaceStyle
         hapticsEnabled = KeyboardPreferences.hapticsEnabled
+        emojiRecents = KeyboardPreferences.emojiRecents
         // Warm the engine only for users who can actually feel it: iOS drops
         // feedback-generator events from the extension without Full Access, so an
         // ungated prepare() spins the taptic engine for nothing.
@@ -293,10 +401,27 @@ struct KeyboardRootView: View {
 
     private func toggleShift() {
         haptic()
+        // Stock engages caps lock on a quick second tap. Honour that first, then fall
+        // through to the cycle, so both muscle memories reach the same state.
+        if capsLockTap.isDoubleTap(at: ProcessInfo.processInfo.systemUptime) {
+            autoShift.setCapsLock()
+            return
+        }
         // Deliberately no re-derivation after the tap: cancelling an auto-armed shift
         // must stick until the next keystroke, and re-deriving here would instantly
         // re-arm it at the very sentence start the user just cancelled.
         autoShift.userTappedShift()
+    }
+
+    /// Inserts an emoji as ordinary text and promotes it to the front of recents. Emoji
+    /// are just characters, so nothing about the keyboard's plain-English contract
+    /// changes — the payload was never the runes.
+    private func insertEmoji(_ emoji: String) {
+        haptic()
+        insert(emoji)
+        emojiRecents = EmojiCatalog.recents(after: emoji, in: emojiRecents)
+        KeyboardPreferences.emojiRecents = emojiRecents
+        applyAutocapitalization()
     }
 
     /// Re-reads the field and arms or releases shift accordingly. Runs after anything
@@ -407,31 +532,218 @@ private struct LetterPage: View {
     }
 }
 
+/// The 123 and #+= pages.
+///
+/// Stock flanks the short third row with the other symbol page's key on the left and
+/// delete on the right. Ours used to run ten symbols across row three and put delete on
+/// a row of its own, which is what made the keyboard grow 46pt whenever you tapped 123.
 private struct SymbolsPage: View {
+    let rows: [[String]]
+    /// Title of the page this switches to — "#+=" from 123, "123" from #+=.
+    let switchTitle: String
     let keyHeight: CGFloat
     let faceSize: CGFloat
     let onInsert: (String) -> Void
+    let onSwitchPage: () -> Void
     let onBackspace: (Bool) -> Void
-
-    private var rows: [[String]] { KeyboardLayout.symbolRows }
 
     var body: some View {
         VStack(spacing: KeyboardMetrics.rowGap) {
             ForEach(rows.indices, id: \.self) { index in
+                let isLastRow = index == rows.count - 1
                 HStack(spacing: KeyboardMetrics.keyGap) {
+                    if isLastRow {
+                        ChromeKeyButton(
+                            content: .text(switchTitle),
+                            fontSize: 14,
+                            weight: .semibold,
+                            label: switchTitle == "123"
+                                ? "Switch to numbers"
+                                : "Switch to more symbols",
+                            action: onSwitchPage
+                        )
+                        .frame(width: KeyboardMetrics.functionKeyWidth, height: keyHeight)
+                    }
+
                     ForEach(rows[index], id: \.self) { symbol in
                         SymbolKeyButton(symbol: symbol, faceSize: faceSize) {
                             onInsert(symbol)
                         }
                         .frame(height: keyHeight)
                     }
+
+                    if isLastRow {
+                        BackspaceKey(keyHeight: keyHeight, onBackspace: onBackspace)
+                    }
                 }
             }
-            HStack {
-                Spacer(minLength: 0)
-                BackspaceKey(keyHeight: keyHeight, onBackspace: onBackspace)
-            }
         }
+    }
+}
+
+/// The emoji page.
+///
+/// Apple's own emoji keyboard cannot be presented from a third-party extension — no
+/// public API selects an input mode — so this is ours: a scrolling grid over our own
+/// catalog, inserting plain text through the same path as every other key.
+private struct EmojiPage: View {
+    @Binding var category: EmojiCategory
+    let recents: [String]
+    let cellHeight: CGFloat
+    let onInsert: (String) -> Void
+    let onBackspace: (Bool) -> Void
+
+    /// Height of the category strip. Sized to clear the 44pt touch target while leaving
+    /// the grid the bulk of a page budget that is already fixed.
+    private static let stripHeight: CGFloat = 44
+
+    private var entries: [String] {
+        category == .recents ? recents : EmojiCatalog.emoji(in: category)
+    }
+
+    var body: some View {
+        VStack(spacing: KeyboardMetrics.rowGap) {
+            if entries.isEmpty {
+                // Recents on a fresh install. Teach the interface rather than showing
+                // an empty box.
+                VStack(spacing: 6) {
+                    Image(systemName: "clock")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    Text("Emoji you use will appear here")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityElement(children: .combine)
+            } else {
+                ScrollView {
+                    LazyVGrid(
+                        columns: [GridItem(
+                            .adaptive(minimum: 38),
+                            spacing: KeyboardMetrics.keyGap
+                        )],
+                        spacing: KeyboardMetrics.rowGap
+                    ) {
+                        ForEach(entries, id: \.self) { emoji in
+                            Button { onInsert(emoji) } label: {
+                                Text(emoji)
+                                    .font(.system(size: 28))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: cellHeight)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(emoji)
+                            .accessibilityAddTraits(.isKeyboardKey)
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                }
+                .scrollIndicators(.hidden)
+            }
+
+            HStack(spacing: KeyboardMetrics.keyGap) {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 2) {
+                        ForEach(EmojiCategory.allCases) { tab in
+                            Button { category = tab } label: {
+                                Image(systemName: tab.symbolName)
+                                    .font(.footnote)
+                                    .foregroundStyle(
+                                        tab == category ? Color.primary : Color.secondary
+                                    )
+                                    .frame(width: 38, height: Self.stripHeight)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(tab.accessibilityLabel)
+                            .accessibilityAddTraits(
+                                tab == category ? [.isButton, .isSelected] : .isButton
+                            )
+                        }
+                    }
+                }
+                .scrollIndicators(.hidden)
+
+                BackspaceKey(keyHeight: Self.stripHeight, onBackspace: onBackspace)
+            }
+            .frame(height: Self.stripHeight)
+        }
+    }
+}
+
+/// The globe key, in UIKit.
+///
+/// `handleInputModeList(from:with:)` is the only supported way to show the system
+/// keyboard picker — and therefore the only route from here to Apple's Emoji keyboard —
+/// but it needs the originating view *and* the `UIEvent`. SwiftUI hands us neither, so
+/// this key is a `UIButton` that forwards both.
+private struct GlobeKey: UIViewRepresentable {
+    let onTap: () -> Void
+
+    func makeUIView(context: Context) -> UIButton {
+        let button = UIButton(type: .system)
+        button.setImage(
+            UIImage(systemName: "globe", withConfiguration: UIImage.SymbolConfiguration(
+                pointSize: 16, weight: .medium
+            )),
+            for: .normal
+        )
+        button.tintColor = .label
+        button.backgroundColor = KeyPalette.functionColor
+        button.layer.cornerRadius = KeyboardMetrics.keyCornerRadius
+        button.layer.cornerCurve = .continuous
+        button.accessibilityLabel = "Next keyboard"
+        button.accessibilityHint = "Double tap and hold to choose a keyboard"
+        button.addTarget(
+            context.coordinator,
+            action: #selector(Coordinator.handlePress(_:event:)),
+            for: .allTouchEvents
+        )
+        return button
+    }
+
+    func updateUIView(_ button: UIButton, context: Context) {
+        context.coordinator.onTap = onTap
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(onTap: onTap) }
+
+    final class Coordinator: NSObject {
+        var onTap: () -> Void
+        init(onTap: @escaping () -> Void) { self.onTap = onTap }
+
+        /// The controller installs itself as the input view controller for this key so
+        /// the long press can reach `handleInputModeList`. Walking the responder chain
+        /// keeps the view free of a back-reference to the controller.
+        @objc func handlePress(_ sender: UIButton, event: UIEvent) {
+            guard let controller = sender.enclosingInputViewController else {
+                // No controller in the chain (previews, tests): fall back to the plain
+                // advance so the key is never inert.
+                onTap()
+                return
+            }
+            controller.handleInputModeList(from: sender, with: event)
+        }
+    }
+}
+
+private extension UIResponder {
+    /// Nearest `UIInputViewController` up the responder chain.
+    ///
+    /// Deliberately not named `inputViewController`: `UIResponder` already declares that
+    /// property with an entirely different meaning (the input view controller shown when
+    /// *this* responder is first responder), and shadowing it here would be a trap for
+    /// the next reader.
+    var enclosingInputViewController: UIInputViewController? {
+        var responder: UIResponder? = self
+        while let current = responder {
+            if let controller = current as? UIInputViewController { return controller }
+            responder = current.next
+        }
+        return nil
     }
 }
 

@@ -183,10 +183,12 @@ final class KeyboardViewController: UIInputViewController {
     // MARK: - Height
 
     private var preferredKeyboardHeight: CGFloat {
-        // Derived from the same metrics the SwiftUI content uses. Reserve the tallest
-        // key style for the current page so toggling rune/ABC never clips a visible row.
-        KeyboardMetrics.maxContentHeight(
-            page: heightInputs.page,
+        // Derived from the same metrics the SwiftUI content uses, but deliberately NOT
+        // from the current page: stock keyboards hold one height for the whole session,
+        // and reserving per-page made ours grow 46pt on every tap of 123. Reserving the
+        // tallest page up front costs a little headroom above the shorter ones and buys
+        // a keyboard that never moves under the thumb.
+        KeyboardMetrics.reservedHeight(
             mode: heightInputs.mode,
             compact: traitCollection.verticalSizeClass == .compact
         )

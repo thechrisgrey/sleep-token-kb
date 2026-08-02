@@ -64,6 +64,8 @@ public enum KeyboardMetrics {
     public enum Page: String, CaseIterable, Sendable {
         case letters
         case symbols
+        case symbolsAlt
+        case emoji
     }
 
     /// Everything the container must know to reserve height, as one value over one
@@ -86,13 +88,36 @@ public enum KeyboardMetrics {
     /// pages each add a dedicated row for them, which the old literal table never counted.
     public static func rowCount(page: Page, mode: LayoutMode) -> Int {
         switch page {
-        case .symbols:
-            return KeyboardLayout.symbolRows.count + 1
+        case .symbols, .symbolsAlt:
+            // Delete rides inline on row three the way stock does it, so these pages no
+            // longer need a row of their own for a single key.
+            return KeyboardLayout.symbolRows.count
+        case .emoji:
+            // The emoji grid scrolls, so it never drives the keyboard's height: it takes
+            // exactly what the letters page for this layout already occupies.
+            return rowCount(page: .letters, mode: mode)
         case .letters:
             switch mode {
             case .qwerty: return KeyboardLayout.qwertyRows.count
             case .grid: return KeyboardLayout.gridRows.count + 1
             }
+        }
+    }
+
+    /// Row height for a page. Only letter keycaps can carry a Latin hint beneath the
+    /// glyph, so only the letters page grows with the key face — symbol and emoji cells
+    /// stay at the base height. Letting the face resize every page was one of the two
+    /// reasons the keyboard changed size mid-session.
+    public static func keyHeight(
+        page: Page,
+        style: KeyFaceStyle,
+        compact: Bool = false
+    ) -> CGFloat {
+        switch page {
+        case .letters:
+            return keyHeight(style: style, compact: compact)
+        case .symbols, .symbolsAlt, .emoji:
+            return compact ? compactBaseKeyHeight : baseKeyHeight
         }
     }
 
@@ -105,7 +130,7 @@ public enum KeyboardMetrics {
         compact: Bool = false
     ) -> CGFloat {
         let rows = CGFloat(rowCount(page: page, mode: mode))
-        let height = keyHeight(style: style, compact: compact)
+        let height = keyHeight(page: page, style: style, compact: compact)
         return rows * height + max(rows - 1, 0) * rowGap
     }
 
@@ -130,6 +155,25 @@ public enum KeyboardMetrics {
     /// Half-key inset that centres a 9-key home row under a 10-key top row.
     public static func homeRowInset(keyUnit: CGFloat) -> CGFloat {
         (keyUnit + keyGap) / 2
+    }
+
+    /// Height the container reserves, whichever page is showing and whichever key face
+    /// is selected.
+    ///
+    /// Stock keyboards do not resize when you tap 123; ours grew 46pt, because the
+    /// controller reserved height for the current page only. Reserving the tallest
+    /// combination up front costs a little empty space above the shorter pages — which
+    /// is what stock does too — and buys a keyboard that never moves under the thumb.
+    public static func reservedHeight(mode: LayoutMode, compact: Bool = false) -> CGFloat {
+        var tallest: CGFloat = 0
+        for page in Page.allCases {
+            for style in KeyFaceStyle.allCases {
+                tallest = max(tallest, contentHeight(
+                    page: page, mode: mode, style: style, compact: compact
+                ))
+            }
+        }
+        return tallest
     }
 
     /// Tallest height any key style can need for this page, so cycling the key face

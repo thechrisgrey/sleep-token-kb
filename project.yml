@@ -92,6 +92,8 @@ targets:
       - path: Shared/PeriodShortcut.swift
       - path: Shared/KeyRepeat.swift
       - path: Shared/SpaceTracker.swift
+      - path: Shared/CapsLockTap.swift
+      - path: Shared/EmojiCatalog.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenKB.SleepTokenKeyboard

@@ -35,13 +35,15 @@ final class KeyboardMetricsTests: XCTestCase {
         }
     }
 
-    /// Grid and symbols each render a dedicated shift/backspace row that the old literal
-    /// table never counted. That undercount is the bug.
-    func testGridAndSymbolsCarryOneMoreRowThanQwerty() {
+    /// The grid layout still renders a dedicated shift/backspace row that the old
+    /// literal table never counted — that undercount was the original bug. The symbol
+    /// pages no longer do: delete moved inline onto row three, the way stock lays it
+    /// out, which is what stopped the keyboard growing 46pt on every tap of 123.
+    func testGridCarriesOneMoreRowThanQwertyAndSymbolsDoNot() {
         XCTAssertEqual(KeyboardMetrics.rowCount(page: .letters, mode: .qwerty), 3)
         XCTAssertEqual(KeyboardMetrics.rowCount(page: .letters, mode: .grid), 4)
-        XCTAssertEqual(KeyboardMetrics.rowCount(page: .symbols, mode: .qwerty), 4)
-        XCTAssertEqual(KeyboardMetrics.rowCount(page: .symbols, mode: .grid), 4)
+        XCTAssertEqual(KeyboardMetrics.rowCount(page: .symbols, mode: .qwerty), 3)
+        XCTAssertEqual(KeyboardMetrics.rowCount(page: .symbols, mode: .grid), 3)
     }
 
     func testGridIsTallerThanQwerty() {
