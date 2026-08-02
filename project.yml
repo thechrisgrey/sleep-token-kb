@@ -82,6 +82,7 @@ targets:
       - path: Shared/Alphabet.swift
       - path: Shared/LayoutMode.swift
       - path: Shared/KeyboardMetrics.swift
+      - path: Shared/KeyCenters.swift
       - path: Shared/ShiftState.swift
       - path: Shared/SymbolGlyphView.swift
       # Text-entry rules. Pure functions over the host field's state, kept out of the

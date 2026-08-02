@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		00EF03446C33D104BB5A7987 /* ReturnKeyTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034A7A86DA1F1F5B4323A425 /* ReturnKeyTitle.swift */; };
 		01A2009543D9BA179F37E6F0 /* LayoutMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DC71CFEE0A72F1981885FAD /* LayoutMode.swift */; };
+		021A4E767C663AFAEC164F74 /* KeyCenters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 489617AE0CE2A343D27D6DDD /* KeyCenters.swift */; };
 		02855833FFBA19E180125288 /* AlphabetChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FA93313652D135E88CF1E1 /* AlphabetChartView.swift */; };
 		03EB26005A8829D9833BC73E /* PeriodShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9629186B2902B46F2312505B /* PeriodShortcut.swift */; };
 		06F3C1E6FB78687C12D35980 /* RuneExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 538EF89B2D7012D02DCC0639 /* RuneExportTests.swift */; };
@@ -21,6 +22,7 @@
 		1EA6FFF730429068341BDF00 /* CapsLockTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2929973F0B22C50F0B7F78F /* CapsLockTap.swift */; };
 		1F0A6E91264D901B1A39145F /* EmojiCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCAEB795A2B0DB6240776771 /* EmojiCatalog.swift */; };
 		29C9189F074AF78A37081F79 /* AutoShift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4A8A0CAA11A6BA7792C758 /* AutoShift.swift */; };
+		29F1594C34C7282C129984D1 /* KeyCenters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 489617AE0CE2A343D27D6DDD /* KeyCenters.swift */; };
 		2DA166D0AFAA8F2AC37E84B5 /* LayoutMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DC71CFEE0A72F1981885FAD /* LayoutMode.swift */; };
 		2DE81F2CF42CF4BE6A64CA7B /* RunePadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6A8D3881DC7EE73BFE5D2E /* RunePadView.swift */; };
 		331B5919CF2D2F9CBFA2A690 /* ReturnKeyTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034A7A86DA1F1F5B4323A425 /* ReturnKeyTitle.swift */; };
@@ -42,6 +44,7 @@
 		6C5D10E5FEB1FEE1B9F5A985 /* HostField.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA62FC9BC1B80D936DB64FE2 /* HostField.swift */; };
 		6F15561AF34EE3F7E4BBB854 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B1217EEFF5F8964823A8706 /* ThemeTests.swift */; };
 		731F70195B7F7502E168E1D7 /* Autocapitalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD42188DE62CAB9DD2E797 /* Autocapitalization.swift */; };
+		7381CB823DF51808AFDC21F3 /* KeyCentersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243F8D8236F69D3411315E0B /* KeyCentersTests.swift */; };
 		76BDD0A698E5BCD375F27517 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD366C12A527A2E0266EEE1 /* Theme.swift */; };
 		7774E551382872402C4E73B4 /* JerryHunt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BD59817881E4F731E45CD5D /* JerryHunt.swift */; };
 		79B856FC754A8E36AB4EECE0 /* PeriodShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9629186B2902B46F2312505B /* PeriodShortcut.swift */; };
@@ -125,6 +128,7 @@
 		169A4EB79EEE4BB091880928 /* KeyboardMetricsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardMetricsTests.swift; sourceTree = "<group>"; };
 		17F8B191D3CC54F363C6833E /* Alphabet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Alphabet.swift; sourceTree = "<group>"; };
 		193874995F99EB2CF56ACC56 /* CapsLockTapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapsLockTapTests.swift; sourceTree = "<group>"; };
+		243F8D8236F69D3411315E0B /* KeyCentersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCentersTests.swift; sourceTree = "<group>"; };
 		2A88EA39EABC548CE19DBF3F /* SpaceTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceTracker.swift; sourceTree = "<group>"; };
 		2DC71CFEE0A72F1981885FAD /* LayoutMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutMode.swift; sourceTree = "<group>"; };
 		2FEF2D03A1421B388A159704 /* ReturnKeyTitleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnKeyTitleTests.swift; sourceTree = "<group>"; };
@@ -135,6 +139,7 @@
 		3CAD573554E150B9EB32650B /* PeriodShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeriodShortcutTests.swift; sourceTree = "<group>"; };
 		434AC2364F4B983B3DD35DB4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		470F58C1F47DF1878016A2CF /* ThemeContrastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeContrastTests.swift; sourceTree = "<group>"; };
+		489617AE0CE2A343D27D6DDD /* KeyCenters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCenters.swift; sourceTree = "<group>"; };
 		4CAFEA8E748BFEF65ED884D4 /* ShiftState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShiftState.swift; sourceTree = "<group>"; };
 		4F8987716A1302DDC384C178 /* SymbolGlyphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolGlyphView.swift; sourceTree = "<group>"; };
 		50CF90AF3F08F7E3CB5086F2 /* PageAfterSpace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageAfterSpace.swift; sourceTree = "<group>"; };
@@ -200,6 +205,7 @@
 				F2929973F0B22C50F0B7F78F /* CapsLockTap.swift */,
 				FCAEB795A2B0DB6240776771 /* EmojiCatalog.swift */,
 				7C784720BF702AC00EAD916E /* KeyboardMetrics.swift */,
+				489617AE0CE2A343D27D6DDD /* KeyCenters.swift */,
 				A3C3E2E099208283DFD8B528 /* KeyRepeat.swift */,
 				2DC71CFEE0A72F1981885FAD /* LayoutMode.swift */,
 				50CF90AF3F08F7E3CB5086F2 /* PageAfterSpace.swift */,
@@ -242,6 +248,7 @@
 				C027840CED3A4DB8DD9A917B /* KeyboardLayoutTests.swift */,
 				169A4EB79EEE4BB091880928 /* KeyboardMetricsTests.swift */,
 				91D3D861BDF2AC3FE450D9A0 /* KeyboardPreferencesTests.swift */,
+				243F8D8236F69D3411315E0B /* KeyCentersTests.swift */,
 				F26CE74A2AB7629489EC2649 /* KeyRepeatTests.swift */,
 				9FFDCB708F5C31C5A3A08C77 /* LayoutModeTests.swift */,
 				37D295A68B5AF8F366030F89 /* PageAfterSpaceTests.swift */,
@@ -446,6 +453,7 @@
 				C2241404AF7DAC6A05432526 /* EmojiCatalog.swift in Sources */,
 				57C6864CA7DA671770FF6B70 /* EnableKeyboardView.swift in Sources */,
 				7774E551382872402C4E73B4 /* JerryHunt.swift in Sources */,
+				021A4E767C663AFAEC164F74 /* KeyCenters.swift in Sources */,
 				AFE546B98A359326C357659F /* KeyRepeat.swift in Sources */,
 				69B673D05FD3441ED63D6FC9 /* KeyboardMetrics.swift in Sources */,
 				2DA166D0AFAA8F2AC37E84B5 /* LayoutMode.swift in Sources */,
@@ -477,6 +485,7 @@
 				575D6680455D83D39675AEDF /* CapsLockTapTests.swift in Sources */,
 				AC1A26ED0D8398378F9E5AE0 /* EmojiCatalogTests.swift in Sources */,
 				DA5D79D9C79DD6B933A75042 /* JerryHuntTests.swift in Sources */,
+				7381CB823DF51808AFDC21F3 /* KeyCentersTests.swift in Sources */,
 				6A04ED7514E76F5FDBB2138A /* KeyRepeatTests.swift in Sources */,
 				3D95CE3B4754F38C81174AE8 /* KeyboardLayoutTests.swift in Sources */,
 				10C6F47ED4334ADFA54454F7 /* KeyboardMetricsTests.swift in Sources */,
@@ -509,6 +518,7 @@
 				1EA6FFF730429068341BDF00 /* CapsLockTap.swift in Sources */,
 				1F0A6E91264D901B1A39145F /* EmojiCatalog.swift in Sources */,
 				6C5D10E5FEB1FEE1B9F5A985 /* HostField.swift in Sources */,
+				29F1594C34C7282C129984D1 /* KeyCenters.swift in Sources */,
 				7C166D6DF1651443677250F7 /* KeyPalette.swift in Sources */,
 				8CDF1518E5AF4A7B8385C199 /* KeyRepeat.swift in Sources */,
 				ECA44F0633E84F25956BC089 /* KeyboardMetrics.swift in Sources */,
