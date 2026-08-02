@@ -40,6 +40,14 @@ struct KeyboardRootView: View {
     @State private var autoShift = AutoShift()
     @State private var page: KeyboardMetrics.Page = .letters
 
+    /// Whether a character has been typed since this visit to the symbol planes began.
+    /// Stock arms the space bar's return to letters on the first keystroke of a visit, not
+    /// on arrival — `123 space` stays on 123 so a "meet me at " keeps the digits one tap
+    /// away, while `123 5 space` goes back. Every deliberate page change clears it through
+    /// `setPage`; the 123 <-> #+= toggle deliberately does not, because stock counts the
+    /// two symbol planes as one visit. See `PageAfterSpace`.
+    @State private var typedOnSymbolPage = false
+
     /// Bookkeeping for the double-space shortcut. A reference type held in `@State` on
     /// purpose, twice over: the reference never changes, so recording a timestamp does
     /// not invalidate the view tree (nothing renders it — the old `Date?` in `@State`
@@ -118,9 +126,16 @@ struct KeyboardRootView: View {
                     // Digits and punctuation move the cursor like any other insert, so
                     // they re-derive too — this was the one mutation path that skipped
                     // it and left shift stale on the 123 page.
-                    onInsert: { insert($0); applyAutocapitalization() },
+                    onInsert: {
+                        insert($0)
+                        // The keystroke that arms the space bar's return to letters.
+                        typedOnSymbolPage = true
+                        applyAutocapitalization()
+                    },
                     onSwitchPage: {
                         haptic()
+                        // Not `setPage`: stock counts 123 and #+= as one visit, so a digit
+                        // typed on 123 still arms the space bar over on #+=.
                         page = (page == .symbols) ? .symbolsAlt : .symbols
                     },
                     onBackspace: { deleteBackward(isRepeat: $0) }
@@ -172,6 +187,7 @@ struct KeyboardRootView: View {
             autoShift = AutoShift()
             spaceTracker.interrupt()
             capsLockTap.interrupt()
+            typedOnSymbolPage = false
             applyAutocapitalization()
             refreshSuggestions()
         }
@@ -206,8 +222,7 @@ struct KeyboardRootView: View {
                 label: page == .letters ? "Switch to numbers" : "Switch to letters"
             ) {
                 haptic()
-                page = (page == .letters) ? .symbols : .letters
-                onHeightInputsChanged?(.init(page: page, mode: layoutMode))
+                setPage(page == .letters ? .symbols : .letters)
             }
             .frame(width: KeyboardMetrics.functionKeyWidth)
 
@@ -228,8 +243,7 @@ struct KeyboardRootView: View {
                 fill: page == .emoji ? KeyPalette.active : KeyPalette.function
             ) {
                 haptic()
-                page = (page == .emoji) ? .letters : .emoji
-                onHeightInputsChanged?(.init(page: page, mode: layoutMode))
+                setPage(page == .emoji ? .letters : .emoji)
             }
             .frame(width: 38)
             .simultaneousGesture(
@@ -408,7 +422,31 @@ struct KeyboardRootView: View {
             spaceTracker.recordSpace()
         }
 
+        returnToLettersAfterSpace()
         applyAutocapitalization()
+    }
+
+    /// Stock treats 123 and #+= as a detour: the space that ends a word brings the letters
+    /// back on its own, and ours left the user stranded on symbols after every "?" or "!".
+    /// Applied after the insert, so the character lands on the page it was typed from.
+    private func returnToLettersAfterSpace() {
+        let next = PageAfterSpace.page(
+            from: page,
+            typedSinceEntering: typedOnSymbolPage,
+            numberPadField: host.usesNumberPad()
+        )
+        guard next != page else { return }
+        setPage(next)
+    }
+
+    /// The one channel every deliberate page change goes through. It clears the space
+    /// bar's arming, because a fresh visit to the symbol planes starts disarmed, and
+    /// reports the height inputs the container reserves from. The 123 <-> #+= toggle is
+    /// the deliberate exception: stock counts both planes as a single visit.
+    private func setPage(_ next: KeyboardMetrics.Page) {
+        page = next
+        typedOnSymbolPage = false
+        onHeightInputsChanged?(.init(page: page, mode: layoutMode))
     }
 
     /// `isRepeat` is false for the tap that begins a hold and true for every repeat after

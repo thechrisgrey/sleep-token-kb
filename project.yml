@@ -90,6 +90,7 @@ targets:
       - path: Shared/AutoShift.swift
       - path: Shared/ReturnKeyTitle.swift
       - path: Shared/PeriodShortcut.swift
+      - path: Shared/PageAfterSpace.swift
       - path: Shared/KeyRepeat.swift
       - path: Shared/SpaceTracker.swift
       - path: Shared/CapsLockTap.swift

@@ -23,6 +23,14 @@ struct HostField {
     /// offering nothing.
     var correctionAllowed: () -> Bool
 
+    /// Whether the field asked for a number pad.
+    ///
+    /// A custom keyboard replaces every keyboard type, so a phone-number or amount field
+    /// gets these same letter and symbol pages. In one, the symbols page is where the
+    /// user means to stay — which is why the space bar's return to letters stands down
+    /// there. See `PageAfterSpace`.
+    var usesNumberPad: () -> Bool
+
     /// Whether the user has granted Full Access in Settings.
     ///
     /// The extension declares `RequestsOpenAccess`, but declaring it only makes the toggle

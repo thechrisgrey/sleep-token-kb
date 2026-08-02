@@ -154,6 +154,15 @@ final class KeyboardViewController: UIInputViewController {
                         return true
                     }
                 },
+                usesNumberPad: { [weak self] in
+                    switch self?.textDocumentProxy.keyboardType {
+                    case .some(.numberPad), .some(.phonePad), .some(.decimalPad),
+                         .some(.asciiCapableNumberPad):
+                        return true
+                    default:
+                        return false
+                    }
+                },
                 hasFullAccess: { [weak self] in
                     self?.hasFullAccess ?? false
                 }
