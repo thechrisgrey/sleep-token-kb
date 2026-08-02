@@ -475,9 +475,20 @@ git commit -m "Bundle a 50k-word frequency lexicon with first/last-key pruning"
   - `struct Result: Equatable { let word: String; let score: Double }` (lower is better)
   - `GlideDecoder.decode(trace: [CGPoint], centers: [SleepTokenLetter: CGPoint], keyUnit: CGFloat, lexicon: GlideLexicon, limit: Int = 4) -> [Result]`
   - `GlideDecoder.nearestLetterSequence(trace: [CGPoint], centers: [SleepTokenLetter: CGPoint]) -> String`
-  - Named tuning constants: `pruneRadiusFactor = 1.5`, `widenedPruneRadiusFactor = 2.5`, `frequencyWeight = 0.45`, `sampleCount = 64`
+  - Named tuning constants: `pruneRadiusFactor = 1.5`, `widenedPruneRadiusFactor = 2.5`, `frequencyWeight = 0.45`, `endpointWeight = 0.35`, `sampleCount = 64`
 
-Scoring: resample the trace and each candidate's template polyline to 64 arc-length-equidistant points; shape cost = mean pointwise Euclidean distance divided by `keyUnit`; total score = shape cost − `frequencyWeight` × frequency. Length gate: reject candidates whose template length is outside `[0.3 × traceLength, 3 × traceLength + 2 × keyUnit]`.
+Scoring: resample the trace and each candidate's template polyline to 64 arc-length-equidistant points; shape cost = mean pointwise Euclidean distance divided by `keyUnit`; endpoint cost = the first-point and last-point distances averaged and divided by `keyUnit` (the SHARK² location channel's start/end anchoring — where a glide begins and ends is the user's most deliberate signal); total score = shape cost + `endpointWeight` × endpoint cost − `frequencyWeight` × frequency. Length gate: reject candidates whose template length is outside `[0.3 × traceLength, 3 × traceLength + 2 × keyUnit]`.
+
+> **Amended 2026-08-02 during execution.** The original formula (shape − frequency
+> only) was measured against the real lexicon and geometry: "hello" cannot beat
+> the corpus-heavier "help" at any licensed `frequencyWeight`, and no path-only
+> score can ever split "pit"/"pot"/"put" — i, o, and u lie exactly on the p→t
+> segment, so all three templates resample to the same straight line. The
+> endpoint term (already anticipated by the spec's "start/end anchoring")
+> resolves the first; the second is a true geometric tie the commit model
+> carries in the suggestion bar, and the adversarial test now asserts exactly
+> that, plus a mid-path pair (form/from) that geometry genuinely can resolve.
+> `endpointWeight` tunable 0.2–0.5 by the same rule as `frequencyWeight`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -546,10 +557,20 @@ final class GlideDecoderTests: XCTestCase {
                                     "jittered accuracy fell below 90%")
     }
 
-    func testAdversarialPairsResolveByPath() {
+    /// pit/pot/put share one ideal trace — a straight line along the top row,
+    /// because i, o, and u all lie ON the p→t segment. No score over the path
+    /// alone can split them; the commit model carries that ambiguity in the
+    /// bar, so all three must be offered. Pairs whose mid-path shapes genuinely
+    /// differ (form/from swap their zigzag) must still resolve top-1.
+    func testAdversarialPairsResolveByPathOrSurfaceInAlternates() {
         let lexicon = GlideLexicon.shared
-        XCTAssertEqual(decode(idealTrace(for: "pit"), lexicon: lexicon).first, "pit")
-        XCTAssertEqual(decode(idealTrace(for: "pot"), lexicon: lexicon).first, "pot")
+        let sharedLine = decode(idealTrace(for: "pit"), lexicon: lexicon)
+        for word in ["pit", "pot", "put"] {
+            XCTAssertTrue(sharedLine.contains(word),
+                          "'\(word)' missing from the shared p-t line's candidates: \(sharedLine)")
+        }
+        XCTAssertEqual(decode(idealTrace(for: "form"), lexicon: lexicon).first, "form")
+        XCTAssertEqual(decode(idealTrace(for: "from"), lexicon: lexicon).first, "from")
         XCTAssertTrue(decode(idealTrace(for: "jello"), lexicon: lexicon).prefix(3).contains("jello"))
     }
 
@@ -622,6 +643,9 @@ public enum GlideDecoder {
     public static let pruneRadiusFactor: CGFloat = 1.5
     public static let widenedPruneRadiusFactor: CGFloat = 2.5
     public static let frequencyWeight = 0.45
+    /// Start/end anchoring: where a glide begins and ends is the user's most
+    /// deliberate signal, so endpoint misses cost more than mid-path wobble.
+    public static let endpointWeight = 0.35
 
     public static func decode(
         trace: [CGPoint],
@@ -661,8 +685,16 @@ public enum GlideDecoder {
                                sampled[index].y - template[index].y)
             }
             let shapeCost = Double(total / CGFloat(sampleCount) / keyUnit)
+            let endpointCost = Double(
+                (hypot(sampled[0].x - template[0].x,
+                       sampled[0].y - template[0].y)
+                 + hypot(sampled[sampleCount - 1].x - template[sampleCount - 1].x,
+                         sampled[sampleCount - 1].y - template[sampleCount - 1].y))
+                / (2 * keyUnit)
+            )
             results.append(Result(word: candidate.word,
-                                  score: shapeCost - frequencyWeight * candidate.frequency))
+                                  score: shapeCost + endpointWeight * endpointCost
+                                      - frequencyWeight * candidate.frequency))
         }
         return Array(results.sorted { $0.score < $1.score }.prefix(limit))
     }
