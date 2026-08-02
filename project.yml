@@ -93,6 +93,7 @@ targets:
       - path: Shared/PeriodShortcut.swift
       - path: Shared/PageAfterSpace.swift
       - path: Shared/GlideLexicon.swift
+      - path: Shared/GlideDecoder.swift
       - path: Shared/Resources/glide_lexicon.txt
       - path: Shared/KeyRepeat.swift
       - path: Shared/SpaceTracker.swift

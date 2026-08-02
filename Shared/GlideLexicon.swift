@@ -78,6 +78,13 @@ public final class GlideLexicon {
 
     public func containsWord(_ word: String) -> Bool { known.contains(word.lowercased()) }
 
+    /// The N most frequent words, for the accuracy suite.
+    public func mostFrequentWords(_ n: Int) -> [String] {
+        buckets.values.flatMap { $0 }
+            .sorted { $0.frequency > $1.frequency }
+            .prefix(n).map(\.word)
+    }
+
     /// Every word whose first path key is within `radius` of the trace start AND
     /// whose last path key is within `radius` of the trace end.
     public func candidates(
