@@ -1391,11 +1391,17 @@ git commit -m "Capture glide traces on the letter page with a reduced-motion-saf
 In `prepareForAppearance()` add (after `loadPreferences()`):
 ```swift
         if glideEnabled {
-            // Warm the 50k-word parse off-main so the first glide never pays it,
-            // and fold in the user's names and text replacements.
+            // Warm the 50k-word parse off-main so the first glide never pays
+            // it. The merge hops back to the main actor: candidates() runs on
+            // main during a glide, and GlideLexicon is deliberately unlocked —
+            // single-actor access IS the synchronization. (Resolves the Task 2
+            // review's unsynchronized-state flag.)
             let supplementary = supplementaryWords
             Task.detached(priority: .utility) {
-                GlideLexicon.shared.merge(words: supplementary)
+                _ = GlideLexicon.shared   // static-let init is thread-safe
+                await MainActor.run {
+                    GlideLexicon.shared.merge(words: supplementary)
+                }
             }
         }
 ```
