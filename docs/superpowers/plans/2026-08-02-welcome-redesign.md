@@ -343,13 +343,14 @@ Match the navigation-title treatment the other pushed screens use (check `Enable
 
                     VStack(alignment: .leading, spacing: 10) {
                         if showsEnableCard {
-                            NavigationLink { EnableKeyboardView() } label: {
+                            Button { enableGuidePresented = true } label: {
                                 DestinationCard(
                                     glyph: .e,
                                     title: "Enable the keyboard",
                                     detail: "One-time setup in Settings. Then the runes follow you into every app."
                                 )
                             }
+                            .buttonStyle(.plain)
                         }
                         NavigationLink { RunePadView() } label: {
                             DestinationCard(
@@ -385,9 +386,19 @@ No section label above the cards — four items do not need the tracked-caps sca
 - [ ] **Step 4: The threshold state.**
 
 ```swift
-    @State private var showsEnableCard = true
+    @State private var showsEnableCard = EnableThreshold.showsEnableCard(
+        enabledKeyboards: UserDefaults.standard.stringArray(forKey: "AppleKeyboards"),
+        manuallyHidden: UserDefaults.standard.bool(forKey: EnableThreshold.manuallyHiddenKey)
+    )
+    @State private var enableGuidePresented = false
 
     private func refreshThreshold() {
+        #if DEBUG
+        if debugForceEnableCard {
+            showsEnableCard = true
+            return
+        }
+        #endif
         showsEnableCard = EnableThreshold.showsEnableCard(
             enabledKeyboards: UserDefaults.standard.stringArray(forKey: "AppleKeyboards"),
             manuallyHidden: UserDefaults.standard.bool(forKey: EnableThreshold.manuallyHiddenKey)
@@ -395,18 +406,46 @@ No section label above the cards — four items do not need the tracked-caps sca
     }
 ```
 
-Call `refreshThreshold()` from `.onAppear` (alongside the existing `RuneFont.registerIfNeeded()`) and from a `.onChange(of: scenePhase)` when it becomes `.active` (add `@Environment(\.scenePhase)`) — the user returns from Settings.app having just enabled the keyboard, and the card should be gone before they scroll.
+Call `refreshThreshold()` from `.onAppear` (alongside the existing `RuneFont.registerIfNeeded()`) and from a `.onChange(of: scenePhase)` when it becomes `.active` (add `@Environment(\.scenePhase)`) — the user returns from Settings.app having just enabled the keyboard, and the card should be gone before they scroll. Seeding the `@State` from the rule closes the one-frame flash an already-enabled user would otherwise see.
+
+On the ScrollView chain, NOT debug-fenced, add the guide's door as an unconditional destination:
+
+```swift
+            // The guide's door stays in the hierarchy even after the card hides:
+            // returning from Settings.app flips showsEnableCard while the guide
+            // is pushed, and a vanishing NavigationLink would take the pushed
+            // screen down with it — ejecting the user mid-setup at the exact
+            // moment step IV sends them back here.
+            .navigationDestination(isPresented: $enableGuidePresented) {
+                EnableKeyboardView()
+            }
+```
+
+> **Amended 2026-08-02 during execution.** The Task 4 review caught two plan
+> defects: the conditional NavigationLink popped the pushed enable guide the
+> moment the scene-active refresh hid the card (the guide's own step IV sends
+> the user back from Settings.app), and `-force-arcadia` persisted the theme
+> through ThemeStore's didSet, contaminating every later screenshot. The card
+> is now a Button triggering an unconditional `navigationDestination`, the
+> threshold seeds from the rule, `-force-enable-card` survives the refresh via
+> a DEBUG flag consulted inside `refreshThreshold`, and `-force-ritual` gives
+> Task 6 a deterministic counterpart.
 
 - [ ] **Step 5: DEBUG screenshot affordances** (deliberately tiny, DEBUG-gated, argument-driven):
 
 ```swift
     #if DEBUG
     @State private var debugRouteToSettings = false
+    @State private var debugForceEnableCard = false
 
     private func applyScreenshotOverrides() {
         let arguments = ProcessInfo.processInfo.arguments
-        if arguments.contains("-force-enable-card") { showsEnableCard = true }
+        if arguments.contains("-force-enable-card") {
+            debugForceEnableCard = true
+            showsEnableCard = true
+        }
         if arguments.contains("-force-arcadia") { store.mode = .evenInArcadia }
+        if arguments.contains("-force-ritual") { store.mode = .ritual }
         if arguments.contains("-route-settings") { debugRouteToSettings = true }
     }
     #endif
@@ -457,15 +496,19 @@ with `@State private var hidConfirmation = false`. The welcome recomputes on app
 - [ ] **Step 1: Full suite** — green (252 expected).
 - [ ] **Step 2: Screenshot matrix.** Boot the iOS 26.5 iPhone 17 Pro simulator (`59A65E60-74F5-45C9-B09C-469ECE6E6F76`), build+install the Debug app, then for each row: launch with the arguments, wait ~2s, `xcrun simctl io booted screenshot <name>.png`, terminate.
 
+Every non-Arcadia row passes `-force-ritual` explicitly — `-force-arcadia`
+persists the theme through ThemeStore's didSet, so unforced rows after an
+Arcadia row would silently inherit it.
+
 | Shot | Launch arguments | Extra setup |
 |---|---|---|
-| welcome-needs-setup | `-force-enable-card` | — |
-| welcome-enabled | (none — the sim has the keyboard enabled) | — |
+| welcome-needs-setup | `-force-enable-card -force-ritual` | — |
+| welcome-enabled | `-force-ritual` (the sim has the keyboard enabled) | — |
 | welcome-arcadia | `-force-arcadia` | — |
-| settings | `-route-settings` | — |
+| settings | `-route-settings -force-ritual` | — |
 | settings-arcadia | `-route-settings -force-arcadia` | — |
-| welcome-a11y | `-force-enable-card` | `xcrun simctl ui booted content_size accessibility-extra-large` first, reset after |
-| settings-a11y | `-route-settings` | same |
+| welcome-a11y | `-force-enable-card -force-ritual` | `xcrun simctl ui booted content_size accessibility-extra-large` first, reset after |
+| settings-a11y | `-route-settings -force-ritual` | same |
 
 `xcrun simctl launch booted ai.altivum.SleepTokenKB <args>` passes arguments after the bundle id. If `welcome-enabled` still shows the card (the AppleKeyboards read can be empty in a fresh sim), note it honestly — the forced shot covers the layout, and the real-device check covers detection.
 
