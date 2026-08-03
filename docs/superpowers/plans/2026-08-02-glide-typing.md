@@ -1392,20 +1392,23 @@ In `prepareForAppearance()` add (after `loadPreferences()`):
 ```swift
         if glideEnabled {
             // Warm the 50k-word parse off-main so the first glide never pays
-            // it. The merge hops back to the main actor: candidates() runs on
-            // main during a glide, and GlideLexicon is deliberately unlocked —
-            // single-actor access IS the synchronization. (Resolves the Task 2
-            // review's unsynchronized-state flag.)
-            let supplementary = supplementaryWords
-            Task.detached(priority: .utility) {
-                _ = GlideLexicon.shared   // static-let init is thread-safe
-                await MainActor.run {
-                    GlideLexicon.shared.merge(words: supplementary)
-                }
-            }
+            // it. The supplementary merge deliberately does NOT live here: the
+            // view reads its inputs in onAppear, which the async lexicon
+            // delivery normally loses to. It lives in the controller's
+            // completion (Step 4), where the words actually arrive.
+            Task.detached(priority: .utility) { _ = GlideLexicon.shared }
         }
 ```
-Add the new root-view input (with the other `let`s): `let supplementaryWords: [String]`.
+No new root-view input: the supplementary words never travel through the view.
+
+> **Amended 2026-08-02 during execution.** The Task 8 review proved the original
+> plumbing inert: `supplementaryWords` was read once, in `onAppear`, which the
+> XPC-backed `requestSupplementaryLexicon` completion normally arrives after —
+> so `merge([])` ran, silently, behind a green suite, and the controller's own
+> `refreshRoot` doc comment already warned that reassignment updates a `let`
+> nobody re-reads. The merge now happens in the controller's completion — on
+> the main queue it already hops to, which is the actor `merge` requires —
+> and the view input is gone.
 
 - [ ] **Step 2: The glide handler** (new method after `insertSpace()`)
 
@@ -1481,19 +1484,22 @@ In `autoCorrectFinishedWord()`, first line:
 
 - [ ] **Step 4: Supplementary lexicon in the controller** (`KeyboardViewController`)
 
-Add a property: `private var supplementaryWords: [String] = []`
-In `viewDidLoad`, after `installKeyboardUI()`:
+No stored property. In `viewDidLoad`, after `installKeyboardUI()`:
 ```swift
         // Contact names and text replacements, folded into the glide lexicon.
-        // Arrives async; the next refreshRoot delivers it into the view.
-        requestSupplementaryLexicon { [weak self] lexicon in
+        // Merged HERE, in the completion, not plumbed into the view: the view
+        // reads its inputs in onAppear, which this async delivery normally
+        // loses to — refreshRoot reassignment updates a `let` nobody re-reads
+        // (see refreshRoot's doc comment). The completion already hops to
+        // main, which is the actor merge requires.
+        requestSupplementaryLexicon { lexicon in
             DispatchQueue.main.async {
-                self?.supplementaryWords = lexicon.entries.map(\.documentText)
-                self?.refreshRoot()
+                guard KeyboardPreferences.glideTypingEnabled else { return }
+                GlideLexicon.shared.merge(words: lexicon.entries.map(\.documentText))
             }
         }
 ```
-In `makeRootView()`, pass `supplementaryWords: supplementaryWords` (order must match the struct's property order from Task 7/8).
+`makeRootView()` is untouched by this step.
 
 - [ ] **Step 5: Full gate**
 
