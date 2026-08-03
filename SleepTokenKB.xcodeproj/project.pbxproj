@@ -67,6 +67,7 @@
 		921A7B4E3D98F3E697311F00 /* EnableThresholdTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 397F69FA36F53AB2E47E0016 /* EnableThresholdTests.swift */; };
 		93F1C84E847CB3E7121A9814 /* KeyboardRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A6A4EC0AD28FD24AE067D6 /* KeyboardRootView.swift */; };
 		95067880DB72ED989B000428 /* GlideLexicon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FDA9270C9CD591CD4236C6C /* GlideLexicon.swift */; };
+		9CD19DE097E4EFA9CF1810B1 /* EmojiPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 539948B7CAC009F61AA71311 /* EmojiPage.swift */; };
 		A55C27CD819D31EB21B87F32 /* GlideSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CDCD08CDD1E74653B181659 /* GlideSessionTests.swift */; };
 		A5E548A515A12BDD6257C2A8 /* Alphabet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F8B191D3CC54F363C6833E /* Alphabet.swift */; };
 		A7D6071C57E9C283B268E23D /* ArcadiaRevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B6F2822F0667359A689E627 /* ArcadiaRevealView.swift */; };
@@ -167,6 +168,7 @@
 		50CF90AF3F08F7E3CB5086F2 /* PageAfterSpace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageAfterSpace.swift; sourceTree = "<group>"; };
 		50E156FAE4F205ECFD0A7434 /* JerryTallyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JerryTallyTests.swift; sourceTree = "<group>"; };
 		538EF89B2D7012D02DCC0639 /* RuneExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuneExportTests.swift; sourceTree = "<group>"; };
+		539948B7CAC009F61AA71311 /* EmojiPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiPage.swift; sourceTree = "<group>"; };
 		552C9BA590F343156D99A70D /* EnableKeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnableKeyboardView.swift; sourceTree = "<group>"; };
 		5640E5146F360D6A5E47DD36 /* AutoShiftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoShiftTests.swift; sourceTree = "<group>"; };
 		588BCFC4A4EB5774183C06C3 /* SleepTokenKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SleepTokenKeyboard.entitlements; sourceTree = "<group>"; };
@@ -262,6 +264,7 @@
 			isa = PBXGroup;
 			children = (
 				A54E051FC5420CE3A2B6B172 /* Assets.xcassets */,
+				539948B7CAC009F61AA71311 /* EmojiPage.swift */,
 				EA62FC9BC1B80D936DB64FE2 /* HostField.swift */,
 				434AC2364F4B983B3DD35DB4 /* Info.plist */,
 				A0A6A4EC0AD28FD24AE067D6 /* KeyboardRootView.swift */,
@@ -587,6 +590,7 @@
 				F2CC7DFCC64884EE7891C849 /* Autocapitalization.swift in Sources */,
 				1EA6FFF730429068341BDF00 /* CapsLockTap.swift in Sources */,
 				1F0A6E91264D901B1A39145F /* EmojiCatalog.swift in Sources */,
+				9CD19DE097E4EFA9CF1810B1 /* EmojiPage.swift in Sources */,
 				110F8CC5C468CAFCED9309BD /* GlideCommit.swift in Sources */,
 				EA6707BB5C6813B6ABC335AD /* GlideDecoder.swift in Sources */,
 				CCA2C4AA993A6B43B0076B90 /* GlideLexicon.swift in Sources */,

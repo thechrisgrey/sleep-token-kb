@@ -71,6 +71,14 @@ public enum SleepTokenLetter: String, CaseIterable, Identifiable, Codable, Senda
         shifted ? upperLatin : latin
     }
 
+    /// What VoiceOver speaks for a letter key: the case the next insert will actually
+    /// produce, in stock's phrasing — "a" against "capital A". Autocapitalization arms
+    /// and releases shift silently, so the case cue has to be audible per key, not only
+    /// as the shift key's value.
+    public func spokenKeyName(uppercase: Bool) -> String {
+        uppercase ? "capital \(upperLatin)" : latin
+    }
+
     /// Latin reading of a Rune Pad string: Private Use rune characters map back to
     /// their letters, everything else (spaces, punctuation) passes through unchanged.
     /// Lowercase, so callers can spell-check it directly and style case themselves.

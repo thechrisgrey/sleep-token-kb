@@ -16,15 +16,6 @@ public enum ShiftState: String, CaseIterable, Equatable, Sendable {
     /// Whether the next inserted letter is uppercase.
     public var isUppercase: Bool { self != .off }
 
-    /// Tapping the shift key: off -> shifted -> capsLocked -> off.
-    public func toggled() -> ShiftState {
-        switch self {
-        case .off: .shifted
-        case .shifted: .capsLocked
-        case .capsLocked: .off
-        }
-    }
-
     /// Applied after a letter is inserted: one-shot shift falls away, caps lock persists.
     public func afterInsert() -> ShiftState {
         self == .shifted ? .off : self

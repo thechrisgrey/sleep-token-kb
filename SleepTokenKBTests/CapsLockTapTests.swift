@@ -1,10 +1,9 @@
 import XCTest
 @testable import SleepTokenKB
 
-/// Stock iOS engages caps lock on a *double tap* of shift. Our keyboard only had the
-/// three-tap cycle (off -> shifted -> capsLocked -> off), which is a different muscle
-/// memory. Both now work: the double tap is a shortcut into caps lock, and the cycle
-/// still gets there on a slow third tap.
+/// Stock iOS engages caps lock on a *double tap* of shift. Our keyboard once walked a
+/// three-tap cycle instead; now the double tap is the road into caps lock and a tap on
+/// the locked state is the road out, exactly stock's model.
 ///
 /// Timing is injected rather than read from a clock so the window is testable.
 final class CapsLockTapTests: XCTestCase {
@@ -36,6 +35,17 @@ final class CapsLockTapTests: XCTestCase {
         XCTAssertFalse(tracker.isDoubleTap(at: 0))
         tracker.interrupt()
         XCTAssertFalse(tracker.isDoubleTap(at: 0.1))
+    }
+
+    /// A keystroke between two shift taps means they were never a double tap:
+    /// shift-letter-shift at typing speed is two one-shots, not a caps lock. The view
+    /// delivers the keystroke as an interrupt; this pins the sequence at rule level.
+    func testAKeystrokeBetweenTapsBreaksTheDoubleTap() {
+        var tracker = CapsLockTap()
+        XCTAssertFalse(tracker.isDoubleTap(at: 0))
+        tracker.interrupt()   // the letter landing between the taps
+        XCTAssertFalse(tracker.isDoubleTap(at: 0.2), "the window must not survive a keystroke")
+        XCTAssertTrue(tracker.isDoubleTap(at: 0.3), "the interrupted tap still starts a fresh window")
     }
 
     func testWindowMatchesTheSystemDoubleTapFeel() {
