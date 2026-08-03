@@ -14,9 +14,14 @@ struct ContentView: View {
     /// The root screen has no navigation title — the hero *is* the title — so it keeps
     /// its 40pt rather than rounding down to `.largeTitle`'s 34, and scales from there.
     @ScaledMetric(relativeTo: .largeTitle) private var heroTitleSize: CGFloat = 40
-    @State private var showsEnableCard = true
+    @State private var showsEnableCard = EnableThreshold.showsEnableCard(
+        enabledKeyboards: UserDefaults.standard.stringArray(forKey: "AppleKeyboards"),
+        manuallyHidden: UserDefaults.standard.bool(forKey: EnableThreshold.manuallyHiddenKey)
+    )
+    @State private var enableGuidePresented = false
     #if DEBUG
     @State private var debugRouteToSettings = false
+    @State private var debugForceEnableCard = false
     #endif
 
     var body: some View {
@@ -30,13 +35,14 @@ struct ContentView: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         if showsEnableCard {
-                            NavigationLink { EnableKeyboardView() } label: {
+                            Button { enableGuidePresented = true } label: {
                                 DestinationCard(
                                     glyph: .e,
                                     title: "Enable the keyboard",
                                     detail: "One-time setup in Settings. Then the runes follow you into every app."
                                 )
                             }
+                            .buttonStyle(.plain)
                         }
                         NavigationLink { RunePadView() } label: {
                             DestinationCard(
@@ -83,6 +89,14 @@ struct ContentView: View {
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            // The guide's door stays in the hierarchy even after the card hides:
+            // returning from Settings.app flips showsEnableCard while the guide
+            // is pushed, and a vanishing NavigationLink would take the pushed
+            // screen down with it — ejecting the user mid-setup at the exact
+            // moment step IV sends them back here.
+            .navigationDestination(isPresented: $enableGuidePresented) {
+                EnableKeyboardView()
+            }
             #if DEBUG
             .navigationDestination(isPresented: $debugRouteToSettings) {
                 SettingsView(theme: themeBinding)
@@ -178,6 +192,12 @@ struct ContentView: View {
     // MARK: - Enable-card threshold
 
     private func refreshThreshold() {
+        #if DEBUG
+        if debugForceEnableCard {
+            showsEnableCard = true
+            return
+        }
+        #endif
         showsEnableCard = EnableThreshold.showsEnableCard(
             enabledKeyboards: UserDefaults.standard.stringArray(forKey: "AppleKeyboards"),
             manuallyHidden: UserDefaults.standard.bool(forKey: EnableThreshold.manuallyHiddenKey)
@@ -187,8 +207,12 @@ struct ContentView: View {
     #if DEBUG
     private func applyScreenshotOverrides() {
         let arguments = ProcessInfo.processInfo.arguments
-        if arguments.contains("-force-enable-card") { showsEnableCard = true }
+        if arguments.contains("-force-enable-card") {
+            debugForceEnableCard = true
+            showsEnableCard = true
+        }
         if arguments.contains("-force-arcadia") { store.mode = .evenInArcadia }
+        if arguments.contains("-force-ritual") { store.mode = .ritual }
         if arguments.contains("-route-settings") { debugRouteToSettings = true }
     }
     #endif
@@ -228,7 +252,6 @@ struct ContentView: View {
             HiddenJerry(spot: .homeFooter, height: 12)
         }
     }
-
 }
 
 // MARK: - Destination cards
