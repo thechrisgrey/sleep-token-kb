@@ -33,6 +33,7 @@ struct KeyboardRootView: View {
     @State private var layoutMode: LayoutMode = .qwerty
     @State private var keyFaceStyle: KeyFaceStyle = .runeArt
     @State private var hapticsEnabled = true
+    @State private var glideEnabled = true
 
     /// Shift plus its provenance. The pairing matters: an auto-armed shift re-derives
     /// from context on every call while a manual one is preserved, which is what breaks
@@ -158,9 +159,12 @@ struct KeyboardRootView: View {
                     keyHeight: keyHeight,
                     hintSize: hintSize,
                     faceSize: letterFaceSize,
+                    glideEnabled: glideEnabled,
                     onLetter: insertLetter,
                     onShift: toggleShift,
-                    onBackspace: { deleteBackward(isRepeat: $0) }
+                    onBackspace: { deleteBackward(isRepeat: $0) },
+                    onGlide: { _, _ in }
+                    // Task 8 wires this to handleGlide
                 )
                 .frame(height: pageHeight)
             }
@@ -566,9 +570,18 @@ private struct LetterPage: View {
     let keyHeight: CGFloat
     let hintSize: CGFloat
     let faceSize: CGFloat
+    /// Glide typing: QWERTY-only, off under VoiceOver, additive over the buttons.
+    let glideEnabled: Bool
     let onLetter: (SleepTokenLetter) -> Void
     let onShift: () -> Void
     let onBackspace: (Bool) -> Void
+    let onGlide: (_ trace: [CGPoint], _ availableWidth: CGFloat) -> Void
+
+    @State private var glide = GlideSession()
+    /// True from the first drag sample until the runloop tick after lift, so the
+    /// origin key's Button cannot fire a stray letter on the same touch-up.
+    @State private var suppressesTaps = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var rows: [[SleepTokenLetter]] {
         layoutMode == .qwerty ? KeyboardLayout.qwertyRows : KeyboardLayout.gridRows
@@ -597,7 +610,10 @@ private struct LetterPage: View {
                                 hintSize: hintSize,
                                 faceSize: faceSize,
                                 fixedWidth: layoutMode == .qwerty ? unit : nil,
-                                action: { onLetter(letter) }
+                                action: {
+                                    guard !suppressesTaps else { return }
+                                    onLetter(letter)
+                                }
                             )
                             .equatable()
                         }
@@ -626,7 +642,36 @@ private struct LetterPage: View {
                 }
             }
             .frame(width: geo.size.width, alignment: .top)
+            .overlay {
+                if glide.isActive {
+                    GlideTrailView(points: glide.points, reduceMotion: reduceMotion)
+                        .allowsHitTesting(false)
+                }
+            }
+            .simultaneousGesture(glideGesture(width: geo.size.width), including: glideActive ? .all : .subviews)
         }
+    }
+
+    private var glideActive: Bool {
+        glideEnabled && layoutMode == .qwerty && !UIAccessibility.isVoiceOverRunning
+    }
+
+    private func glideGesture(width: CGFloat) -> some Gesture {
+        let unit = KeyboardMetrics.keyUnit(availableWidth: width)
+        return DragGesture(minimumDistance: unit / 2, coordinateSpace: .local)
+            .onChanged { value in
+                guard glideActive else { return }
+                suppressesTaps = true
+                glide.extend(start: value.startLocation, to: value.location)
+            }
+            .onEnded { value in
+                guard glide.isActive else { return }
+                let trace = glide.finish(at: value.location)
+                onGlide(trace, width)
+                // Release tap suppression on the next runloop tick, after the
+                // origin Button has had its chance to (not) fire for this touch.
+                Task { @MainActor in suppressesTaps = false }
+            }
     }
 
     private var shiftKey: some View {
@@ -643,6 +688,36 @@ private struct LetterPage: View {
 
     private var backspaceKey: some View {
         BackspaceKey(keyHeight: keyHeight, onBackspace: onBackspace)
+    }
+}
+
+/// The comet trail behind a gliding finger. Reduce Motion gets a uniform line —
+/// same information, no animated fade.
+private struct GlideTrailView: View {
+    let points: [CGPoint]
+    let reduceMotion: Bool
+
+    var body: some View {
+        Canvas { context, _ in
+            guard points.count > 1 else { return }
+            if reduceMotion {
+                var path = Path()
+                path.addLines(points)
+                context.stroke(path, with: .color(KeyPalette.active.opacity(0.55)),
+                               style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+            } else {
+                // Newest segments brightest: opacity climbs along the trail.
+                let count = points.count
+                for index in 1..<count {
+                    var segment = Path()
+                    segment.move(to: points[index - 1])
+                    segment.addLine(to: points[index])
+                    let progress = Double(index) / Double(count)
+                    context.stroke(segment, with: .color(KeyPalette.active.opacity(0.15 + 0.55 * progress)),
+                                   style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                }
+            }
+        }
     }
 }
 
