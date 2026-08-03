@@ -547,9 +547,10 @@ final class GlideDecoderTests: XCTestCase {
         var hits = 0
         let words = lexicon.mostFrequentWords(100).filter { GlideLexicon.path(of: $0).count >= 3 }
         for word in words {
-            let jittered = idealTrace(for: word).map { point in
-                CGPoint(x: point.x + CGFloat(rng.nextUniform() - 0.5) * unit * 0.5,
-                        y: point.y + CGFloat(rng.nextUniform() - 0.5) * unit * 0.5)
+            let jittered = idealTrace(for: word).map { point -> CGPoint in
+                let dx = CGFloat(rng.nextUniform() - 0.5) * unit * 0.5
+                let dy = CGFloat(rng.nextUniform() - 0.5) * unit * 0.5
+                return CGPoint(x: point.x + dx, y: point.y + dy)
             }
             if decode(jittered, lexicon: lexicon).prefix(3).contains(word) { hits += 1 }
         }
@@ -576,21 +577,34 @@ final class GlideDecoderTests: XCTestCase {
 
     func testEmptyCandidatesFallBackToNearestLetters() {
         let empty = GlideLexicon(rows: [])
-        let trace = idealTrace(for: "qp")
-        XCTAssertTrue(GlideDecoder.decode(trace: trace, centers: centers, keyUnit: unit,
+        let straight = idealTrace(for: "qp")
+        XCTAssertTrue(GlideDecoder.decode(trace: straight, centers: centers, keyUnit: unit,
                                           lexicon: empty, limit: 4).isEmpty)
-        let literal = GlideDecoder.nearestLetterSequence(trace: trace, centers: centers)
-        XCTAssertEqual(literal.first, "q")
-        XCTAssertEqual(literal.last, "p")
+        XCTAssertEqual(GlideDecoder.nearestLetterSequence(trace: straight, centers: centers),
+                       "qp", "a straight drag has no corners — only its endpoints speak")
+        let elbow = idealTrace(for: "qpm")   // along the top row, then down to m
+        XCTAssertEqual(GlideDecoder.nearestLetterSequence(trace: elbow, centers: centers),
+                       "qpm", "the corner at p is a deliberate point and must survive")
     }
 
+    /// Regression tripwire, not a benchmark: debug builds run this unoptimized,
+    /// so the ceiling is deliberately loose — it catches an accidental
+    /// order-of-magnitude regression, not a lost millisecond. The real budget
+    /// (50ms, release, on device) is verified by hand on device.
     func testDecodeStaysInsideTheLatencyBudget() {
         let lexicon = GlideLexicon.shared
         let trace = idealTrace(for: "keyboard")
-        measure {   // budget: well under 50ms; measure records, the suite documents
+        _ = GlideDecoder.decode(trace: trace, centers: centers, keyUnit: unit,
+                                lexicon: lexicon, limit: 4)   // warm the lexicon
+        let start = ContinuousClock.now
+        for _ in 0..<5 {
             _ = GlideDecoder.decode(trace: trace, centers: centers, keyUnit: unit,
                                     lexicon: lexicon, limit: 4)
         }
+        let elapsed = ContinuousClock.now - start
+        let seconds = Double(elapsed.components.seconds)
+            + Double(elapsed.components.attoseconds) / 1e18
+        XCTAssertLessThan(seconds / 5, 0.15, "decode regressed an order of magnitude")
     }
 }
 
@@ -699,15 +713,32 @@ public enum GlideDecoder {
         return Array(results.sorted { $0.score < $1.score }.prefix(limit))
     }
 
-    /// Last-resort literal: the nearest key under each sampled point, adjacent
-    /// duplicates collapsed. The user gets what they drew, never silence.
+    /// Last-resort literal: the trace's deliberate points — its endpoints plus
+    /// the corners where the finger turned by more than 45 degrees — mapped to
+    /// their nearest keys, adjacent duplicates collapsed. Sampling every point
+    /// would transcribe the stroke (a q-to-p drag crosses the whole top row);
+    /// corners are where the user meant something. The user gets what they
+    /// drew, never silence.
     public static func nearestLetterSequence(
         trace: [CGPoint],
         centers: [SleepTokenLetter: CGPoint]
     ) -> String {
-        guard !centers.isEmpty else { return "" }
+        guard !centers.isEmpty, let first = trace.first, let last = trace.last else { return "" }
+        let sampled = resample(trace, to: 16)
+        var anchors: [CGPoint] = [first]
+        for index in 1..<(sampled.count - 1) {
+            let previous = sampled[index - 1]
+            let point = sampled[index]
+            let next = sampled[index + 1]
+            let inbound = atan2(point.y - previous.y, point.x - previous.x)
+            let outbound = atan2(next.y - point.y, next.x - point.x)
+            var turn = abs(outbound - inbound)
+            if turn > .pi { turn = 2 * .pi - turn }
+            if turn > .pi / 4 { anchors.append(point) }
+        }
+        anchors.append(last)
         var letters: [SleepTokenLetter] = []
-        for point in resample(trace, to: 16) {
+        for point in anchors {
             let nearest = centers.min {
                 hypot($0.value.x - point.x, $0.value.y - point.y)
                     < hypot($1.value.x - point.x, $1.value.y - point.y)
@@ -721,7 +752,7 @@ public enum GlideDecoder {
 
     static func length(of points: [CGPoint]) -> CGFloat {
         guard points.count > 1 else { return 0 }
-        return (1..<points.count).reduce(0) { total, index in
+        return (1..<points.count).reduce(CGFloat(0)) { total, index in
             total + hypot(points[index].x - points[index - 1].x,
                           points[index].y - points[index - 1].y)
         }
