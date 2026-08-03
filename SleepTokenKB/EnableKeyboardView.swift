@@ -7,6 +7,8 @@ struct EnableKeyboardView: View {
     /// numeral outgrows its circle at large reading sizes.
     @ScaledMetric(relativeTo: .footnote) private var numeralSize: CGFloat = 34
 
+    @State private var hidConfirmation = false
+
     private struct SetupStep {
         let title: String
         let detail: String
@@ -94,6 +96,21 @@ struct EnableKeyboardView: View {
                         HiddenJerry(spot: .troubleshooting, height: 12)
                     }
                 }
+
+                Button {
+                    UserDefaults.standard.set(true, forKey: EnableThreshold.manuallyHiddenKey)
+                    hidConfirmation = true
+                } label: {
+                    Text(hidConfirmation
+                         ? "The setup card is hidden."
+                         : "Already enabled? Hide the setup card on the welcome screen.")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.inkDim)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                }
+                .buttonStyle(.plain)
+                .disabled(hidConfirmation)
             }
             .padding(16)
             .readableColumn()
