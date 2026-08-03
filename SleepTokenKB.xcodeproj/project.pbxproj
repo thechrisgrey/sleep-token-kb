@@ -17,6 +17,7 @@
 		0E15F0C2EBECEE28FB5F5603 /* JerryTallyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50E156FAE4F205ECFD0A7434 /* JerryTallyTests.swift */; };
 		10C6F47ED4334ADFA54454F7 /* KeyboardMetricsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169A4EB79EEE4BB091880928 /* KeyboardMetricsTests.swift */; };
 		110F8CC5C468CAFCED9309BD /* GlideCommit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67BF81021E8119570CD990D6 /* GlideCommit.swift */; };
+		12813A39050692D6B9CD141A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4315CBADCF7386040D16A945 /* SettingsView.swift */; };
 		150178E1D5BE55C1EE0DF45B /* SpellCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62E7F5B096A51669B58B9C7C /* SpellCheckerTests.swift */; };
 		1538BBE1F8EF0C458D8C86A5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EEF43754E7EFEBEE3DBE885E /* PrivacyInfo.xcprivacy */; };
 		17A9D58D634C22CCD79F2885 /* ShiftState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CAFEA8E748BFEF65ED884D4 /* ShiftState.swift */; };
@@ -157,6 +158,7 @@
 		397F69FA36F53AB2E47E0016 /* EnableThresholdTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnableThresholdTests.swift; sourceTree = "<group>"; };
 		3A5602A7FD096023BA0CAFC4 /* ReadableWidthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadableWidthTests.swift; sourceTree = "<group>"; };
 		3CAD573554E150B9EB32650B /* PeriodShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeriodShortcutTests.swift; sourceTree = "<group>"; };
+		4315CBADCF7386040D16A945 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		434AC2364F4B983B3DD35DB4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		470F58C1F47DF1878016A2CF /* ThemeContrastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeContrastTests.swift; sourceTree = "<group>"; };
 		489617AE0CE2A343D27D6DDD /* KeyCenters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCenters.swift; sourceTree = "<group>"; };
@@ -338,6 +340,7 @@
 				B17A5FE4C09C83C14AE57624 /* RuneCanvas.swift */,
 				D34CF559D2C60AEE4558833F /* RuneExport.swift */,
 				EF6A8D3881DC7EE73BFE5D2E /* RunePadView.swift */,
+				4315CBADCF7386040D16A945 /* SettingsView.swift */,
 				D869B07816C79E1AA3784CE4 /* SleepTokenKB.entitlements */,
 				91AD1321AFA7CBB8EA75619E /* SleepTokenKBApp.swift */,
 				8E64D0C4BB44067FF9654EC3 /* SleepTokenRunes.ttf */,
@@ -524,6 +527,7 @@
 				8CCA69B7F95473DF3EAEF8E0 /* RuneExport.swift in Sources */,
 				3F2325A3E90AF4BA0C06004B /* RuneFont.swift in Sources */,
 				2DE81F2CF42CF4BE6A64CA7B /* RunePadView.swift in Sources */,
+				12813A39050692D6B9CD141A /* SettingsView.swift in Sources */,
 				F574B07F87156C0EDE13C0C4 /* ShiftState.swift in Sources */,
 				5497021A6F0AC323C422A947 /* SleepTokenKBApp.swift in Sources */,
 				F6A48E898292917D44243D10 /* SpaceTracker.swift in Sources */,
