@@ -1212,8 +1212,14 @@ Add to `LetterPage`'s stored properties:
     let onGlide: (_ trace: [CGPoint], _ availableWidth: CGFloat) -> Void
 
     @State private var glide = GlideSession()
-    /// True from the first drag sample until the runloop tick after lift, so the
-    /// origin key's Button cannot fire a stray letter on the same touch-up.
+    /// True while the finger is down in THIS gesture. `@GestureState`, not
+    /// `@State`, and the difference is the whole point (see BackspaceKey): its
+    /// reset also runs when the system CANCELS the touch, so a call banner
+    /// mid-glide cannot wedge the keyboard.
+    @GestureState private var isGliding = false
+    /// Keeps taps suppressed one runloop tick past lift, so the origin key's
+    /// Button cannot fire on the same touch-up. During the drag itself the
+    /// suppression rides `isGliding`.
     @State private var suppressesTaps = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 ```
@@ -1221,7 +1227,7 @@ Add to `LetterPage`'s stored properties:
 Wrap the letter action (in the `ForEach(row)` where `LetterKeyButton` is built), replacing `action: { onLetter(letter) }` with:
 ```swift
                                 action: {
-                                    guard !suppressesTaps else { return }
+                                    guard !(isGliding || suppressesTaps) else { return }
                                     onLetter(letter)
                                 }
 ```
@@ -1235,6 +1241,16 @@ Attach the gesture and trail to the GeometryReader's content (after the existing
                 }
             }
             .simultaneousGesture(glideGesture(width: geo.size.width), including: glideActive ? .all : .subviews)
+            .onChange(of: isGliding) { _, active in
+                // @GestureState's reset is the only signal a CANCELLED touch
+                // gives us: falling while the session is still active means no
+                // onEnded came — discard the glide, clear the trail. This is
+                // the spec's cancellation clause, and GlideSession.cancel's
+                // one production caller.
+                guard !active, glide.isActive else { return }
+                glide.cancel()
+                suppressesTaps = false
+            }
 ```
 with, inside `LetterPage`:
 ```swift
@@ -1245,13 +1261,21 @@ with, inside `LetterPage`:
     private func glideGesture(width: CGFloat) -> some Gesture {
         let unit = KeyboardMetrics.keyUnit(availableWidth: width)
         return DragGesture(minimumDistance: unit / 2, coordinateSpace: .local)
+            .updating($isGliding) { _, state, _ in state = true }
             .onChanged { value in
                 guard glideActive else { return }
+                if glide.points.first != value.startLocation {
+                    // A glide must BEGIN on a letter: a thumb drifting off a
+                    // held backspace or shift is not a word. 0.9 units reaches
+                    // a letter key's corners and rejects the function keys.
+                    guard nearestLetterDistance(to: value.startLocation, width: width)
+                        <= unit * 0.9 else { return }
+                }
                 suppressesTaps = true
                 glide.extend(start: value.startLocation, to: value.location)
             }
             .onEnded { value in
-                guard glide.isActive else { return }
+                guard glideActive, glide.isActive else { return }
                 let trace = glide.finish(at: value.location)
                 onGlide(trace, width)
                 // Release tap suppression on the next runloop tick, after the
@@ -1259,6 +1283,23 @@ with, inside `LetterPage`:
                 Task { @MainActor in suppressesTaps = false }
             }
     }
+
+    private func nearestLetterDistance(to point: CGPoint, width: CGFloat) -> CGFloat {
+        let centers = KeyCenters.qwerty(availableWidth: width, keyHeight: keyHeight)
+        return centers.values.map { hypot($0.x - point.x, $0.y - point.y) }.min() ?? .infinity
+    }
+
+> **Amended 2026-08-02 during execution.** The Task 7 review caught the original
+> gesture recreating the exact cancellation wedge BackspaceKey's own comment
+> documents: `suppressesTaps` was cleared only in `onEnded`, which a system-
+> cancelled touch never delivers — leaving every letter tap dead behind a
+> stale trail. `@GestureState` is the fix the codebase itself teaches: its
+> reset fires on cancellation too, and its falling edge (with the session
+> still active) is where the discarded glide finally satisfies the spec's
+> cancellation clause. The review also caught a thumb drifting off a held
+> backspace emitting a word: a glide must now BEGIN within 0.9 key units of a
+> letter center. `onEnded` gains the `glideActive` guard so a VoiceOver flip
+> mid-drag cannot commit.
 ```
 
 - [ ] **Step 2: Add the trail view** (file-private, alongside the other key views in `KeyboardRootView.swift`)
