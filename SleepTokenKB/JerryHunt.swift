@@ -10,8 +10,8 @@ import UIKit
 /// renaming one resets that Jerry for every fan mid-hunt.
 enum JerrySpot: String, CaseIterable {
     case heroRow          // home: perched at the end of the rune wordmark
-    case waysCard         // home: corner of the "Two ways to write" card
-    case appearanceCard   // home: corner of the Appearance card
+    case waysCard         // settings: corner of the "Two ways to write" card
+    case appearanceCard   // settings: corner of the Appearance card
     case homeFooter       // home: beside the footer ornament
     case setupCard        // enable guide: corner of the Setup card
     case troubleshooting  // enable guide: corner of the Troubleshooting card
