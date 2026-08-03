@@ -34,8 +34,9 @@ Five elements, vertical rhythm, inside the existing `NavigationStack`,
    screen.
 2. **The threshold card** — the one state-aware element. While the keyboard is
    not enabled: a full `DestinationCard` for "Enable the keyboard," first
-   position, the only gold glyph on the page. Once enabled it disappears
-   entirely. Detection reads the system's enabled-keyboards preference
+   position. (All destination cards share the settled gold-glyph form — the
+   threshold card leads by position, not by a special treatment.) Once enabled
+   it disappears entirely. Detection reads the system's enabled-keyboards preference
    (`AppleKeyboards`) looking for the extension's bundle identifier, wrapped in
    one small pure rule so the read is testable; an unreadable or empty result
    is treated as not-enabled and the card stays — showing setup to someone who
