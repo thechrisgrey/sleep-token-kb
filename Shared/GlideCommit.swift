@@ -12,6 +12,17 @@ public enum GlideCommit {
         public let word: String
     }
 
+    /// The word as this shift state would type it. Split out so alternates can
+    /// be cased identically to the committed head — the bar must not read
+    /// "Hello" beside "jello" at a sentence start.
+    public static func cased(_ word: String, shift: ShiftState) -> String {
+        switch shift {
+        case .off: word
+        case .shifted: word.prefix(1).uppercased() + word.dropFirst()
+        case .capsLocked: word.uppercased()
+        }
+    }
+
     /// Auto-space joins CONSECUTIVE glides only — "context ends in a letter and
     /// the last insert was also a glide" (spec). A glide after tapped text, after
     /// punctuation, or at a field start inserts bare.
@@ -21,12 +32,7 @@ public enum GlideCommit {
         contextBefore: String?,
         lastInsertWasGlide: Bool
     ) -> Insertion {
-        let cased: String
-        switch shift {
-        case .off: cased = word
-        case .shifted: cased = word.prefix(1).uppercased() + word.dropFirst()
-        case .capsLocked: cased = word.uppercased()
-        }
+        let cased = Self.cased(word, shift: shift)
         let needsSpace = lastInsertWasGlide && (contextBefore?.last?.isLetter ?? false)
         return Insertion(text: needsSpace ? " " + cased : cased, word: cased)
     }

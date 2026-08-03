@@ -14,6 +14,14 @@ final class GlideCommitTests: XCTestCase {
                                              contextBefore: nil, lastInsertWasGlide: false).word, "HELLO")
     }
 
+    /// Alternates share the head's casing: the bar must not read "Hello"
+    /// beside "jello" at a sentence start.
+    func testCasedMatchesEveryShiftState() {
+        XCTAssertEqual(GlideCommit.cased("jello", shift: .off), "jello")
+        XCTAssertEqual(GlideCommit.cased("jello", shift: .shifted), "Jello")
+        XCTAssertEqual(GlideCommit.cased("jello", shift: .capsLocked), "JELLO")
+    }
+
     // MARK: - Auto-space: only between consecutive glides, only after a letter
 
     func testConsecutiveGlidesAutoSpace() {

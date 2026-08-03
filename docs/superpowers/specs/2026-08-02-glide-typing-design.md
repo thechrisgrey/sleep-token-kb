@@ -57,7 +57,7 @@ scored set in the hundreds, and DTW over a few dozen resampled points is cheap.
 
 The tap-versus-glide state machine. A touch that stays within a movement
 threshold is a tap and belongs to the existing buttons; once it exceeds the
-threshold it becomes a glide and collects timestamped samples until lift.
+threshold it becomes a glide and collects samples until lift.
 Starting threshold: half a key width, held as a named constant and tuned on
 device.
 Also owns cancellation: a system-cancelled touch discards the glide.
@@ -134,8 +134,10 @@ Four suites in `SleepTokenKBTests`:
 1. **Geometry parity** — `KeyCenters` equals `LetterPage`'s layout math across
    several widths and key heights.
 2. **Decoder accuracy** — ideal center-line traces for the top 200 words decode
-   top-1; jittered traces decode top-3; adversarial pairs (pit/pot, hello/jello)
-   asserted explicitly. Both key faces share geometry, so one suite covers both.
+   top-3 (words sharing a collapsed path — to/too — legitimately tie on shape;
+   the strongest common words are asserted top-1); jittered traces decode
+   top-3; adversarial pairs (pit/pot, hello/jello) asserted explicitly. Both
+   key faces share geometry, so one suite covers both.
 3. **Session mechanics** — threshold behavior, sample collection, cancellation.
 4. **Commit rules** — auto-space, capitalization, whole-word backspace, and the
    flag's clearing conditions.

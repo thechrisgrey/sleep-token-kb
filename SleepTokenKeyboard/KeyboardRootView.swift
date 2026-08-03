@@ -461,7 +461,8 @@ struct KeyboardRootView: View {
             ?? GlideDecoder.nearestLetterSequence(trace: trace, centers: centers)
         guard !word.isEmpty else { return }
 
-        let commit = GlideCommit.insertion(word: word, shift: autoShift.state,
+        let shift = autoShift.state
+        let commit = GlideCommit.insertion(word: word, shift: shift,
                                            contextBefore: host.contextBefore(),
                                            lastInsertWasGlide: glideUndo.isArmed)
         insert(commit.text)                       // haptic, space window, echo note
@@ -470,8 +471,10 @@ struct KeyboardRootView: View {
         autoShift.didInsertLetter()
         applyAutocapitalization()
 
-        suggestions = SuggestionSet(literal: commit.word,
-                                    candidates: results.dropFirst().map(\.word))
+        suggestions = SuggestionSet(
+            literal: commit.word,
+            candidates: results.dropFirst().map { GlideCommit.cased($0.word, shift: shift) }
+        )
         showsGlideAlternates = !results.isEmpty
     }
 
