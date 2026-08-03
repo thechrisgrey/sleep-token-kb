@@ -91,6 +91,8 @@ struct ContentView: View {
                             KeyFacePicker()
                             Rectangle().fill(Theme.hairline).frame(height: 1)
                             HapticsToggle()
+                            Rectangle().fill(Theme.hairline).frame(height: 1)
+                            GlideToggle()
                         }
                         .ritualCard()
                     }
@@ -396,6 +398,27 @@ private struct HapticsToggle: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.ink)
                     Text("Needs Allow Full Access, in Settings")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.inkDim)
+                }
+            }
+            .tint(Theme.goldDeep)
+        }
+    }
+}
+
+private struct GlideToggle: View {
+    var body: some View {
+        PreferenceBacked(
+            read: { KeyboardPreferences.glideTypingEnabled },
+            write: { KeyboardPreferences.glideTypingEnabled = $0 }
+        ) { $enabled in
+            Toggle(isOn: $enabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Glide typing")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.ink)
+                    Text("Slide from letter to letter to type a word. QWERTY layout only.")
                         .font(.caption2)
                         .foregroundStyle(Theme.inkDim)
                 }
