@@ -18,8 +18,6 @@ struct KeyboardRootView: View {
     /// the proxy context has settled); shift is re-derived on change. Manual states
     /// survive by rule, so the re-derivation can only correct, never clobber.
     let hostTextGeneration: Int
-    /// Contact names and text replacements, merged into the glide lexicon on appear.
-    let supplementaryWords: [String]
     /// Live reads of the field being edited: what precedes the cursor, how it wants text
     /// capitalised, what its return key means, and whether Full Access was granted.
     let host: HostField
@@ -387,17 +385,11 @@ struct KeyboardRootView: View {
         applyAutocapitalization()
         if glideEnabled {
             // Warm the 50k-word parse off-main so the first glide never pays
-            // it. The merge hops back to the main actor: candidates() runs on
-            // main during a glide, and GlideLexicon is deliberately unlocked —
-            // single-actor access IS the synchronization. (Resolves the Task 2
-            // review's unsynchronized-state flag.)
-            let supplementary = supplementaryWords
-            Task.detached(priority: .utility) {
-                _ = GlideLexicon.shared   // static-let init is thread-safe
-                await MainActor.run {
-                    GlideLexicon.shared.merge(words: supplementary)
-                }
-            }
+            // it. The supplementary merge deliberately does NOT live here: the
+            // view reads its inputs in onAppear, which the async lexicon
+            // delivery normally loses to. It lives in the controller's
+            // completion, where the words actually arrive.
+            Task.detached(priority: .utility) { _ = GlideLexicon.shared }
         }
     }
 

@@ -30,10 +30,6 @@ final class KeyboardViewController: UIInputViewController {
 
     private var lastFingerprint: FieldFingerprint?
 
-    /// Contact names and text replacements, merged into the glide lexicon. Arrives
-    /// async from `requestSupplementaryLexicon`; empty until then.
-    private var supplementaryWords: [String] = []
-
     /// Counters delivered into the SwiftUI view as plain values; `.onChange` on them is
     /// the controller-to-view channel. Reassigning `rootView` cannot touch the view's
     /// `@State` (see `refreshRoot`), but a changed `let` is exactly what it CAN deliver.
@@ -59,11 +55,15 @@ final class KeyboardViewController: UIInputViewController {
         }
 
         // Contact names and text replacements, folded into the glide lexicon.
-        // Arrives async; the next refreshRoot delivers it into the view.
-        requestSupplementaryLexicon { [weak self] lexicon in
+        // Merged HERE, in the completion, not plumbed into the view: the view
+        // reads its inputs in onAppear, which this async delivery normally
+        // loses to — refreshRoot reassignment updates a `let` nobody re-reads
+        // (see refreshRoot's doc comment). The completion already hops to
+        // main, which is the actor merge requires.
+        requestSupplementaryLexicon { lexicon in
             DispatchQueue.main.async {
-                self?.supplementaryWords = lexicon.entries.map(\.documentText)
-                self?.refreshRoot()
+                guard KeyboardPreferences.glideTypingEnabled else { return }
+                GlideLexicon.shared.merge(words: lexicon.entries.map(\.documentText))
             }
         }
     }
@@ -140,7 +140,6 @@ final class KeyboardViewController: UIInputViewController {
             needsInputModeSwitchKey: needsInputModeSwitchKey,
             fieldGeneration: fieldGeneration,
             hostTextGeneration: hostTextGeneration,
-            supplementaryWords: supplementaryWords,
             host: HostField(
                 contextBefore: { [weak self] in
                     self?.textDocumentProxy.documentContextBeforeInput
