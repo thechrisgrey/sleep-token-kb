@@ -18,6 +18,8 @@ struct KeyboardRootView: View {
     /// the proxy context has settled); shift is re-derived on change. Manual states
     /// survive by rule, so the re-derivation can only correct, never clobber.
     let hostTextGeneration: Int
+    /// Contact names and text replacements, merged into the glide lexicon on appear.
+    let supplementaryWords: [String]
     /// Live reads of the field being edited: what precedes the cursor, how it wants text
     /// capitalised, what its return key means, and whether Full Access was granted.
     let host: HostField
@@ -55,6 +57,13 @@ struct KeyboardRootView: View {
     /// re-diffed the whole keyboard per space press), while `@State` keeps the instance
     /// stable across the per-keystroke rootView reassignments the controller performs.
     @State private var spaceTracker = SpaceTracker()
+
+    /// Whole-word backspace bookkeeping for the last glide. Reference type in
+    /// `@State` for the same reason `spaceTracker` is: nothing renders it.
+    @State private var glideUndo = GlideUndo()
+    /// True while the suggestion bar is showing a glide's alternates: the echo of
+    /// the glide commit must not overwrite them with spell candidates.
+    @State private var showsGlideAlternates = false
 
     /// Double-tap-shift-for-caps-lock, the gesture an iPhone thumb already knows. The
     /// three-tap cycle still works; this is a shortcut into the same state.
@@ -163,8 +172,7 @@ struct KeyboardRootView: View {
                     onLetter: insertLetter,
                     onShift: toggleShift,
                     onBackspace: { deleteBackward(isRepeat: $0) },
-                    onGlide: { _, _ in }
-                    // Task 8 wires this to handleGlide
+                    onGlide: handleGlide
                 )
                 .frame(height: pageHeight)
             }
@@ -190,6 +198,7 @@ struct KeyboardRootView: View {
             // window are meaningless here. Start clean and derive for the new field.
             autoShift = AutoShift()
             spaceTracker.interrupt()
+            glideUndo.interrupt()
             capsLockTap.interrupt()
             typedOnSymbolPage = false
             applyAutocapitalization()
@@ -200,11 +209,14 @@ struct KeyboardRootView: View {
             // a same-trait field switch -- breaks double-space consecutiveness; the echo
             // of our own keystroke passes through the tracker silently.
             spaceTracker.hostTextDidChange()
+            glideUndo.hostTextDidChange()
             applyAutocapitalization()
-            // Driven from here rather than from each insert path: the controller bumps
-            // this once the proxy context has actually settled, and the proxy is the only
-            // place the word in progress can be read from.
-            refreshSuggestions()
+            if showsGlideAlternates {
+                // The echo of the glide commit: keep the alternates one round.
+                showsGlideAlternates = false
+            } else {
+                refreshSuggestions()
+            }
         }
     }
 
@@ -373,6 +385,20 @@ struct KeyboardRootView: View {
         loadPreferences()
         onHeightInputsChanged?(.init(page: page, mode: layoutMode))
         applyAutocapitalization()
+        if glideEnabled {
+            // Warm the 50k-word parse off-main so the first glide never pays
+            // it. The merge hops back to the main actor: candidates() runs on
+            // main during a glide, and GlideLexicon is deliberately unlocked —
+            // single-actor access IS the synchronization. (Resolves the Task 2
+            // review's unsynchronized-state flag.)
+            let supplementary = supplementaryWords
+            Task.detached(priority: .utility) {
+                _ = GlideLexicon.shared   // static-let init is thread-safe
+                await MainActor.run {
+                    GlideLexicon.shared.merge(words: supplementary)
+                }
+            }
+        }
     }
 
     private func loadPreferences() {
@@ -380,6 +406,7 @@ struct KeyboardRootView: View {
         keyFaceStyle = KeyboardPreferences.keyFaceStyle
         hapticsEnabled = KeyboardPreferences.hapticsEnabled
         emojiRecents = KeyboardPreferences.emojiRecents
+        glideEnabled = KeyboardPreferences.glideTypingEnabled
         // Warm the engine only for users who can actually feel it: iOS drops
         // feedback-generator events from the extension without Full Access, so an
         // ungated prepare() spins the taptic engine for nothing.
@@ -400,6 +427,7 @@ struct KeyboardRootView: View {
         onInsert(text)
         spaceTracker.interrupt()
         spaceTracker.noteLocalChange()
+        glideUndo.interrupt()
     }
 
     /// Space is the one character key with a rule attached: a second space typed quickly
@@ -430,6 +458,31 @@ struct KeyboardRootView: View {
         applyAutocapitalization()
     }
 
+    /// A finished glide: decode against the same geometry the page rendered with,
+    /// insert stock-style, hand the alternates to the bar, arm whole-word undo.
+    private func handleGlide(_ trace: [CGPoint], availableWidth: CGFloat) {
+        let unit = KeyboardMetrics.keyUnit(availableWidth: availableWidth)
+        let centers = KeyCenters.qwerty(availableWidth: availableWidth, keyHeight: keyHeight)
+        let results = GlideDecoder.decode(trace: trace, centers: centers, keyUnit: unit,
+                                          lexicon: .shared)
+        let word = results.first?.word
+            ?? GlideDecoder.nearestLetterSequence(trace: trace, centers: centers)
+        guard !word.isEmpty else { return }
+
+        let commit = GlideCommit.insertion(word: word, shift: autoShift.state,
+                                           contextBefore: host.contextBefore(),
+                                           lastInsertWasGlide: glideUndo.isArmed)
+        insert(commit.text)                       // haptic, space window, echo note
+        glideUndo.record(wordLength: commit.word.count)
+        glideUndo.noteLocalChange()
+        autoShift.didInsertLetter()
+        applyAutocapitalization()
+
+        suggestions = SuggestionSet(literal: commit.word,
+                                    candidates: results.dropFirst().map(\.word))
+        showsGlideAlternates = !results.isEmpty
+    }
+
     /// Stock treats 123 and #+= as a detour: the space that ends a word brings the letters
     /// back on its own, and ours left the user stranded on symbols after every "?" or "!".
     /// Applied after the insert, so the character lands on the page it was typed from.
@@ -456,10 +509,22 @@ struct KeyboardRootView: View {
     /// `isRepeat` is false for the tap that begins a hold and true for every repeat after
     /// it, so a held delete does not fire twenty haptics a second.
     private func deleteBackward(isRepeat: Bool = false) {
+        // One backspace right after a glide removes the whole word; the next
+        // behaves normally. Repeats never consume it — a held delete is a
+        // deliberate different gesture.
+        if !isRepeat, let length = glideUndo.consume() {
+            haptic()
+            for _ in 0..<length { onDeleteBackward() }
+            spaceTracker.interrupt()
+            spaceTracker.noteLocalChange()
+            applyAutocapitalization()
+            return
+        }
         if !isRepeat { haptic() }
         onDeleteBackward()
         spaceTracker.interrupt()
         spaceTracker.noteLocalChange()
+        glideUndo.interrupt()
         applyAutocapitalization()
     }
 
@@ -536,6 +601,7 @@ struct KeyboardRootView: View {
     /// the bar: an ignored suggestion costs nothing, a wrong silent replacement is the
     /// worst thing this feature can do.
     private func autoCorrectFinishedWord() {
+        guard !glideUndo.isArmed else { return }   // a glided word is already a dictionary word
         guard host.correctionAllowed() else { return }
         let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
         guard let replacement = suggestionEngine.autoReplacement(for: word) else { return }
