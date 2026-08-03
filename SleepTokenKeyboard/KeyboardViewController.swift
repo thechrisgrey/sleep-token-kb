@@ -54,16 +54,30 @@ final class KeyboardViewController: UIInputViewController {
             controller.applyHeight()
         }
 
+        // Start the 50k-word once-parse before the view exists: viewDidLoad runs
+        // ahead of onAppear, so this warm wins races the view's own warm can lose
+        // on a cold launch.
+        if KeyboardPreferences.glideTypingEnabled {
+            Task.detached(priority: .utility) { _ = GlideLexicon.shared }
+        }
+
         // Contact names and text replacements, folded into the glide lexicon.
         // Merged HERE, in the completion, not plumbed into the view: the view
         // reads its inputs in onAppear, which this async delivery normally
         // loses to — refreshRoot reassignment updates a `let` nobody re-reads
-        // (see refreshRoot's doc comment). The completion already hops to
-        // main, which is the actor merge requires.
+        // (see refreshRoot's doc comment). The detour off main matters: on a
+        // cold launch this completion can arrive while the lexicon is still
+        // unparsed, and touching `shared` on the main thread then blocks the
+        // keyboard's slide-up for the whole parse. Force the once-parse on a
+        // background task first; only the merge itself runs on the main actor.
         requestSupplementaryLexicon { lexicon in
-            DispatchQueue.main.async {
-                guard KeyboardPreferences.glideTypingEnabled else { return }
-                GlideLexicon.shared.merge(words: lexicon.entries.map(\.documentText))
+            let words = lexicon.entries.map(\.documentText)
+            Task.detached(priority: .userInitiated) {
+                _ = GlideLexicon.shared
+                await MainActor.run {
+                    guard KeyboardPreferences.glideTypingEnabled else { return }
+                    GlideLexicon.shared.merge(words: words)
+                }
             }
         }
     }
@@ -143,6 +157,9 @@ final class KeyboardViewController: UIInputViewController {
             host: HostField(
                 contextBefore: { [weak self] in
                     self?.textDocumentProxy.documentContextBeforeInput
+                },
+                contextAfter: { [weak self] in
+                    self?.textDocumentProxy.documentContextAfterInput
                 },
                 returnKeyType: { [weak self] in
                     self?.textDocumentProxy.returnKeyType ?? .default

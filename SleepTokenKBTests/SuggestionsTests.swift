@@ -55,6 +55,32 @@ final class SuggestionsTests: XCTestCase {
         }
     }
 
+    // MARK: - The caret inside a word
+
+    /// "wor|lds": the fragment left of the caret is not a finished word, and
+    /// correcting it would splice into the middle of one. Stock stands down.
+    func testCaretIsInsideWordWhenALetterFollows() {
+        XCTAssertTrue(WordBoundary.caretIsInsideWord(contextAfter: "lds and more"))
+    }
+
+    /// The end of the document is where the caret lives while typing; never mid-word.
+    func testCaretIsNotInsideWordAtEndOfDocument() {
+        XCTAssertFalse(WordBoundary.caretIsInsideWord(contextAfter: nil))
+        XCTAssertFalse(WordBoundary.caretIsInsideWord(contextAfter: ""))
+    }
+
+    func testCaretIsNotInsideWordWhenABoundaryFollows() {
+        XCTAssertFalse(WordBoundary.caretIsInsideWord(contextAfter: " world"))
+        XCTAssertFalse(WordBoundary.caretIsInsideWord(contextAfter: ". Next"))
+        XCTAssertFalse(WordBoundary.caretIsInsideWord(contextAfter: "\nnew line"))
+    }
+
+    /// The apostrophe is in-word, so "don|'t" counts as inside — replacing "don"
+    /// there would maim the contraction.
+    func testCaretBeforeAnApostropheIsInsideTheWord() {
+        XCTAssertTrue(WordBoundary.caretIsInsideWord(contextAfter: "'t"))
+    }
+
     // MARK: - Candidates
 
     /// Stock always keeps what you actually typed available as the first option, so a
@@ -122,6 +148,47 @@ final class SuggestionsTests: XCTestCase {
     func testWordsContainingDigitsAreNeverAutoReplaced() {
         let engine = SuggestionEngine()
         XCTAssertNil(engine.autoReplacement(for: "abc123"))
+    }
+
+    // MARK: - The first-person pronoun
+
+    /// The one exception to the length floor: a lone lowercase "i" is the pronoun
+    /// nearly every time, and stock capitalizes it at every word ending.
+    func testLoneLowercaseIIsCapitalized() {
+        let engine = SuggestionEngine()
+        XCTAssertEqual(engine.autoReplacement(for: "i"), "I")
+    }
+
+    /// The bar offers it too, so the fix is visible before the boundary applies it.
+    func testThePronounIsOfferedInTheBar() {
+        let engine = SuggestionEngine()
+        XCTAssertEqual(engine.suggestions(forPartialWord: "i").candidates, ["I"])
+    }
+
+    /// Already capitalized means nothing to fix.
+    func testUppercaseIIsLeftAlone() {
+        let engine = SuggestionEngine()
+        XCTAssertNil(engine.autoReplacement(for: "I"))
+    }
+
+    /// Keeping the lowercase form wins, like any other rejection: someone who
+    /// writes "i" on purpose gets to.
+    func testKeepingLowercaseIDisablesThePronounRule() {
+        let engine = SuggestionEngine()
+        engine.keepAsTyped("i")
+        XCTAssertNil(engine.autoReplacement(for: "i"))
+        XCTAssertTrue(engine.suggestions(forPartialWord: "i").candidates.isEmpty)
+    }
+
+    // MARK: - Spoken feedback
+
+    /// The wording VoiceOver speaks when a word is silently replaced. Pinned here
+    /// because the view can only post it, never test it.
+    func testAnnouncementNamesBothWords() {
+        XCTAssertEqual(
+            SuggestionEngine.announcement(replacing: "teh", with: "the"),
+            "Corrected teh to the"
+        )
     }
 
     // MARK: - Learning

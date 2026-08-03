@@ -134,8 +134,15 @@ struct KeyboardRootView: View {
                     // Digits and punctuation move the cursor like any other insert, so
                     // they re-derive too — this was the one mutation path that skipped
                     // it and left shift stale on the 123 page.
-                    onInsert: {
-                        insert($0)
+                    onInsert: { symbol in
+                        // Word-ending punctuation applies the pending correction
+                        // first, so "teh." ships as "the." — space and return
+                        // already did; this was the word ending that skipped it.
+                        if symbol.count == 1, let character = symbol.first,
+                           WordBoundary.isBoundary(character) {
+                            autoCorrectFinishedWord()
+                        }
+                        insert(symbol)
                         // The keystroke that arms the space bar's return to letters.
                         typedOnSymbolPage = true
                         applyAutocapitalization()
@@ -295,6 +302,10 @@ struct KeyboardRootView: View {
                 isTypingKey: true,
                 enabled: host.returnKeyEnabled()
             ) {
+                // Return finishes a word as surely as space does, and stock applies
+                // the pending correction at both. Before the newline lands, so the
+                // replacement targets the word being ended.
+                autoCorrectFinishedWord()
                 insert("\n")
                 applyAutocapitalization()
             }
@@ -554,7 +565,12 @@ struct KeyboardRootView: View {
     /// the same reason `applyAutocapitalization` is: the proxy is the only truth, and it
     /// has just moved.
     private func refreshSuggestions() {
-        guard host.correctionAllowed() else {
+        guard host.correctionAllowed(),
+              // A caret inside a word sees only the fragment left of itself, and
+              // accepting a candidate would splice into the word's middle. Stock
+              // goes quiet mid-word; so does the bar.
+              !WordBoundary.caretIsInsideWord(contextAfter: host.contextAfter())
+        else {
             if !suggestions.isEmpty { suggestions = SuggestionSet(literal: "", candidates: []) }
             return
         }
@@ -598,9 +614,15 @@ struct KeyboardRootView: View {
     private func autoCorrectFinishedWord() {
         guard !glideUndo.isArmed else { return }   // a glided word is already a dictionary word
         guard host.correctionAllowed() else { return }
+        // Never splice into a word the caret merely sits inside: the fragment left
+        // of the caret is not a finished word, whatever the checker makes of it.
+        guard !WordBoundary.caretIsInsideWord(contextAfter: host.contextAfter()) else { return }
         let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
         guard let replacement = suggestionEngine.autoReplacement(for: word) else { return }
         replaceCurrentWord(with: replacement)
+        AccessibilityNotification.Announcement(
+            SuggestionEngine.announcement(replacing: word, with: replacement)
+        ).post()
     }
 
     /// Re-reads the field and arms or releases shift accordingly. Runs after anything
@@ -985,27 +1007,30 @@ private struct EmojiPage: View {
             }
 
             HStack(spacing: KeyboardMetrics.keyGap) {
-                ScrollView(.horizontal) {
-                    HStack(spacing: 2) {
-                        ForEach(EmojiCategory.allCases) { tab in
-                            Button { category = tab } label: {
-                                Image(systemName: tab.symbolName)
-                                    .font(.footnote)
-                                    .foregroundStyle(
-                                        tab == category ? Color.primary : Color.secondary
-                                    )
-                                    .frame(width: 38, height: Self.stripHeight)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(tab.accessibilityLabel)
-                            .accessibilityAddTraits(
-                                tab == category ? [.isButton, .isSelected] : .isButton
-                            )
+                // All ten tabs share the row, the way stock's strip does: every
+                // category always visible, none hidden past the edge of an
+                // indicator-less scroll. Tabs land around 32-38pt wide across
+                // current iPhones — stock's own tab size — and the full-height
+                // frame keeps the target tall.
+                HStack(spacing: 2) {
+                    ForEach(EmojiCategory.allCases) { tab in
+                        Button { category = tab } label: {
+                            Image(systemName: tab.symbolName)
+                                .font(.footnote)
+                                .foregroundStyle(
+                                    tab == category ? Color.primary : Color.secondary
+                                )
+                                .frame(maxWidth: .infinity)
+                                .frame(height: Self.stripHeight)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(tab.accessibilityLabel)
+                        .accessibilityAddTraits(
+                            tab == category ? [.isButton, .isSelected] : .isButton
+                        )
                     }
                 }
-                .scrollIndicators(.hidden)
 
                 BackspaceKey(keyHeight: Self.stripHeight, onBackspace: onBackspace)
             }

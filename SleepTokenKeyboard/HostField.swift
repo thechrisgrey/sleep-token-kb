@@ -8,6 +8,14 @@ import UIKit
 /// through a closure means the answer is always the one the host would give right now.
 struct HostField {
     var contextBefore: () -> String?
+
+    /// What follows the caret. Answers the one question correction must ask before
+    /// every suggestion and silent replacement: is the caret INSIDE a word? The
+    /// current word is derived from `contextBefore` alone, so without this read a
+    /// caret parked mid-word would get its left fragment "corrected" into the
+    /// middle of a word the user already finished.
+    var contextAfter: () -> String?
+
     var returnKeyType: () -> UIReturnKeyType
 
     /// False when the field asked for `enablesReturnKeyAutomatically` and holds no
