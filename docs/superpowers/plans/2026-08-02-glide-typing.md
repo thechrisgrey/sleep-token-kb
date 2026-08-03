@@ -815,7 +815,13 @@ git commit -m "Decode glide traces by template matching with a frequency blend"
 **Interfaces:**
 - Produces: `struct GlideSession: Equatable` with `points: [CGPoint]` (read-only), `isActive: Bool`, `mutating func extend(start: CGPoint, to current: CGPoint)`, `mutating func finish(at final: CGPoint) -> [CGPoint]`, `mutating func cancel()`
 
-The movement threshold itself lives at the gesture layer (`DragGesture(minimumDistance: unit / 2)` in Task 6) — `GlideSession` is the sample collector. `extend` records `start` only when idle, so a stale session left by a system-cancelled touch (no `onEnded`) is replaced the moment the next gesture begins.
+The movement threshold itself lives at the gesture layer (`DragGesture(minimumDistance: unit / 2)` in Task 7) — `GlideSession` is the sample collector. One drag keeps one `startLocation` for its whole life, so a call whose `start` differs from the session's first point can only be a NEW gesture: the session resets and begins fresh. That is what actually replaces a stale session abandoned by a system-cancelled touch (no `onEnded`, no `cancel()`) — merely "recording start once when idle" would stitch the new gesture onto the abandoned trace.
+
+> **Amended 2026-08-02 during execution.** The Task 4 review traced the original
+> "record start only when idle" rule to its failure: a session abandoned without
+> `cancel()` kept its points, so the next gesture's samples were appended to the
+> stale trace and its own start was dropped. The differing-start rule makes the
+> session self-healing on the one signal `DragGesture` guarantees.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -826,14 +832,14 @@ import XCTest
 
 final class GlideSessionTests: XCTestCase {
 
-    func testExtendRecordsTheStartExactlyOnce() {
+    func testASingleGestureAccumulatesFromOneStart() {
         var session = GlideSession()
         XCTAssertFalse(session.isActive)
         session.extend(start: CGPoint(x: 1, y: 1), to: CGPoint(x: 5, y: 5))
-        session.extend(start: CGPoint(x: 99, y: 99), to: CGPoint(x: 9, y: 9))
-        XCTAssertEqual(session.points.first, CGPoint(x: 1, y: 1),
-                       "a second start must not restart an active session")
-        XCTAssertEqual(session.points.count, 3)
+        session.extend(start: CGPoint(x: 1, y: 1), to: CGPoint(x: 9, y: 9))
+        XCTAssertEqual(session.points,
+                       [CGPoint(x: 1, y: 1), CGPoint(x: 5, y: 5), CGPoint(x: 9, y: 9)],
+                       "one drag keeps one start; its samples accumulate")
     }
 
     func testFinishReturnsTheTraceAndResets() {
@@ -845,15 +851,27 @@ final class GlideSessionTests: XCTestCase {
         XCTAssertTrue(session.points.isEmpty)
     }
 
-    /// A system-cancelled touch never calls finish; the stale session must not
-    /// leak its points into the next glide.
+    /// A system-cancelled touch never calls finish OR cancel; the stale session
+    /// must still not leak its points into the next glide. A differing start is
+    /// the signal: one drag keeps one startLocation for its whole life.
     func testANewGestureReplacesAStaleSession() {
+        var session = GlideSession()
+        session.extend(start: .zero, to: CGPoint(x: 5, y: 0))
+        // Deliberately no cancel() and no finish(): the touch was abandoned.
+        session.extend(start: CGPoint(x: 50, y: 50), to: CGPoint(x: 60, y: 50))
+        XCTAssertEqual(session.points,
+                       [CGPoint(x: 50, y: 50), CGPoint(x: 60, y: 50)],
+                       "the stale trace must be replaced, not continued")
+    }
+
+    /// cancel() still exists for the explicit paths (page change, VoiceOver
+    /// engaging mid-glide) and must leave the session idle.
+    func testCancelLeavesTheSessionIdle() {
         var session = GlideSession()
         session.extend(start: .zero, to: CGPoint(x: 5, y: 0))
         session.cancel()
         XCTAssertFalse(session.isActive)
-        session.extend(start: CGPoint(x: 50, y: 50), to: CGPoint(x: 60, y: 50))
-        XCTAssertEqual(session.points.first, CGPoint(x: 50, y: 50))
+        XCTAssertTrue(session.points.isEmpty)
     }
 
     func testFinishOnAnIdleSessionReturnsEmpty() {
@@ -882,11 +900,14 @@ public struct GlideSession: Equatable {
 
     public init() {}
 
-    /// Appends a sample; the gesture's start location is recorded exactly once,
-    /// when the session is idle — which also means a stale session abandoned by
-    /// a system-cancelled touch is replaced when the next gesture begins.
+    /// Appends a sample. One drag keeps one start location for its whole life,
+    /// so a differing `start` can only mean a new gesture — the previous
+    /// session was abandoned by a cancelled touch and is replaced, not
+    /// continued.
     public mutating func extend(start: CGPoint, to current: CGPoint) {
-        if points.isEmpty { points.append(start) }
+        if points.isEmpty || points.first != start {
+            points = [start]
+        }
         points.append(current)
     }
 
