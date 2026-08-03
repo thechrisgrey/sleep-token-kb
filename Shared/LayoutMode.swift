@@ -174,4 +174,12 @@ public enum KeyboardPreferences {
         get { storedBool(hapticsKey, default: true) }
         set { store(newValue, hapticsKey) }
     }
+
+    public static let glideTypingKey = "glideTypingEnabled"
+
+    /// Slide-to-type on the QWERTY letters page. On by default, like stock.
+    public static var glideTypingEnabled: Bool {
+        get { storedBool(glideTypingKey, default: true) }
+        set { store(newValue, glideTypingKey) }
+    }
 }

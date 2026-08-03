@@ -27,7 +27,8 @@ public struct SuggestionSet: Equatable {
     /// What the user actually typed. Stock always keeps this available so a correction
     /// can never be forced; it is the whole safety valve.
     public let literal: String
-    /// Up to two corrections, best first.
+    /// Best first. Spell suggestions offer up to two corrections; a glide's
+    /// alternates offer up to three. The bar lays out whatever it is given.
     public let candidates: [String]
 
     public var isEmpty: Bool { literal.isEmpty && candidates.isEmpty }

@@ -82,6 +82,7 @@ targets:
       - path: Shared/Alphabet.swift
       - path: Shared/LayoutMode.swift
       - path: Shared/KeyboardMetrics.swift
+      - path: Shared/KeyCenters.swift
       - path: Shared/ShiftState.swift
       - path: Shared/SymbolGlyphView.swift
       # Text-entry rules. Pure functions over the host field's state, kept out of the
@@ -91,6 +92,11 @@ targets:
       - path: Shared/ReturnKeyTitle.swift
       - path: Shared/PeriodShortcut.swift
       - path: Shared/PageAfterSpace.swift
+      - path: Shared/GlideLexicon.swift
+      - path: Shared/GlideDecoder.swift
+      - path: Shared/GlideSession.swift
+      - path: Shared/GlideCommit.swift
+      - path: Shared/Resources/glide_lexicon.txt
       - path: Shared/KeyRepeat.swift
       - path: Shared/SpaceTracker.swift
       - path: Shared/CapsLockTap.swift

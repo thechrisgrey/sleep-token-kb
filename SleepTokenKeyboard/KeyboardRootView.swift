@@ -33,6 +33,7 @@ struct KeyboardRootView: View {
     @State private var layoutMode: LayoutMode = .qwerty
     @State private var keyFaceStyle: KeyFaceStyle = .runeArt
     @State private var hapticsEnabled = true
+    @State private var glideEnabled = true
 
     /// Shift plus its provenance. The pairing matters: an auto-armed shift re-derives
     /// from context on every call while a manual one is preserved, which is what breaks
@@ -54,6 +55,13 @@ struct KeyboardRootView: View {
     /// re-diffed the whole keyboard per space press), while `@State` keeps the instance
     /// stable across the per-keystroke rootView reassignments the controller performs.
     @State private var spaceTracker = SpaceTracker()
+
+    /// Whole-word backspace bookkeeping for the last glide. Reference type in
+    /// `@State` for the same reason `spaceTracker` is: nothing renders it.
+    @State private var glideUndo = GlideUndo()
+    /// True while the suggestion bar is showing a glide's alternates: the echo of
+    /// the glide commit must not overwrite them with spell candidates.
+    @State private var showsGlideAlternates = false
 
     /// Double-tap-shift-for-caps-lock, the gesture an iPhone thumb already knows. The
     /// three-tap cycle still works; this is a shortcut into the same state.
@@ -158,9 +166,11 @@ struct KeyboardRootView: View {
                     keyHeight: keyHeight,
                     hintSize: hintSize,
                     faceSize: letterFaceSize,
+                    glideEnabled: glideEnabled,
                     onLetter: insertLetter,
                     onShift: toggleShift,
-                    onBackspace: { deleteBackward(isRepeat: $0) }
+                    onBackspace: { deleteBackward(isRepeat: $0) },
+                    onGlide: handleGlide
                 )
                 .frame(height: pageHeight)
             }
@@ -186,6 +196,7 @@ struct KeyboardRootView: View {
             // window are meaningless here. Start clean and derive for the new field.
             autoShift = AutoShift()
             spaceTracker.interrupt()
+            glideUndo.interrupt()
             capsLockTap.interrupt()
             typedOnSymbolPage = false
             applyAutocapitalization()
@@ -196,11 +207,14 @@ struct KeyboardRootView: View {
             // a same-trait field switch -- breaks double-space consecutiveness; the echo
             // of our own keystroke passes through the tracker silently.
             spaceTracker.hostTextDidChange()
+            glideUndo.hostTextDidChange()
             applyAutocapitalization()
-            // Driven from here rather than from each insert path: the controller bumps
-            // this once the proxy context has actually settled, and the proxy is the only
-            // place the word in progress can be read from.
-            refreshSuggestions()
+            if showsGlideAlternates {
+                // The echo of the glide commit: keep the alternates one round.
+                showsGlideAlternates = false
+            } else {
+                refreshSuggestions()
+            }
         }
     }
 
@@ -369,6 +383,14 @@ struct KeyboardRootView: View {
         loadPreferences()
         onHeightInputsChanged?(.init(page: page, mode: layoutMode))
         applyAutocapitalization()
+        if glideEnabled {
+            // Warm the 50k-word parse off-main so the first glide never pays
+            // it. The supplementary merge deliberately does NOT live here: the
+            // view reads its inputs in onAppear, which the async lexicon
+            // delivery normally loses to. It lives in the controller's
+            // completion, where the words actually arrive.
+            Task.detached(priority: .utility) { _ = GlideLexicon.shared }
+        }
     }
 
     private func loadPreferences() {
@@ -376,6 +398,7 @@ struct KeyboardRootView: View {
         keyFaceStyle = KeyboardPreferences.keyFaceStyle
         hapticsEnabled = KeyboardPreferences.hapticsEnabled
         emojiRecents = KeyboardPreferences.emojiRecents
+        glideEnabled = KeyboardPreferences.glideTypingEnabled
         // Warm the engine only for users who can actually feel it: iOS drops
         // feedback-generator events from the extension without Full Access, so an
         // ungated prepare() spins the taptic engine for nothing.
@@ -396,6 +419,7 @@ struct KeyboardRootView: View {
         onInsert(text)
         spaceTracker.interrupt()
         spaceTracker.noteLocalChange()
+        glideUndo.interrupt()
     }
 
     /// Space is the one character key with a rule attached: a second space typed quickly
@@ -426,6 +450,34 @@ struct KeyboardRootView: View {
         applyAutocapitalization()
     }
 
+    /// A finished glide: decode against the same geometry the page rendered with,
+    /// insert stock-style, hand the alternates to the bar, arm whole-word undo.
+    private func handleGlide(_ trace: [CGPoint], availableWidth: CGFloat) {
+        let unit = KeyboardMetrics.keyUnit(availableWidth: availableWidth)
+        let centers = KeyCenters.qwerty(availableWidth: availableWidth, keyHeight: keyHeight)
+        let results = GlideDecoder.decode(trace: trace, centers: centers, keyUnit: unit,
+                                          lexicon: .shared)
+        let word = results.first?.word
+            ?? GlideDecoder.nearestLetterSequence(trace: trace, centers: centers)
+        guard !word.isEmpty else { return }
+
+        let shift = autoShift.state
+        let commit = GlideCommit.insertion(word: word, shift: shift,
+                                           contextBefore: host.contextBefore(),
+                                           lastInsertWasGlide: glideUndo.isArmed)
+        insert(commit.text)                       // haptic, space window, echo note
+        glideUndo.record(wordLength: commit.word.count)
+        glideUndo.noteLocalChange()
+        autoShift.didInsertLetter()
+        applyAutocapitalization()
+
+        suggestions = SuggestionSet(
+            literal: commit.word,
+            candidates: results.dropFirst().map { GlideCommit.cased($0.word, shift: shift) }
+        )
+        showsGlideAlternates = !results.isEmpty
+    }
+
     /// Stock treats 123 and #+= as a detour: the space that ends a word brings the letters
     /// back on its own, and ours left the user stranded on symbols after every "?" or "!".
     /// Applied after the insert, so the character lands on the page it was typed from.
@@ -452,10 +504,22 @@ struct KeyboardRootView: View {
     /// `isRepeat` is false for the tap that begins a hold and true for every repeat after
     /// it, so a held delete does not fire twenty haptics a second.
     private func deleteBackward(isRepeat: Bool = false) {
+        // One backspace right after a glide removes the whole word; the next
+        // behaves normally. Repeats never consume it — a held delete is a
+        // deliberate different gesture.
+        if !isRepeat, let length = glideUndo.consume() {
+            haptic()
+            for _ in 0..<length { onDeleteBackward() }
+            spaceTracker.interrupt()
+            spaceTracker.noteLocalChange()
+            applyAutocapitalization()
+            return
+        }
         if !isRepeat { haptic() }
         onDeleteBackward()
         spaceTracker.interrupt()
         spaceTracker.noteLocalChange()
+        glideUndo.interrupt()
         applyAutocapitalization()
     }
 
@@ -532,6 +596,7 @@ struct KeyboardRootView: View {
     /// the bar: an ignored suggestion costs nothing, a wrong silent replacement is the
     /// worst thing this feature can do.
     private func autoCorrectFinishedWord() {
+        guard !glideUndo.isArmed else { return }   // a glided word is already a dictionary word
         guard host.correctionAllowed() else { return }
         let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
         guard let replacement = suggestionEngine.autoReplacement(for: word) else { return }
@@ -566,9 +631,24 @@ private struct LetterPage: View {
     let keyHeight: CGFloat
     let hintSize: CGFloat
     let faceSize: CGFloat
+    /// Glide typing: QWERTY-only, off under VoiceOver, additive over the buttons.
+    let glideEnabled: Bool
     let onLetter: (SleepTokenLetter) -> Void
     let onShift: () -> Void
     let onBackspace: (Bool) -> Void
+    let onGlide: (_ trace: [CGPoint], _ availableWidth: CGFloat) -> Void
+
+    @State private var glide = GlideSession()
+    /// Keeps taps suppressed one runloop tick past lift, so the origin key's
+    /// Button cannot fire on the same touch-up. During the drag itself the
+    /// suppression rides `isGliding`.
+    @State private var suppressesTaps = false
+    /// True while the finger is down in THIS gesture. `@GestureState`, not
+    /// `@State`, and the difference is the whole point (see BackspaceKey): its
+    /// reset also runs when the system CANCELS the touch, so a call banner
+    /// mid-glide cannot wedge the keyboard.
+    @GestureState private var isGliding = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var rows: [[SleepTokenLetter]] {
         layoutMode == .qwerty ? KeyboardLayout.qwertyRows : KeyboardLayout.gridRows
@@ -597,7 +677,10 @@ private struct LetterPage: View {
                                 hintSize: hintSize,
                                 faceSize: faceSize,
                                 fixedWidth: layoutMode == .qwerty ? unit : nil,
-                                action: { onLetter(letter) }
+                                action: {
+                                    guard !(isGliding || suppressesTaps) else { return }
+                                    onLetter(letter)
+                                }
                             )
                             .equatable()
                         }
@@ -626,7 +709,59 @@ private struct LetterPage: View {
                 }
             }
             .frame(width: geo.size.width, alignment: .top)
+            .overlay {
+                if glide.isActive {
+                    GlideTrailView(points: glide.points, reduceMotion: reduceMotion)
+                        .allowsHitTesting(false)
+                }
+            }
+            .simultaneousGesture(glideGesture(width: geo.size.width), including: glideActive ? .all : .subviews)
+            .onChange(of: isGliding) { _, active in
+                // @GestureState's reset is the only signal a CANCELLED touch
+                // gives us: falling while the session is still active means no
+                // onEnded came — discard the glide, clear the trail. This is
+                // the spec's cancellation clause, and GlideSession.cancel's
+                // one production caller.
+                guard !active, glide.isActive else { return }
+                glide.cancel()
+                suppressesTaps = false
+            }
         }
+    }
+
+    private var glideActive: Bool {
+        glideEnabled && layoutMode == .qwerty && !UIAccessibility.isVoiceOverRunning
+    }
+
+    private func glideGesture(width: CGFloat) -> some Gesture {
+        let unit = KeyboardMetrics.keyUnit(availableWidth: width)
+        return DragGesture(minimumDistance: unit / 2, coordinateSpace: .local)
+            .updating($isGliding) { _, state, _ in state = true }
+            .onChanged { value in
+                guard glideActive else { return }
+                if glide.points.first != value.startLocation {
+                    // A glide must BEGIN on a letter: a thumb drifting off a
+                    // held backspace or shift is not a word. 0.9 units reaches
+                    // a letter key's corners and rejects the function keys.
+                    guard nearestLetterDistance(to: value.startLocation, width: width)
+                        <= unit * 0.9 else { return }
+                }
+                suppressesTaps = true
+                glide.extend(start: value.startLocation, to: value.location)
+            }
+            .onEnded { value in
+                guard glideActive, glide.isActive else { return }
+                let trace = glide.finish(at: value.location)
+                onGlide(trace, width)
+                // Release tap suppression on the next runloop tick, after the
+                // origin Button has had its chance to (not) fire for this touch.
+                Task { @MainActor in suppressesTaps = false }
+            }
+    }
+
+    private func nearestLetterDistance(to point: CGPoint, width: CGFloat) -> CGFloat {
+        let centers = KeyCenters.qwerty(availableWidth: width, keyHeight: keyHeight)
+        return centers.values.map { hypot($0.x - point.x, $0.y - point.y) }.min() ?? .infinity
     }
 
     private var shiftKey: some View {
@@ -643,6 +778,36 @@ private struct LetterPage: View {
 
     private var backspaceKey: some View {
         BackspaceKey(keyHeight: keyHeight, onBackspace: onBackspace)
+    }
+}
+
+/// The comet trail behind a gliding finger. Reduce Motion gets a uniform line —
+/// same information, no animated fade.
+private struct GlideTrailView: View {
+    let points: [CGPoint]
+    let reduceMotion: Bool
+
+    var body: some View {
+        Canvas { context, _ in
+            guard points.count > 1 else { return }
+            if reduceMotion {
+                var path = Path()
+                path.addLines(points)
+                context.stroke(path, with: .color(KeyPalette.active.opacity(0.55)),
+                               style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+            } else {
+                // Newest segments brightest: opacity climbs along the trail.
+                let count = points.count
+                for index in 1..<count {
+                    var segment = Path()
+                    segment.move(to: points[index - 1])
+                    segment.addLine(to: points[index])
+                    let progress = Double(index) / Double(count)
+                    context.stroke(segment, with: .color(KeyPalette.active.opacity(0.15 + 0.55 * progress)),
+                                   style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                }
+            }
+        }
     }
 }
 

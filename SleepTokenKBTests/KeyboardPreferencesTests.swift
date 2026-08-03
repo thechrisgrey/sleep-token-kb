@@ -20,7 +20,8 @@ final class KeyboardPreferencesTests: XCTestCase {
         KeyboardPreferences.layoutModeKey,
         KeyboardPreferences.keyFaceStyleKey,
         KeyboardPreferences.hapticsKey,
-        KeyboardPreferences.showLatinHintsKey
+        KeyboardPreferences.showLatinHintsKey,
+        KeyboardPreferences.glideTypingKey
     ]
 
     /// One snapshot per suite, keyed by suite index then preference key.
@@ -104,5 +105,13 @@ final class KeyboardPreferencesTests: XCTestCase {
         KeyboardPreferences.keyFaceStyle = .runeHints
         KeyboardPreferences.keyFaceStyle = .runeArt
         XCTAssertEqual(KeyboardPreferences.keyFaceStyle, .runeArt)
+    }
+
+    func testGlideTypingDefaultsOnAndRoundTrips() {
+        XCTAssertTrue(KeyboardPreferences.glideTypingEnabled, "glide ships on")
+        KeyboardPreferences.glideTypingEnabled = false
+        XCTAssertFalse(KeyboardPreferences.glideTypingEnabled)
+        KeyboardPreferences.glideTypingEnabled = true
+        XCTAssertTrue(KeyboardPreferences.glideTypingEnabled)
     }
 }

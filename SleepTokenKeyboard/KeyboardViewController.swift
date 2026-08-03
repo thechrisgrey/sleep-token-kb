@@ -53,6 +53,19 @@ final class KeyboardViewController: UIInputViewController {
         registerForTraitChanges([UITraitVerticalSizeClass.self]) { (controller: KeyboardViewController, _) in
             controller.applyHeight()
         }
+
+        // Contact names and text replacements, folded into the glide lexicon.
+        // Merged HERE, in the completion, not plumbed into the view: the view
+        // reads its inputs in onAppear, which this async delivery normally
+        // loses to — refreshRoot reassignment updates a `let` nobody re-reads
+        // (see refreshRoot's doc comment). The completion already hops to
+        // main, which is the actor merge requires.
+        requestSupplementaryLexicon { lexicon in
+            DispatchQueue.main.async {
+                guard KeyboardPreferences.glideTypingEnabled else { return }
+                GlideLexicon.shared.merge(words: lexicon.entries.map(\.documentText))
+            }
+        }
     }
 
     // Both are needed: viewWillAppear runs before the input view is sized, and
