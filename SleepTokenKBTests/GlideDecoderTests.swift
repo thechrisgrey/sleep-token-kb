@@ -82,21 +82,34 @@ final class GlideDecoderTests: XCTestCase {
 
     func testEmptyCandidatesFallBackToNearestLetters() {
         let empty = GlideLexicon(rows: [])
-        let trace = idealTrace(for: "qp")
-        XCTAssertTrue(GlideDecoder.decode(trace: trace, centers: centers, keyUnit: unit,
+        let straight = idealTrace(for: "qp")
+        XCTAssertTrue(GlideDecoder.decode(trace: straight, centers: centers, keyUnit: unit,
                                           lexicon: empty, limit: 4).isEmpty)
-        let literal = GlideDecoder.nearestLetterSequence(trace: trace, centers: centers)
-        XCTAssertEqual(literal.first, "q")
-        XCTAssertEqual(literal.last, "p")
+        XCTAssertEqual(GlideDecoder.nearestLetterSequence(trace: straight, centers: centers),
+                       "qp", "a straight drag has no corners — only its endpoints speak")
+        let elbow = idealTrace(for: "qpm")   // along the top row, then down to m
+        XCTAssertEqual(GlideDecoder.nearestLetterSequence(trace: elbow, centers: centers),
+                       "qpm", "the corner at p is a deliberate point and must survive")
     }
 
+    /// Regression tripwire, not a benchmark: debug builds run this unoptimized,
+    /// so the ceiling is deliberately loose — it catches an accidental
+    /// order-of-magnitude regression, not a lost millisecond. The real budget
+    /// (50ms, release, on device) is verified by hand on device.
     func testDecodeStaysInsideTheLatencyBudget() {
         let lexicon = GlideLexicon.shared
         let trace = idealTrace(for: "keyboard")
-        measure {   // budget: well under 50ms; measure records, the suite documents
+        _ = GlideDecoder.decode(trace: trace, centers: centers, keyUnit: unit,
+                                lexicon: lexicon, limit: 4)   // warm the lexicon
+        let start = ContinuousClock.now
+        for _ in 0..<5 {
             _ = GlideDecoder.decode(trace: trace, centers: centers, keyUnit: unit,
                                     lexicon: lexicon, limit: 4)
         }
+        let elapsed = ContinuousClock.now - start
+        let seconds = Double(elapsed.components.seconds)
+            + Double(elapsed.components.attoseconds) / 1e18
+        XCTAssertLessThan(seconds / 5, 0.15, "decode regressed an order of magnitude")
     }
 }
 

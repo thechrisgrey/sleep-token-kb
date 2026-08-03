@@ -73,15 +73,32 @@ public enum GlideDecoder {
         return Array(results.sorted { $0.score < $1.score }.prefix(limit))
     }
 
-    /// Last-resort literal: the nearest key under each sampled point, adjacent
-    /// duplicates collapsed. The user gets what they drew, never silence.
+    /// Last-resort literal: the trace's deliberate points — its endpoints plus
+    /// the corners where the finger turned by more than 45 degrees — mapped to
+    /// their nearest keys, adjacent duplicates collapsed. Sampling every point
+    /// would transcribe the stroke (a q-to-p drag crosses the whole top row);
+    /// corners are where the user meant something. The user gets what they
+    /// drew, never silence.
     public static func nearestLetterSequence(
         trace: [CGPoint],
         centers: [SleepTokenLetter: CGPoint]
     ) -> String {
-        guard !centers.isEmpty else { return "" }
+        guard !centers.isEmpty, let first = trace.first, let last = trace.last else { return "" }
+        let sampled = resample(trace, to: 16)
+        var anchors: [CGPoint] = [first]
+        for index in 1..<(sampled.count - 1) {
+            let previous = sampled[index - 1]
+            let point = sampled[index]
+            let next = sampled[index + 1]
+            let inbound = atan2(point.y - previous.y, point.x - previous.x)
+            let outbound = atan2(next.y - point.y, next.x - point.x)
+            var turn = abs(outbound - inbound)
+            if turn > .pi { turn = 2 * .pi - turn }
+            if turn > .pi / 4 { anchors.append(point) }
+        }
+        anchors.append(last)
         var letters: [SleepTokenLetter] = []
-        for point in resample(trace, to: 16) {
+        for point in anchors {
             let nearest = centers.min {
                 hypot($0.value.x - point.x, $0.value.y - point.y)
                     < hypot($1.value.x - point.x, $1.value.y - point.y)
