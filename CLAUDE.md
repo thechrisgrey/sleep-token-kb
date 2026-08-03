@@ -27,12 +27,17 @@ This is the current shipped standard, not an aspiration — do not lower it.
 ## Build and Test
 
 ```bash
-./scripts/test.sh              # builds both targets and runs the suite
+./scripts/test.sh                # builds both targets and runs the suite
 DEVICE="iPhone 16" ./scripts/test.sh
+swiftlint lint --quiet --strict  # the tree is clean; run it before you commit
 ```
 
 Never call `xcodebuild` bare: `xcode-select -p` points at CommandLineTools, so it
 refuses to run. `scripts/test.sh` overrides `DEVELOPER_DIR` for its own invocation.
+
+Nothing runs SwiftLint for you — not `scripts/test.sh`, not CI — so the clean tree
+is a convention held by hand, not a gate. `.swiftlint.yml` names the real maximum
+behind every tuned threshold, so a violation is news rather than noise.
 
 `project.yml` is the source of truth. Both `Info.plist` files and both
 `.entitlements` files are **generated** — edit the YAML, then `xcodegen generate`.
