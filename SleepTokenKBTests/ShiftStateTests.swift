@@ -5,17 +5,6 @@ import XCTest
 /// so extracting it into an enum cannot have changed behaviour.
 final class ShiftStateTests: XCTestCase {
 
-    func testTapCyclesOffToShiftedToCapsLockedToOff() {
-        XCTAssertEqual(ShiftState.off.toggled(), .shifted)
-        XCTAssertEqual(ShiftState.shifted.toggled(), .capsLocked)
-        XCTAssertEqual(ShiftState.capsLocked.toggled(), .off)
-    }
-
-    func testThreeTapsReturnToStart() {
-        let end = ShiftState.off.toggled().toggled().toggled()
-        XCTAssertEqual(end, .off)
-    }
-
     func testOneShotShiftFallsAwayAfterInsert() {
         XCTAssertEqual(ShiftState.shifted.afterInsert(), .off)
     }

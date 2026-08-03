@@ -51,16 +51,22 @@ final class AutoShiftTests: XCTestCase {
         XCTAssertEqual(shift.state, .off, "one tap on an auto-armed shift must cancel, not escalate to caps lock")
     }
 
-    /// The manual double-tap-to-caps-lock path is untouched: a shift the user armed
-    /// still cycles .shifted -> .capsLocked -> .off.
-    func testAManuallyArmedShiftStillCyclesToCapsLock() {
+    /// Stock's shift is a toggle at any speed: a second tap on a manual shift releases
+    /// it. Caps lock belongs to the double tap (`setCapsLock`) — the old slow cycle's
+    /// middle step turned a change of mind into ALL CAPS.
+    func testASecondTapOnAManualShiftReleasesIt() {
         var shift = AutoShift()
         shift.userTappedShift()
         XCTAssertEqual(shift.state, .shifted)
 
         shift.userTappedShift()
-        XCTAssertEqual(shift.state, .capsLocked)
+        XCTAssertEqual(shift.state, .off, "a slow second tap must release, not escalate to caps lock")
+    }
 
+    /// The road out of caps lock is one tap, whatever engaged it.
+    func testTappingCapsLockReleasesIt() {
+        var shift = AutoShift()
+        shift.setCapsLock()
         shift.userTappedShift()
         XCTAssertEqual(shift.state, .off)
     }
@@ -77,8 +83,7 @@ final class AutoShiftTests: XCTestCase {
     func testAManualCapsLockSurvivesEveryFieldType() {
         for type in [UITextAutocapitalizationType.none, .words, .sentences, .allCharacters] {
             var shift = AutoShift()
-            shift.userTappedShift()
-            shift.userTappedShift()
+            shift.setCapsLock()
             XCTAssertEqual(shift.state, .capsLocked)
 
             shift.apply(type: type, contextBefore: "Hello. ")
@@ -101,11 +106,66 @@ final class AutoShiftTests: XCTestCase {
 
     func testManualCapsLockPersistsAcrossInserts() {
         var shift = AutoShift()
-        shift.userTappedShift()
-        shift.userTappedShift()
+        shift.setCapsLock()
         shift.didInsertLetter()
         shift.apply(type: .sentences, contextBefore: "A")
         XCTAssertEqual(shift.state, .capsLocked)
+    }
+
+    // MARK: - Declining the field's caps lock
+
+    /// The audit's one-letter cancel: turning caps off in an `.allCharacters` field
+    /// bought exactly one lowercase letter before derivation re-locked it. The
+    /// declination now outlives every re-derivation in the field.
+    func testCancellingCapsInAnAllCharactersFieldSticks() {
+        var shift = AutoShift()
+        shift.apply(type: .allCharacters, contextBefore: "AB")
+        XCTAssertEqual(shift.state, .capsLocked)
+
+        shift.userTappedShift()
+        XCTAssertEqual(shift.state, .off)
+
+        shift.didInsertLetter()
+        shift.apply(type: .allCharacters, contextBefore: "ABc")
+        XCTAssertEqual(shift.state, .off, "the declined lock must not re-arm one letter later")
+
+        shift.didInsertLetter()
+        shift.apply(type: .allCharacters, contextBefore: "ABcd")
+        XCTAssertEqual(shift.state, .off)
+    }
+
+    /// The declination is per-field state: the view resets to a fresh AutoShift() on
+    /// every field change, and a fresh field derives its caps lock again.
+    func testAFreshAutoShiftDerivesCapsAgain() {
+        var shift = AutoShift()
+        shift.apply(type: .allCharacters, contextBefore: nil)
+        shift.userTappedShift()
+
+        shift = AutoShift()
+        shift.apply(type: .allCharacters, contextBefore: nil)
+        XCTAssertEqual(shift.state, .capsLocked)
+    }
+
+    /// Asking for the lock again withdraws the declination: the double tap after a
+    /// cancel is a fresh manual caps lock and survives derivation like one.
+    func testSetCapsLockWithdrawsTheDeclination() {
+        var shift = AutoShift()
+        shift.apply(type: .allCharacters, contextBefore: nil)
+        shift.userTappedShift()
+
+        shift.setCapsLock()
+        shift.apply(type: .allCharacters, contextBefore: "A")
+        XCTAssertEqual(shift.state, .capsLocked, "a re-requested lock is manual and must survive")
+    }
+
+    /// Declining the lock silences only the lock: sentence-start shifts still arm.
+    func testDecliningCapsStillAllowsSentenceShifts() {
+        var shift = AutoShift()
+        shift.setCapsLock()
+        shift.userTappedShift()
+
+        shift.apply(type: .sentences, contextBefore: "Hello. ")
+        XCTAssertEqual(shift.state, .shifted, "declining the lock must not silence sentence-start shifts")
     }
 
     /// A consumed one-shot's provenance must not leak: after the letter, a manual

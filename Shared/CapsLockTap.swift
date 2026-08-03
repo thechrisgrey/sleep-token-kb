@@ -2,10 +2,9 @@ import Foundation
 
 /// Double-tap-shift-for-caps-lock, the way stock iOS does it.
 ///
-/// Our shift key only had the three-tap cycle (off → shifted → capsLocked → off). That
-/// reaches caps lock, but it is not the gesture an iPhone user's thumb already knows.
-/// Both now work: a quick second tap jumps straight to caps lock, and a slow third tap
-/// still walks the cycle.
+/// The quick second tap is the road INTO caps lock, and a tap on the locked state is the
+/// road out. The three-tap cycle this keyboard once walked is gone: with the double tap
+/// owning caps lock, the cycle's middle step only turned a change of mind into ALL CAPS.
 ///
 /// Time is passed in rather than read from a clock so the window is testable, matching
 /// how `PeriodShortcut` and `SpaceTracker` already handle their windows.

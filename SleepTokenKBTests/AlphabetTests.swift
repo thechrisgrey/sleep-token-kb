@@ -35,6 +35,14 @@ final class AlphabetTests: XCTestCase {
         XCTAssertEqual(SleepTokenLetter.a.englishInsert(shifted: true), "A")
     }
 
+    /// The spoken key name carries the case the next insert will produce, in stock's
+    /// phrasing — the audible half of the keycap-case fix, which was visual-only.
+    func testSpokenKeyNameFollowsCase() {
+        XCTAssertEqual(SleepTokenLetter.a.spokenKeyName(uppercase: false), "a")
+        XCTAssertEqual(SleepTokenLetter.a.spokenKeyName(uppercase: true), "capital A")
+        XCTAssertEqual(SleepTokenLetter.z.spokenKeyName(uppercase: true), "capital Z")
+    }
+
     func testLatinTranslationMapsRunesBackToLetters() {
         let runes = [SleepTokenLetter.s, .l, .e, .e, .p]
             .map(\.exactRuneString)

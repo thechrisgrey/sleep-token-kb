@@ -55,7 +55,10 @@ identifier_name:
     error: 1
 
 file_length:
-  # Real maximum is 1400 (SleepTokenKeyboard/KeyboardRootView.swift); next is 549 (Theme.swift).
+  # Real maximum is 1365 (SleepTokenKeyboard/KeyboardRootView.swift); next is 549 (Theme.swift).
+  # KeyboardRootView tripped the old 1450 ceiling on 2026-08-03 and EmojiPage moved to its
+  # own file in response — the recorded fix direction is the full MARK-seam split, not a
+  # higher ceiling.
   warning: 1450
   error: 1600
 

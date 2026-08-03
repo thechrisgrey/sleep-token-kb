@@ -176,6 +176,7 @@ struct KeyboardRootView: View {
                     glideEnabled: glideEnabled,
                     onLetter: insertLetter,
                     onShift: toggleShift,
+                    onCapsLock: engageCapsLock,
                     onBackspace: { deleteBackward(isRepeat: $0) },
                     onGlide: handleGlide
                 )
@@ -215,6 +216,10 @@ struct KeyboardRootView: View {
             // of our own keystroke passes through the tracker silently.
             spaceTracker.hostTextDidChange()
             glideUndo.hostTextDidChange()
+            // Any text change — external or our own echo — is not the second tap
+            // of a shift double tap. CapsLockTap's contract names this case; the
+            // wiring used to deliver only the field-switch half of it.
+            capsLockTap.interrupt()
             applyAutocapitalization()
             if showsGlideAlternates {
                 // The echo of the glide commit: keep the alternates one round.
@@ -431,6 +436,9 @@ struct KeyboardRootView: View {
         spaceTracker.interrupt()
         spaceTracker.noteLocalChange()
         glideUndo.interrupt()
+        // A keystroke between two shift taps means they were never a double tap:
+        // shift-letter-shift at speed is two one-shots, not a caps lock.
+        capsLockTap.interrupt()
     }
 
     /// Space is the one character key with a rule attached: a second space typed quickly
@@ -450,6 +458,7 @@ struct KeyboardRootView: View {
             onInsert(". ")
             spaceTracker.interrupt()
             spaceTracker.noteLocalChange()
+            capsLockTap.interrupt()
         } else {
             // insert() interrupts and re-opens are not its business; the record comes
             // after so the window belongs to this space.
@@ -523,6 +532,7 @@ struct KeyboardRootView: View {
             for _ in 0..<length { onDeleteBackward() }
             spaceTracker.interrupt()
             spaceTracker.noteLocalChange()
+            capsLockTap.interrupt()
             applyAutocapitalization()
             return
         }
@@ -531,13 +541,14 @@ struct KeyboardRootView: View {
         spaceTracker.interrupt()
         spaceTracker.noteLocalChange()
         glideUndo.interrupt()
+        capsLockTap.interrupt()
         applyAutocapitalization()
     }
 
     private func toggleShift() {
         haptic()
-        // Stock engages caps lock on a quick second tap. Honour that first, then fall
-        // through to the cycle, so both muscle memories reach the same state.
+        // Stock engages caps lock on a quick second tap. Honour that first; any
+        // slower tap toggles — an engaged state releases, off arms one shot.
         if capsLockTap.isDoubleTap(at: ProcessInfo.processInfo.systemUptime) {
             autoShift.setCapsLock()
             return
@@ -546,6 +557,14 @@ struct KeyboardRootView: View {
         // must stick until the next keystroke, and re-deriving here would instantly
         // re-arm it at the very sentence start the user just cancelled.
         autoShift.userTappedShift()
+    }
+
+    /// The assistive route into caps lock: VoiceOver and Switch Control surface this as
+    /// a named action on the shift key, because two activations inside 0.35 seconds is
+    /// not a gesture those users can be asked to perform.
+    private func engageCapsLock() {
+        haptic()
+        autoShift.setCapsLock()
     }
 
     /// Inserts an emoji as ordinary text and promotes it to the front of recents. Emoji
@@ -657,6 +676,9 @@ private struct LetterPage: View {
     let glideEnabled: Bool
     let onLetter: (SleepTokenLetter) -> Void
     let onShift: () -> Void
+    /// The named accessibility action on the shift key — the assistive route into
+    /// caps lock now that the slow tap releases instead of cycling.
+    let onCapsLock: () -> Void
     let onBackspace: (Bool) -> Void
     let onGlide: (_ trace: [CGPoint], _ availableWidth: CGFloat) -> Void
 
@@ -692,9 +714,13 @@ private struct LetterPage: View {
                             LetterKeyButton(
                                 letter: letter,
                                 keyFaceStyle: keyFaceStyle,
-                                // Rune art carries no case, so those keys are pinned
-                                // to false and never repaint on a shift change.
+                                // Rune art carries no case, so its VISUAL face is pinned
+                                // to false. The spoken case below is never pinned: the
+                                // label must tell the truth on every face, which costs
+                                // rune art the same shift-change repaint the Latin
+                                // faces already pay.
                                 shifted: keyFaceStyle == .runeArt ? false : shift.isUppercase,
+                                spokenUppercase: shift.isUppercase,
                                 keyHeight: keyHeight,
                                 hintSize: hintSize,
                                 faceSize: faceSize,
@@ -795,6 +821,10 @@ private struct LetterPage: View {
             selected: shift != .off,
             action: onShift
         )
+        // The double tap that engages caps lock is two activations inside 0.35s —
+        // not a gesture VoiceOver or Switch Control users can perform. The named
+        // action is their road in; everyone else double-taps.
+        .accessibilityAction(named: Text("Caps lock"), onCapsLock)
         .frame(width: KeyboardMetrics.functionKeyWidth, height: keyHeight)
     }
 
@@ -943,102 +973,6 @@ private struct SymbolsPage: View {
     }
 }
 
-/// The emoji page.
-///
-/// Apple's own emoji keyboard cannot be presented from a third-party extension — no
-/// public API selects an input mode — so this is ours: a scrolling grid over our own
-/// catalog, inserting plain text through the same path as every other key.
-private struct EmojiPage: View {
-    @Binding var category: EmojiCategory
-    let recents: [String]
-    let cellHeight: CGFloat
-    let onInsert: (String) -> Void
-    let onBackspace: (Bool) -> Void
-
-    /// Height of the category strip. Sized to clear the 44pt touch target while leaving
-    /// the grid the bulk of a page budget that is already fixed.
-    private static let stripHeight: CGFloat = 44
-
-    private var entries: [String] {
-        category == .recents ? recents : EmojiCatalog.emoji(in: category)
-    }
-
-    var body: some View {
-        VStack(spacing: KeyboardMetrics.rowGap) {
-            if entries.isEmpty {
-                // Recents on a fresh install. Teach the interface rather than showing
-                // an empty box.
-                VStack(spacing: 6) {
-                    Image(systemName: "clock")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                    Text("Emoji you use will appear here")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityElement(children: .combine)
-            } else {
-                ScrollView {
-                    LazyVGrid(
-                        columns: [GridItem(
-                            .adaptive(minimum: 38),
-                            spacing: KeyboardMetrics.keyGap
-                        )],
-                        spacing: KeyboardMetrics.rowGap
-                    ) {
-                        ForEach(entries, id: \.self) { emoji in
-                            Button { onInsert(emoji) } label: {
-                                Text(emoji)
-                                    .font(.system(size: 28))
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: cellHeight)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(emoji)
-                            .accessibilityAddTraits(.isKeyboardKey)
-                        }
-                    }
-                    .padding(.horizontal, 2)
-                }
-                .scrollIndicators(.hidden)
-            }
-
-            HStack(spacing: KeyboardMetrics.keyGap) {
-                // All ten tabs share the row, the way stock's strip does: every
-                // category always visible, none hidden past the edge of an
-                // indicator-less scroll. Tabs land around 32-38pt wide across
-                // current iPhones — stock's own tab size — and the full-height
-                // frame keeps the target tall.
-                HStack(spacing: 2) {
-                    ForEach(EmojiCategory.allCases) { tab in
-                        Button { category = tab } label: {
-                            Image(systemName: tab.symbolName)
-                                .font(.footnote)
-                                .foregroundStyle(
-                                    tab == category ? Color.primary : Color.secondary
-                                )
-                                .frame(maxWidth: .infinity)
-                                .frame(height: Self.stripHeight)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(tab.accessibilityLabel)
-                        .accessibilityAddTraits(
-                            tab == category ? [.isButton, .isSelected] : .isButton
-                        )
-                    }
-                }
-
-                BackspaceKey(keyHeight: Self.stripHeight, onBackspace: onBackspace)
-            }
-            .frame(height: Self.stripHeight)
-        }
-    }
-}
-
 /// The globe key, in UIKit.
 ///
 /// `handleInputModeList(from:with:)` is the only supported way to show the system
@@ -1139,9 +1073,10 @@ private extension View {
     }
 }
 
-/// The one delete key, shared by both pages so its icon, label, width, and repeat
+/// The one delete key, shared by every page so its icon, label, width, and repeat
 /// behaviour cannot drift apart — the construction previously existed verbatim twice.
-private struct BackspaceKey: View {
+/// Internal, not private: EmojiPage builds its strip around this key from its own file.
+struct BackspaceKey: View {
     let keyHeight: CGFloat
     let onBackspace: (Bool) -> Void
 
@@ -1182,8 +1117,11 @@ private struct LetterKeyButton: View, Equatable {
     /// Whether the Latin faces render uppercase. Keycaps flipping case with shift is
     /// how the user reads what case comes next — vital now that autocapitalization
     /// arms and releases shift silently. Normalised to `false` for the rune-art face
-    /// by the caller, so pure-glyph keys never repaint on a shift change.
+    /// by the caller, whose glyphs carry no case.
     let shifted: Bool
+    /// Whether VoiceOver speaks "capital". Separate from `shifted` and never
+    /// normalised: the spoken label tells the truth on every face.
+    let spokenUppercase: Bool
     let keyHeight: CGFloat
     let hintSize: CGFloat
     let faceSize: CGFloat
@@ -1192,11 +1130,13 @@ private struct LetterKeyButton: View, Equatable {
 
     /// Compares only the value inputs, ignoring the closure — which is freshly allocated
     /// per key per render. Keys repaint exactly when their rendered inputs change: a
-    /// shift tap repaints the Latin faces (whose case flips) and leaves rune art alone.
+    /// shift tap now touches every face, since the spoken case flips even where the
+    /// drawn face does not.
     static func == (lhs: LetterKeyButton, rhs: LetterKeyButton) -> Bool {
         lhs.letter == rhs.letter
             && lhs.keyFaceStyle == rhs.keyFaceStyle
             && lhs.shifted == rhs.shifted
+            && lhs.spokenUppercase == rhs.spokenUppercase
             && lhs.keyHeight == rhs.keyHeight
             && lhs.hintSize == rhs.hintSize
             && lhs.faceSize == rhs.faceSize
@@ -1214,7 +1154,7 @@ private struct LetterKeyButton: View, Equatable {
         // The Button is the sole accessibility element: SymbolGlyphView carries its own
         // label and hint for the host app's chart, which would otherwise make the two key
         // faces announce differently for the same letter.
-        .accessibilityLabel(letter.upperLatin)
+        .accessibilityLabel(letter.spokenKeyName(uppercase: spokenUppercase))
         .accessibilityAddTraits(.isKeyboardKey)
     }
 
