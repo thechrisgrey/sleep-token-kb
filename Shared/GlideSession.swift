@@ -12,11 +12,14 @@ public struct GlideSession: Equatable {
 
     public init() {}
 
-    /// Appends a sample; the gesture's start location is recorded exactly once,
-    /// when the session is idle — which also means a stale session abandoned by
-    /// a system-cancelled touch is replaced when the next gesture begins.
+    /// Appends a sample. One drag keeps one start location for its whole life,
+    /// so a differing `start` can only mean a new gesture — the previous
+    /// session was abandoned by a cancelled touch and is replaced, not
+    /// continued.
     public mutating func extend(start: CGPoint, to current: CGPoint) {
-        if points.isEmpty { points.append(start) }
+        if points.isEmpty || points.first != start {
+            points = [start]
+        }
         points.append(current)
     }
 
