@@ -7,7 +7,7 @@
 [![Platform](https://img.shields.io/badge/platform-iOS%2026.5%2B-C8A968?style=for-the-badge&logo=apple&logoColor=white&labelColor=0E0D0F)](https://developer.apple.com/ios/)
 [![Swift](https://img.shields.io/badge/Swift-5.0-DE9BA9?style=for-the-badge&logo=swift&logoColor=white&labelColor=0E0D0F)](https://swift.org)
 [![SwiftUI](https://img.shields.io/badge/SwiftUI-native-C8A968?style=for-the-badge&logo=swift&logoColor=white&labelColor=0E0D0F)](https://developer.apple.com/xcode/swiftui/)
-[![Tests](https://img.shields.io/badge/tests-63%20passing-4F7A5C?style=for-the-badge&logo=checkmarx&logoColor=white&labelColor=0E0D0F)](#testing)
+[![Tests](https://img.shields.io/badge/tests-252%20passing-4F7A5C?style=for-the-badge&logo=checkmarx&logoColor=white&labelColor=0E0D0F)](#testing)
 [![License](https://img.shields.io/badge/license-MIT-C8A968?style=for-the-badge&labelColor=0E0D0F)](LICENSE)
 
 [![Targets](https://img.shields.io/badge/targets-3-DE9BA9?style=flat-square&labelColor=1A1820)](#project-structure)
@@ -32,6 +32,7 @@
 - [What this is](#what-this-is)
 - [Features](#features)
 - [The keyboard](#the-keyboard)
+- [The host app](#the-host-app)
 - [Rune Pad](#rune-pad)
 - [The ritual alphabet](#the-ritual-alphabet)
 - [Two themes](#two-themes)
@@ -69,10 +70,14 @@ The split exists because iOS keyboards can only insert text, and rune text would
 |---------|-------|
 | **QWERTY layout** | Muscle-memory typing with glyph keycaps |
 | **A–Z grid layout** | The learning layout; every letter in alphabetical order |
-| **Three key faces** | One key cycles `Rune` → `Rune·A` → `Aa`: pure glyphs, glyphs with a Latin hint beneath, or plain letters |
+| **Glide typing** | Slide a finger across the letters and lift; alternates wait in the suggestion bar. QWERTY only, toggleable, on by default |
+| **Suggestion bar** | Spelling candidates over the keys as you type, with what you actually typed always kept; space commits the correction |
+| **Three key faces** | `Rune`, `Rune·A`, `Aa` — pure glyphs, glyphs with a Latin hint beneath, or plain letters; pick one by long-pressing the emoji key |
 | **Always-English insert** | Tapping any key inserts `a`–`z` / `A`–`Z`; the key face is cosmetic |
 | **Shift & caps lock** | Tap for one letter, tap again for sticky caps lock, third tap releases |
-| **123 page** | Digits and punctuation with its own backspace |
+| **123 page** | Digits and punctuation with its own backspace; once you have typed one, space brings the letters back |
+| **Emoji page** | Nine categories behind a recents tab; recents persist the same way every other preference does |
+| **Entrance hall** | The app opens as a welcome that routes — hero, a card that shows only until the keyboard is enabled, three doors |
 | **Rune Pad** | Vertical composition, live Latin read-back, spell check, five export formats |
 | **Two themes** | Ritual (obsidian and gold) or Even in Arcadia (pink on black stone) |
 | **Haptics** | Per-keystroke feedback, toggleable |
@@ -91,26 +96,36 @@ The split exists because iOS keyboards can only insert text, and rune text would
 
 <br>
 
-The bottom bar carries five controls: the globe (next keyboard, shown only when the system asks for it), the layout toggle, the key-face cycle, the `123`/`ABC` page key, space, and return. Every switch key names its **destination**, never its current state, so no two adjacent keys can ever show the same label.
+The bottom bar carries five keys: the `123`/`ABC` page key, the globe (next keyboard, shown only when the system asks for it), the emoji key, space, and return. Layout and key face used to sit here as two more permanent keys, and now live behind a long press on the emoji key — which is what buys the space bar its stock width. Every switch key names its **destination**, never its current state: the page key names the alphabet it takes you to, and the emoji key turns into a `keyboard` glyph once the emoji page is open.
 
-### The key face cycle
+The text behaviour is stock throughout: shift arms itself from the field's own autocapitalization and the words already before the cursor, two quick spaces become a period, a held delete repeats and then accelerates, and the return key wears whatever the field asks for — `Search`, `Send`, `Go`, `Done`.
 
-One key, three faces. The label always shows where the next tap takes you.
+### Glide typing
 
-```mermaid
-stateDiagram-v2
-    direction LR
-    [*] --> runeArt
-    runeArt: Rune — pure glyph keycaps
-    runeHints: Rune·A — glyph plus Latin hint
-    letters: Aa — plain English keycaps
+Slide a finger across the letters and lift; the word lands. It rides QWERTY muscle memory, so QWERTY is the only layout that has it — nobody has a trained path through an alphabetical grid, and the A–Z layout stays tap-only. All three key faces keep it: a glide works without reading the caps.
 
-    runeArt --> runeHints: tap
-    runeHints --> letters: tap
-    letters --> runeArt: tap
-```
+The commit behaviour is stock. The best match inserts on lift, its alternates fill the suggestion bar over the keys, one backspace immediately after a glide removes the whole word instead of one letter, and consecutive glides space themselves. Shift and caps lock case a glided word exactly as they case a tapped one.
 
-The hinted face uses taller keys (44pt vs 40pt), so the container reserves the **tallest** face for the current page — cycling mid-session can never clip a visible row.
+The engine is path-template matching — the SHARK² lineage every production glide keyboard descends from. The trace is resampled to sixty-four points and scored against each candidate word's ideal polyline through the key centres, blended with word frequency and weighted at the endpoints, where a finger is at its most deliberate. The dictionary is 50,042 words, bundled as `glide_lexicon.txt`, merged at run time with the host's supplementary lexicon (contact names, text replacements) and pruned by the neighbourhood of the first and last key, so scoring touches a fraction of it.
+
+Two deliberate details:
+
+- **The geometry is the rendered geometry.** `KeyCenters` re-derives every key centre from the same `KeyboardMetrics` arithmetic the page lays itself out with, and a parity test holds the two together. A decoder scoring against a keyboard that is not on screen is the one glide failure a user could never diagnose.
+- **You always get what you drew.** If pruning finds nothing, it widens once; if it still finds nothing, the keyboard inserts the letters nearest the path. Never silence.
+
+The toggle lives in the host app's keyboard defaults and is on by default. VoiceOver never sees the gesture — stock does not mix slide-to-type with touch typing either — and Reduce Motion draws the trail as a plain line.
+
+### The three key faces
+
+A long press on the emoji key opens a panel over the keyboard with two rows of choices — **Layout** (`QWERTY`, `A–Z`) and **Key face** — the current one filled in the active colour and marked selected to VoiceOver. Both also live in the host app's Settings; the panel is the in-keyboard shortcut for them.
+
+| Cap | Keycaps |
+|:---:|---|
+| **Rune** | Pure glyph keycaps |
+| **Rune·A** | Glyph with a small Latin letter beneath |
+| **Aa** | Plain English keycaps |
+
+The hinted face uses taller keys (44pt vs 40pt), so the container reserves the **tallest** face for the current page — switching mid-session can never clip a visible row.
 
 ### Shift
 
@@ -130,6 +145,18 @@ stateDiagram-v2
 ```
 
 Each state has its own SF Symbol and its own VoiceOver value, so caps lock is never mistaken for a one-shot shift.
+
+---
+
+## The host app
+
+The app around the keyboard opens as an entrance hall, not a settings menu. The hero owns the first third of the screen, then one card that may or may not be there, then three doors.
+
+**The threshold card** — "Enable the keyboard" — takes the first position while the keyboard is not enabled yet, and disappears entirely once it is. `EnableThreshold` reads the system's enabled-keyboards preference for the extension's bundle ID, and deliberately degrades toward showing: an unreadable or empty answer keeps the card, because showing setup to someone who has finished it is a shrug while hiding it from someone who has not is a dead end. For the case where the read lies, the foot of the enable guide carries a manual out: **Already enabled? Hide the setup card on the welcome screen.**
+
+**The three doors** — Rune Pad, the alphabet, Settings — share one card form: glyph, title, one line, chevron.
+
+Everything the front page used to spill now lives behind the Settings door: the theme picker, the keyboard defaults (layout, key look, haptics, glide typing), and the "Two ways to write" explainer, which is reference material rather than front-door reading. Settings also carries the one thing the welcome must never carry — see [Jerry](#jerry).
 
 ---
 
@@ -253,6 +280,8 @@ Jerry — black body, white beak, pink legs — is hidden **ten times** across t
 
 Each find pops a rose `N of 10` counter, permanently brightens that Jerry so you can track progress, persists across relaunch, and announces itself to VoiceOver.
 
+Settings keeps a running tally once the first one is found — the count written out, "Four of ten", serif, nothing tappable. It names no screen and points at no corner, and it does not exist at all before that first find, so nobody learns from the UI that there is a hunt. At ten it offers the reward again, so Damocles stops being a missable one-time event.
+
 Find all ten and the app plays a ceremony — petal storm, Jerry at full height, `DAMOCLES` in champagne serif — then opens the song on Apple Music.
 
 **The song is linked, never bundled.** The audio is not ours to ship.
@@ -267,8 +296,8 @@ Find all ten and the app plays a ceremony — petal storm, Jerry at full height,
 | # | Screen | Where |
 |---|--------|-------|
 | 1 | Home | Perched at the end of the `SLEEP TOKEN` rune wordmark |
-| 2 | Home | Corner of the "Two ways to write" card |
-| 3 | Home | Corner of the Appearance card |
+| 2 | Settings | Corner of the "Two ways to write" card |
+| 3 | Settings | Corner of the Appearance card |
 | 4 | Home | Beside the footer |
 | 5 | Enable keyboard | Corner of the Setup card |
 | 6 | Enable keyboard | Corner of the Troubleshooting card |
@@ -286,7 +315,10 @@ Find all ten and the app plays a ceremony — petal storm, Jerry at full height,
 ```mermaid
 graph TD
     subgraph Host["Host app · SleepTokenKB"]
-        CV["ContentView — hub, settings, ceremonies"]
+        CV["ContentView — the welcome: hero, threshold, doors"]
+        SV["SettingsView — appearance, keyboard defaults, the tally"]
+        ET["EnableThreshold — does the threshold card show"]
+        JT["JerryTally — the spoiler-free count"]
         RP["RunePadView — compose and translate"]
         RC["RuneCanvas — fit math and renderer"]
         RE["RuneExport — styles, share sheet"]
@@ -300,6 +332,10 @@ graph TD
         AL["Alphabet — letters, PUA mapping, translation"]
         LM["LayoutMode — layouts, key faces, preferences"]
         KM["KeyboardMetrics — one source of keyboard geometry"]
+        KC["KeyCenters — where every QWERTY key sits"]
+        GD["GlideLexicon + GlideDecoder — 50k words, path templates"]
+        GS["GlideSession + GlideCommit — trace capture, commit rules"]
+        PS["PageAfterSpace — where space leaves the keyboard"]
         SS["ShiftState"]
         SG["SymbolGlyphView — asset plus fallback"]
         RF["RuneFont"]
@@ -312,13 +348,18 @@ graph TD
     end
 
     Host -->|embeds| Ext
+    CV --> SV
     CV --> RP --> RC & RE
     CV --> AC & EK
-    CV --> TH & JH
+    CV & SV --> TH & JH
+    CV --> ET
+    SV --> JT
     RP --> AL
     AC --> SG
     KVC --> KRV --> KP
     KRV --> SS & KM & LM & AL & SG
+    KRV --> GS & GD & PS
+    KRV --> KC --> KM
     KVC --> KM
     RC --> SG & RF
     LM -.->|App Group<br/>UserDefaults| KRV
@@ -327,6 +368,7 @@ graph TD
 **Design rules the code holds to:**
 
 - `KeyboardMetrics` is the only place keyboard geometry lives. The SwiftUI content lays itself out from it *and* the view controller reserves height from it, so the container can never promise less space than the rows occupy.
+- `KeyCenters` re-derives the QWERTY key centres from that same arithmetic rather than measuring the views, and a parity test locks the two files together — the decoder must score against the keyboard that is actually on screen.
 - `CanvasMetrics` plays the same role for Rune Pad, and both the fit math and the renderer consume the same derived constants.
 - The extension never links `RuneFont` — it renders asset art only, and a keyboard extension has a tight memory budget.
 
@@ -354,7 +396,7 @@ sequenceDiagram
     else sandbox denies
         L-->>K: local fallback
     end
-    U->>K: Cycle key face in the keyboard
+    U->>K: Pick layout / key face in the keyboard
     K->>L: write locally
     K->>G: write (no-op if denied)
     Note over H: returning to foreground
@@ -371,6 +413,7 @@ sequenceDiagram
 - **iOS 26.5+** deployment target
 - An Apple Developer team (free is fine) for device installs
 - Optional: [`xcodegen`](https://github.com/yonaskolb/XcodeGen) if you edit `project.yml`
+- Not needed to build, but expected before you commit: [`swiftlint`](https://github.com/realm/SwiftLint) — `.swiftlint.yml` sits at the repo root and the tree is clean against it
 
 ### Build and run
 
@@ -420,19 +463,27 @@ Missing from the list? Force-quit Settings, reinstall the app, try again. Extens
 DEVICE="iPhone 16" ./scripts/test.sh
 ```
 
-Sixty-three tests cover the pure-logic layer — the parts where a silent regression would be invisible in the UI until a user hit it.
+Two hundred and fifty-two tests across thirty-three suites cover the pure-logic layer — the parts where a silent regression would be invisible in the UI until a user hit it.
 
 | Suite | Tests | What it pins |
 |---|:---:|---|
-| `KeyboardMetricsTests` | 10 | Reserved height always covers content, for every page × layout × face × size class |
+| `SuggestionsTests` | 19 | The candidate bar and the correction on space: what is offered, what is replaced, what is left alone |
+| `AutocapitalizationTests` | 19 | The host field's intent — sentence, word, all-caps, none — read as a pure rule over the text before the cursor |
+| `KeyboardMetricsTests` | 12 | Reserved height always covers content, for every page × layout × face × size class |
+| `SpellCheckerTests` | 11 | Which words count as finished, and which finished words get flagged |
+| `AutoShiftTests` | 10 | The ratchet, the impossible cancel, and the caps-lock latch, as plain sequences |
+| `PageAfterSpaceTests` | 10 | Space returns to the letters — armed by the first keystroke of a visit, not by arrival |
+| `PeriodShortcutTests` | 10 | Double-space-for-period, and every guard that stops it firing on a pause |
+| `RuneFontTests` | 10 | The real bundle: the face registers, and all 26 letters map to distinct glyphs |
 | `AlphabetTests` | 9 | PUA round-tripping, Latin translation, pass-through of non-rune characters |
-| `KeyboardPreferencesTests` | 8 | Defaults, round-trips, and migration of the legacy Latin-hints flag |
-| `ShiftStateTests` | 7 | The three-state machine and one-shot consumption |
-| `CanvasMetricsTests` | 6 | Rune Pad fit math stays inside the plaque — including the trailing caret |
-| `JerryHuntTests` | 6 | Ten spots, stable persistence format, exactly-once celebration |
-| `LayoutModeTests` | 6 | The key-face cycle visits every case; short titles stay distinct |
-| `ThemeTests` | 6 | Theme persistence, unknown-value fallback, palette actually changes |
-| `KeyboardLayoutTests` | 5 | Both layouts contain all 26 letters exactly once |
+| `KeyboardPreferencesTests` | 9 | Defaults, round-trips, and migration of the legacy Latin-hints flag |
+| `PageParityTests` | 9 | Every page is the same height, and delete stays inline instead of buying a row |
+| `ReturnKeyTitleTests` | 9 | Every `UIReturnKeyType` has a cap and a spoken label — Search and Send included |
+| `EmojiCatalogTests` | 8 | Stable category order, no emoji in two places, a recents list that behaves like stock |
+| `GlideCommitTests` | 8 | Auto-space between consecutive glides, casing under shift, the whole-word backspace |
+| `KeyRepeatTests` | 8 | The delete acceleration curve, as arithmetic rather than a live timer |
+
+Those are the fifteen largest; eighteen more sit beside them in `SleepTokenKBTests/` — the shift machine, Rune Pad's fit math, the themes and their contrast floor, the Jerry hunt, and the welcome's two pure rules. Four of them are glide's: the geometry parity that keeps `KeyCenters` equal to the rendered page, the lexicon's pruning and merge, the tap-versus-glide session, and the decoder's accuracy floor. That floor is measured rather than asserted — ideal traces for the top two hundred words decode top-three, and jittered ones clear a ninety-percent hit rate. `pit`, `pot` and `put` share one straight line, so the decoder is only asked to surface all three among the alternates.
 
 > Tests passing is not the same as shipped-and-working. Every feature here was also exercised by hand in the Simulator — the keyboard typing into Safari, the pasteboard inspected after each export, the ceremonies watched frame by frame.
 
@@ -440,16 +491,22 @@ Sixty-three tests cover the pure-logic layer — the parts where a silent regres
 
 ## Releasing
 
-Archiving, signing, validating and uploading are scripted. Signing authenticates with an App Store Connect API key rather than a checked-in certificate, so no `.p12` and no certificate password lives in this repo.
+Archiving, signing, validating, uploading and distributing are scripted. Signing authenticates with an App Store Connect API key rather than a checked-in certificate, so no `.p12` and no certificate password lives in this repo.
 
 ```bash
-./scripts/release.sh preflight   # inspect the environment; builds nothing
-./scripts/release.sh archive     # archive + export a signed .ipa (default)
-./scripts/release.sh validate    # ...then run Apple's validation
-./scripts/release.sh upload      # ...then upload to App Store Connect
+./scripts/release.sh preflight    # inspect the environment; builds nothing
+./scripts/release.sh status       # ask App Store Connect where the app stands
+./scripts/release.sh archive      # archive + export a signed .ipa (default)
+./scripts/release.sh validate     # ...then run Apple's validation
+./scripts/release.sh upload       # ...then upload to App Store Connect
+./scripts/release.sh distribute   # put an already-uploaded build in front of testers
 ```
 
-Stages are cumulative and the default never uploads. The same script runs in CI through the manually-dispatched [Release workflow](.github/workflows/release.yml) — `archive` is its default too, so a mis-click is a no-op.
+`archive`, `validate` and `upload` are cumulative, and the default never uploads. `preflight`, `status` and `distribute` build nothing — `distribute` is deliberately *not* cumulative and never archives, validates or uploads, because Apple rejects a second upload of a build number outright, so the build it works on is always one that is already there.
+
+**Uploading is not distributing.** A build that has finished processing has reached Apple and reached nobody. `distribute` adds it to the beta group (`ASC_BETA_GROUP`, default `Fan Community`), submits it for Beta App Review, waits for `buildBetaDetail.externalBuildState` to read `IN_BETA_TESTING`, and expires every other live build only after that — never one second before. `DRY_RUN=1` prints every write and sends none; `NO_EXPIRE=1` leaves the superseded builds live; `BUILD_NUMBER` picks the build.
+
+The same script runs in CI through the manually-dispatched [Release workflow](.github/workflows/release.yml), which offers `archive`, `validate` and `upload` — `archive` is its default too, so a mis-click is a no-op. `status` and `distribute` need only the API key, not Xcode, so they run from anywhere.
 
 Build numbers come from the commit count, so they only ever increase and never collide between a laptop and a runner.
 
@@ -462,10 +519,15 @@ Build numbers come from the commit count, so they only ever increase and never c
 ```
 sleep-token-kb/
 ├── SleepTokenKB/              # Host app
-│   ├── ContentView.swift          # Hub, settings, ceremony hosting
+│   ├── SleepTokenKBApp.swift      # @main — the app entry point
+│   ├── ContentView.swift          # The welcome: hero, threshold, three doors
+│   ├── SettingsView.swift         # Appearance, keyboard defaults, the tally
+│   ├── EnableThreshold.swift      # Does the threshold card show
+│   ├── JerryTally.swift           # The spoiler-free count
 │   ├── RunePadView.swift          # Composer + live translation
 │   ├── RuneCanvas.swift           # Fit math + shared renderer
 │   ├── RuneExport.swift           # Export styles, share sheet
+│   ├── SpellChecker.swift         # Finished words, flagged words
 │   ├── AlphabetChartView.swift    # 26-glyph reference
 │   ├── EnableKeyboardView.swift   # Setup walkthrough
 │   ├── Theme.swift                # Palette, petals, Jerry, cards
@@ -475,20 +537,44 @@ sleep-token-kb/
 ├── SleepTokenKeyboard/        # Keyboard extension
 │   ├── KeyboardViewController.swift
 │   ├── KeyboardRootView.swift
+│   ├── HostField.swift            # Live reads of the field being edited
 │   └── KeyPalette.swift
 ├── Shared/                    # Linked into both targets
 │   ├── Alphabet.swift
 │   ├── LayoutMode.swift
 │   ├── KeyboardMetrics.swift
+│   ├── KeyCenters.swift           # QWERTY key centres, for glide
+│   ├── GlideLexicon.swift
+│   ├── GlideDecoder.swift
+│   ├── GlideSession.swift
+│   ├── GlideCommit.swift
+│   ├── Suggestions.swift
+│   ├── Autocapitalization.swift
+│   ├── AutoShift.swift
 │   ├── ShiftState.swift
+│   ├── CapsLockTap.swift
+│   ├── KeyRepeat.swift
+│   ├── PeriodShortcut.swift
+│   ├── PageAfterSpace.swift
+│   ├── ReturnKeyTitle.swift
+│   ├── SpaceTracker.swift
+│   ├── EmojiCatalog.swift
 │   ├── SymbolGlyphView.swift
-│   └── RuneFont.swift
-├── SleepTokenKBTests/         # 63 tests, 9 suites
+│   ├── RuneFont.swift
+│   └── Resources/
+│       └── glide_lexicon.txt      # 50,042 words with frequencies
+├── SleepTokenKBTests/         # 252 tests, 33 suites
 ├── scripts/
 │   ├── test.sh                    # Build + test
-│   └── build_rune_font.py         # SVG → TTF pipeline
+│   ├── release.sh                 # Archive, validate, upload, distribute
+│   ├── build_rune_font.py         # SVG → TTF pipeline
+│   ├── build_glide_lexicon.py     # Word list → bundled lexicon
+│   └── og/                        # Social cards: editorial, devices, glyph
 ├── docs/
-│   └── feature-optimization.md    # Living refinement record
+│   ├── RELEASE.md                 # The release runbook
+│   ├── feature-optimization.md    # Living refinement record
+│   └── superpowers/specs/         # Design specs for recent features
+├── .swiftlint.yml             # Lint rules
 └── project.yml                # Source of truth (xcodegen)
 ```
 

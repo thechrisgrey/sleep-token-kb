@@ -15,6 +15,8 @@ This document separates the two so it is always obvious which is which.
 | Archive, sign, export `.ipa` | Yes | `scripts/release.sh archive` |
 | App Store validation | Yes | `scripts/release.sh validate` |
 | Upload to App Store Connect | Yes | `scripts/release.sh upload` |
+| Add the build to the beta group, submit for Beta App Review | Yes | `scripts/release.sh distribute` |
+| Expire the superseded builds | Yes, older ones only, and never before `IN_BETA_TESTING` | `scripts/release.sh distribute` |
 | Read back review and submission state | Yes | `scripts/release.sh status` |
 | Build number management | Yes | commit count, see below |
 | Distribution certificate and profiles | Yes, on demand | Xcode, via the API key |
@@ -137,6 +139,26 @@ with an opaque authentication error.
 
 ## Releasing
 
+Two commands, in this order, and the order is not interchangeable:
+
+```bash
+./scripts/release.sh upload      # gets the build into App Store Connect
+./scripts/release.sh distribute  # gets it in front of testers
+```
+
+**Uploading is not distributing.** A build that has finished processing has reached
+Apple and reached nobody. It reaches testers only once it has been added to a beta
+group and submitted for Beta App Review, and the one piece of state that proves it
+did is `buildBetaDetail.externalBuildState == IN_BETA_TESTING`. A `processingState`
+of `VALID` says only that Apple accepted the bundle.
+
+**Only the newest build stays live, and expiring is one-way.** `distribute` expires
+every live build older than the new one once it is distributed -- but not one second
+before it has read `IN_BETA_TESTING` back from Apple. That interlock is not
+decoration. A build was once declared live off `processingState` alone and the
+previous build expired behind it, and every tester had nothing to install for twenty
+minutes. There is no un-expiring; the only remedy is another upload.
+
 ### From your Mac
 
 ```bash
@@ -171,9 +193,10 @@ confused and "approved" against the wrong one is the easy mistake to make:
 Passing the first says nothing about the second. Guideline 5.2 in particular is
 not applied at beta review.
 
-Unlike the other stages this one skips preflight and needs no Xcode: it only
+Unlike the build stages this one skips preflight and needs no Xcode: it only
 needs the API key, `curl`, `jq` and `openssl`. It signs its own ES256 JWT rather
-than pulling in a JWT library, so there is nothing to install.
+than pulling in a JWT library, so there is nothing to install. `distribute`, below,
+runs on the same machinery.
 
 ```bash
 ./scripts/release.sh archive
@@ -196,7 +219,86 @@ catches missing icons, entitlement mismatches, and privacy-manifest problems.
 ```
 
 Archive, validate, upload. The build appears in TestFlight after a few minutes of
-processing.
+processing, uploaded but not yet distributed to anyone.
+
+```bash
+./scripts/release.sh distribute
+```
+
+Builds nothing and uploads nothing: Apple rejects a second upload of a build number
+outright, so this stage only ever works on a build that is already there. It takes
+that build the rest of the way, in the only order that is safe:
+
+1. Waits for `processingState` to reach `VALID`, and fails immediately on `INVALID`
+   or `FAILED` rather than waiting out the timeout.
+2. Adds the build to the beta group. Already a member is success, not failure --
+   but only when the group itself says so. Apple has no single code for "you
+   already did this", so a rejection that reads as one is confirmed by re-reading
+   the group before it counts. A genuine rejection whose text merely contains the
+   word *already* -- a group at its build limit, say -- stops the stage.
+3. Submits it for Beta App Review. Already submitted is success, not failure --
+   `WAITING_FOR_REVIEW`, `IN_REVIEW` and `APPROVED` all mean carry on. `REJECTED`,
+   the remaining one of Apple's four, is the moment the operator most needs a
+   failure signal rather than an `[ok]`, so it stops the stage: a rejection is
+   answered with a new upload, not with another submission.
+4. Waits for `externalBuildState` to reach `IN_BETA_TESTING`, printing each
+   transition as it happens.
+5. **Only then** expires every live build uploaded *before* it, naming each one
+   with its id as it goes -- never the build being distributed, and never one
+   uploaded after it.
+
+If step 4 times out or is rejected, nothing is expired and the stage says so: the
+build testers already have stays live, which is the entire point. Beta App Review
+takes hours, so a timeout there is normal rather than a failure -- it exits **3**
+rather than 1, and re-running `distribute` picks up exactly where it stopped, since
+every step of it is safe to repeat. Exit 1 is reserved for the answers a re-run
+cannot change: a rejection, a refused write, and the four `externalBuildState` dead
+ends -- `PROCESSING_EXCEPTION`, `MISSING_EXPORT_COMPLIANCE`, `EXPIRED` and
+`NOT_APPLICABLE` -- which stop the wait in seconds with the fix for each, rather
+than polling half an hour to advise a re-run that could never help.
+
+Step 5 re-reads the build list immediately before acting on it, and a read that
+fails is reported as a failure rather than as an empty list. *There were none to
+expire* and *I could not find out* are different answers, and the stage never
+prints the first when it means the second. An empty response body, a body with no
+`data` array, and a list the build is somehow missing from all take the second
+path.
+
+**Step 5 expires by age, not by build number.** A build uploaded while this one sat
+in review is newer, not superseded -- expiring it would be one-way and wrong -- so
+it is left live and named, and distributing *it* is what expires this one. Age is
+read off Apple's own `-uploadedDate` ordering rather than by comparing the
+timestamps, because they come back with a UTC offset (`2026-08-03T04:14:26-07:00`)
+rather than as `Z`, and compared as text that instant sorts *before* `09:00:00Z`
+when it is two hours after it. The list is also filtered to live builds so the
+200-row page maximum is spent only on builds this step can act on; if there are
+still more, it says so instead of quietly expiring the first page.
+
+| Knob | Effect |
+|---|---|
+| `DRY_RUN` | performs every read, prints every write it would send -- the expiries included -- and sends none |
+| `NO_EXPIRE` | distributes, but leaves the superseded builds live |
+| `ASC_BETA_GROUP` | the group to ship to; defaults to `Fan Community`. Must be an external group -- an internal one moves `internalBuildState`, never the state step 4 waits on, so the stage refuses it up front rather than timing out |
+| `BUILD_NUMBER` | the build to distribute; defaults to the commit count. Not unique on its own -- App Store Connect scopes it to the pre-release version -- so if more than one build carries it, the stage names them all and distributes the most recently uploaded |
+
+`DRY_RUN` and `NO_EXPIRE` accept `1/0`, `true/false`, `yes/no` or `on/off`, in any
+case. Anything else exits 2 before a single request is sent, rather than being read
+as off. They are the two brakes on a one-way operation, and `NO_EXPIRE=ture`
+silently meaning *expire everything* is precisely the class of accident this stage
+exists to rule out.
+
+A dry run runs every read for real and prints every write, the expiries included --
+the irreversible one is the one worth previewing. It does not wait for
+`IN_BETA_TESTING`, because the writes that would produce it were never sent, so the
+expiry list it prints is what a real run would send **once that gate passed**, not a
+claim that it has. It says as much on the line above the list. A state that gate can
+never be reached from -- a rejection, or one of the four dead ends -- is reported
+with the loud marker and exits 1: the preview still prints, but a build that can
+never be distributed does not get to look like a clean run.
+
+Like `status`, it skips preflight and needs no Xcode -- it builds nothing, so
+gating it on a toolchain it never uses would only make it useless from a machine
+that has the key and nothing else.
 
 ### From CI
 
@@ -276,6 +378,7 @@ It is local design reference, not ours to redistribute.
 | `No signing certificate "Apple Distribution" found` | Cloud-managed signing did not engage. The key is missing, is not Admin, or `-allowProvisioningUpdates` was dropped. An empty local keychain is **not** the cause — see below |
 | `The bundle version must be higher than the previously uploaded version` | `BUILD_NUMBER` did not increase. Shallow clone in CI, or an amended commit locally |
 | Upload rejected for a missing privacy manifest | `PrivacyInfo.xcprivacy` did not make it into the bundle. Run `xcodegen generate` |
+| The upload succeeded but testers see nothing new | Uploading is not distributing. Run `./scripts/release.sh distribute` |
 | `Invalid Bundle. ... extension ... version` | The extension and app disagree on a version key. Both come from build settings; regenerate |
 | `xcodebuild requires Xcode` | `xcode-select -p` points at the Command Line Tools. The scripts already override `DEVELOPER_DIR` |
 | Authentication fails in CI only | `ASC_KEY_P8` pasted raw instead of base64 encoded |

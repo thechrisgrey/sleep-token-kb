@@ -1,0 +1,142 @@
+# SwiftLint for Ritual Keyboard.
+#
+# The tree is clean against this file. That is the whole point: a violation from
+# here on is news, not noise. Thresholds are set just above the real maximum in
+# the codebase today and the real maximum is named, so growth past it is a
+# deliberate decision someone has to make, not a number that quietly drifts.
+# Where a threshold is not fitted that way, its comment says so and says why.
+#
+# Run it with `swiftlint lint --quiet --strict` from the repo root. Without
+# --strict a warning still exits 0, and every threshold below is a warning.
+
+# Build output only. No source is ever hidden from the linter.
+excluded:
+  - build
+  - DerivedData
+  - .build
+
+# --- Thresholds tuned to this codebase -------------------------------------
+
+line_length:
+  # Longest real line of code today is 141 (SleepTokenKB/EnableKeyboardView.swift:90,
+  # a `bullet(...)` call); longest in the tests is 140
+  # (SleepTokenKBTests/AutocapitalizationTests.swift:113).
+  warning: 145
+  error: 200
+  # Every category exemption stays off, on purpose. Each of these waives the
+  # whole line the moment the line contains the thing it names — one `\(value)`
+  # anywhere on a 331-character statement and it is invisible forever, error
+  # threshold included. They would hide future drift, not any present fact: the
+  # tree lints clean at 145/200 with all of them false, so turning one on buys
+  # nothing today and silently raises the ceiling tomorrow.
+  ignores_urls: false
+  ignores_comments: false
+  ignores_function_declarations: false
+  ignores_interpolated_strings: false
+  ignores_multiline_strings: false
+  ignores_regex_literals: false
+  # The one real exception is narrow and shaped like the exception, not like a
+  # category. Setup copy is written as one unbroken string per step so the prose
+  # stays greppable and reads as prose; there are exactly four such lines, all
+  # in EnableKeyboardView's SetupStep list, the longest 365 characters. The
+  # pattern exempts a line that is nothing but an optionally-labelled string
+  # literal, and the `\\[^(]` alternative bars `\(` inside it — so the escape
+  # hatch is prose only, and no expression can ride along in an interpolation.
+  excluded_lines_patterns:
+    - '^\s*(\w+: )?"(?:[^"\\]|\\[^(])*",?$'
+
+identifier_name:
+  # Only the minimum is relaxed. The alphabet is modelled as an enum with cases
+  # a...z, colour work unpacks to r/g/b/a, and the glide and canvas geometry
+  # reads in x/y/dx/dy/r — spelling those out would obscure the maths, not
+  # clarify it. Maximum length, casing, and symbol checks all stay on.
+  min_length:
+    warning: 1
+    error: 1
+
+file_length:
+  # Real maximum is 1400 (SleepTokenKeyboard/KeyboardRootView.swift); next is 549 (Theme.swift).
+  warning: 1450
+  error: 1600
+
+type_body_length:
+  # Real maximum is 412 lines (the RunePadView struct); KeyboardRootView is 409.
+  warning: 450
+  error: 600
+
+function_body_length:
+  # Real maximum is 135 (the glyph path builder in Shared/SymbolGlyphView.swift);
+  # next is 57. A SwiftUI `body` that grows past 140 wants extracting.
+  warning: 140
+  error: 200
+
+cyclomatic_complexity:
+  # Thresholds left at the default 10/20; `ignores_case_statements` is turned
+  # on against its own default of false. Two functions trip the rule with cases
+  # counted, and in both the count is almost entirely case labels: the glyph path
+  # builder in Shared/SymbolGlyphView.swift:80 (complexity 22, one `switch` over
+  # the alphabet plus a single `if letter == .g` at :100) and the return-key title
+  # in Shared/ReturnKeyTitle.swift:10 (complexity 11, one flat `switch`) — case
+  # lists a reader does not have to hold in their head. With cases exempt the
+  # real maximum in the tree is 4, so unlike every other threshold here 10/20
+  # is headroom, not a number fitted to the code.
+  ignores_case_statements: true
+
+large_tuple:
+  # Real maximum is 4: the (r, g, b, a) channel tuple RuneExportTests unpacks
+  # from UIColor, the only tuple in the tree with more than three members.
+  warning: 4
+  error: 5
+
+# --- Rules that do not fit this project ------------------------------------
+
+disabled_rules:
+  # The tree uses both conventions — 15 collection literals carry a trailing
+  # comma, 19 multi-line literals do not — so neither setting of the rule is
+  # clean without rewriting source. Re-enable with `mandatory_comma: true` once
+  # the literals are normalised.
+  - trailing_comma
+  # Three optionals are written `= nil` on purpose: two opt-in callbacks, each
+  # directly under the doc comment that explains it — `onComplete` on the
+  # ShareSheet in RuneExport.swift and `onHeightInputsChanged` on
+  # KeyboardRootView — and the optional `caption` on SettingsView's DefaultsRow.
+  # The explicit default is the documentation; the rule is pure style and this
+  # project already chose.
+  - implicit_optional_initialization
+  # SwiftUI's own idiom. `PreferenceBacked(read:write:) { $mode in ... }` and its
+  # siblings in SettingsView pass configuration by argument and content by
+  # trailing closure, exactly as Picker, Button, and Toggle do.
+  - multiple_closures_with_trailing_closure
+  # The house style opens a file with a `///` header explaining what it is for,
+  # before the first declaration. One file trips the rule today — RuneCanvas.swift:3
+  # — but the header is deliberate and worth keeping, and the rule wants it demoted
+  # to `//` wherever it is used.
+  - orphaned_doc_comment
+
+# --- Opt-in rules that are clean today and catch real mistakes --------------
+
+opt_in_rules:
+  # Lifetime and concurrency — the failure modes a keyboard extension actually has.
+  - discarded_notification_center_observer
+  - unhandled_throwing_task
+  - unowned_variable_capture
+  - weak_delegate
+  - overridden_super_call
+  # Logic mistakes that compile.
+  - identical_operands
+  - return_value_from_void_function
+  - redundant_nil_coalescing
+  - discouraged_none_name
+  # SwiftUI shape: state stays private, namespace types stay caseless enums.
+  - private_swiftui_state
+  - convenience_type
+  # Emptiness reads as emptiness.
+  - empty_count
+  - empty_string
+  # A trap that fires has to say why.
+  - fatal_error_message
+  # Test hygiene: specific matchers, no hollow lifecycle methods, no helpers
+  # masquerading as tests.
+  - xct_specific_matcher
+  - empty_xctest_method
+  - test_case_accessibility
