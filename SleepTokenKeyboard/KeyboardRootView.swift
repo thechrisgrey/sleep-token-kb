@@ -578,9 +578,15 @@ private struct LetterPage: View {
     let onGlide: (_ trace: [CGPoint], _ availableWidth: CGFloat) -> Void
 
     @State private var glide = GlideSession()
-    /// True from the first drag sample until the runloop tick after lift, so the
-    /// origin key's Button cannot fire a stray letter on the same touch-up.
+    /// Keeps taps suppressed one runloop tick past lift, so the origin key's
+    /// Button cannot fire on the same touch-up. During the drag itself the
+    /// suppression rides `isGliding`.
     @State private var suppressesTaps = false
+    /// True while the finger is down in THIS gesture. `@GestureState`, not
+    /// `@State`, and the difference is the whole point (see BackspaceKey): its
+    /// reset also runs when the system CANCELS the touch, so a call banner
+    /// mid-glide cannot wedge the keyboard.
+    @GestureState private var isGliding = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var rows: [[SleepTokenLetter]] {
@@ -611,7 +617,7 @@ private struct LetterPage: View {
                                 faceSize: faceSize,
                                 fixedWidth: layoutMode == .qwerty ? unit : nil,
                                 action: {
-                                    guard !suppressesTaps else { return }
+                                    guard !(isGliding || suppressesTaps) else { return }
                                     onLetter(letter)
                                 }
                             )
@@ -649,6 +655,16 @@ private struct LetterPage: View {
                 }
             }
             .simultaneousGesture(glideGesture(width: geo.size.width), including: glideActive ? .all : .subviews)
+            .onChange(of: isGliding) { _, active in
+                // @GestureState's reset is the only signal a CANCELLED touch
+                // gives us: falling while the session is still active means no
+                // onEnded came — discard the glide, clear the trail. This is
+                // the spec's cancellation clause, and GlideSession.cancel's
+                // one production caller.
+                guard !active, glide.isActive else { return }
+                glide.cancel()
+                suppressesTaps = false
+            }
         }
     }
 
@@ -659,19 +675,32 @@ private struct LetterPage: View {
     private func glideGesture(width: CGFloat) -> some Gesture {
         let unit = KeyboardMetrics.keyUnit(availableWidth: width)
         return DragGesture(minimumDistance: unit / 2, coordinateSpace: .local)
+            .updating($isGliding) { _, state, _ in state = true }
             .onChanged { value in
                 guard glideActive else { return }
+                if glide.points.first != value.startLocation {
+                    // A glide must BEGIN on a letter: a thumb drifting off a
+                    // held backspace or shift is not a word. 0.9 units reaches
+                    // a letter key's corners and rejects the function keys.
+                    guard nearestLetterDistance(to: value.startLocation, width: width)
+                        <= unit * 0.9 else { return }
+                }
                 suppressesTaps = true
                 glide.extend(start: value.startLocation, to: value.location)
             }
             .onEnded { value in
-                guard glide.isActive else { return }
+                guard glideActive, glide.isActive else { return }
                 let trace = glide.finish(at: value.location)
                 onGlide(trace, width)
                 // Release tap suppression on the next runloop tick, after the
                 // origin Button has had its chance to (not) fire for this touch.
                 Task { @MainActor in suppressesTaps = false }
             }
+    }
+
+    private func nearestLetterDistance(to point: CGPoint, width: CGFloat) -> CGFloat {
+        let centers = KeyCenters.qwerty(availableWidth: width, keyHeight: keyHeight)
+        return centers.values.map { hypot($0.x - point.x, $0.y - point.y) }.min() ?? .infinity
     }
 
     private var shiftKey: some View {
