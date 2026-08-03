@@ -15,6 +15,7 @@
 		06F3C1E6FB78687C12D35980 /* RuneExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 538EF89B2D7012D02DCC0639 /* RuneExportTests.swift */; };
 		09992AB3A35C1B588264CDDF /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E015BC4EB2125A6F597E6DA /* KeyboardViewController.swift */; };
 		10C6F47ED4334ADFA54454F7 /* KeyboardMetricsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169A4EB79EEE4BB091880928 /* KeyboardMetricsTests.swift */; };
+		110F8CC5C468CAFCED9309BD /* GlideCommit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67BF81021E8119570CD990D6 /* GlideCommit.swift */; };
 		150178E1D5BE55C1EE0DF45B /* SpellCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62E7F5B096A51669B58B9C7C /* SpellCheckerTests.swift */; };
 		1538BBE1F8EF0C458D8C86A5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EEF43754E7EFEBEE3DBE885E /* PrivacyInfo.xcprivacy */; };
 		17A9D58D634C22CCD79F2885 /* ShiftState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CAFEA8E748BFEF65ED884D4 /* ShiftState.swift */; };
@@ -81,7 +82,9 @@
 		CCF933829EDB4A1151A60E03 /* KeyboardPreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D3D861BDF2AC3FE450D9A0 /* KeyboardPreferencesTests.swift */; };
 		CCF9E44C714ED245513AB569 /* SpellChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C893AC6C6DCB65953F46EEA9 /* SpellChecker.swift */; };
 		CF02186A21A344E4500C8337 /* CanvasMetricsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC6AA14C3002A819481F7D6 /* CanvasMetricsTests.swift */; };
+		D22BCFE7388B6909A755689A /* GlideCommitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C102AEF6A2CB89F1F0427BB3 /* GlideCommitTests.swift */; };
 		D552F6CA2BFC07986E539B0C /* ShiftStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF380D63C799184E6A67B59 /* ShiftStateTests.swift */; };
+		D8CB55017526554696C1B8E4 /* GlideCommit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67BF81021E8119570CD990D6 /* GlideCommit.swift */; };
 		DA5D79D9C79DD6B933A75042 /* JerryHuntTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB174ED028252D27375F7E3C /* JerryHuntTests.swift */; };
 		DCAB232C8F6D8D6F81AE0552 /* LayoutModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FFDCB708F5C31C5A3A08C77 /* LayoutModeTests.swift */; };
 		DD4214EEAAA250B612B47B23 /* SpaceTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A88EA39EABC548CE19DBF3F /* SpaceTracker.swift */; };
@@ -161,6 +164,7 @@
 		588BCFC4A4EB5774183C06C3 /* SleepTokenKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SleepTokenKeyboard.entitlements; sourceTree = "<group>"; };
 		5B1217EEFF5F8964823A8706 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
 		62E7F5B096A51669B58B9C7C /* SpellCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpellCheckerTests.swift; sourceTree = "<group>"; };
+		67BF81021E8119570CD990D6 /* GlideCommit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlideCommit.swift; sourceTree = "<group>"; };
 		6B4A8A0CAA11A6BA7792C758 /* AutoShift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoShift.swift; sourceTree = "<group>"; };
 		6E2C60A1ED5255A7B399E354 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		728C137A9132EF904ADD45AD /* glide_lexicon.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = glide_lexicon.txt; sourceTree = "<group>"; };
@@ -192,6 +196,7 @@
 		BCEAE8D6B08FD285C2D9F7BE /* EmojiCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiCatalogTests.swift; sourceTree = "<group>"; };
 		BD67C38107529CFBD5DFA9A8 /* SleepTokenKeyboard.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SleepTokenKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		C027840CED3A4DB8DD9A917B /* KeyboardLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardLayoutTests.swift; sourceTree = "<group>"; };
+		C102AEF6A2CB89F1F0427BB3 /* GlideCommitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlideCommitTests.swift; sourceTree = "<group>"; };
 		C3B51C7BF337E5F04E22AC73 /* GlideSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlideSession.swift; sourceTree = "<group>"; };
 		C893AC6C6DCB65953F46EEA9 /* SpellChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpellChecker.swift; sourceTree = "<group>"; };
 		D1C5A0DCB6F05CB00209375A /* SleepTokenKB.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SleepTokenKB.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -223,6 +228,7 @@
 				6B4A8A0CAA11A6BA7792C758 /* AutoShift.swift */,
 				F2929973F0B22C50F0B7F78F /* CapsLockTap.swift */,
 				FCAEB795A2B0DB6240776771 /* EmojiCatalog.swift */,
+				67BF81021E8119570CD990D6 /* GlideCommit.swift */,
 				777239C50CA85E6470D15EBF /* GlideDecoder.swift */,
 				8FDA9270C9CD591CD4236C6C /* GlideLexicon.swift */,
 				C3B51C7BF337E5F04E22AC73 /* GlideSession.swift */,
@@ -266,6 +272,7 @@
 				8CC6AA14C3002A819481F7D6 /* CanvasMetricsTests.swift */,
 				193874995F99EB2CF56ACC56 /* CapsLockTapTests.swift */,
 				BCEAE8D6B08FD285C2D9F7BE /* EmojiCatalogTests.swift */,
+				C102AEF6A2CB89F1F0427BB3 /* GlideCommitTests.swift */,
 				AB81B92E00EE8488AE4CA7B5 /* GlideDecoderTests.swift */,
 				9F92E847BDDC50C20E3312CC /* GlideLexiconTests.swift */,
 				0CDCD08CDD1E74653B181659 /* GlideSessionTests.swift */,
@@ -487,6 +494,7 @@
 				EB6C02B83B7D5AAE2E33D972 /* ContentView.swift in Sources */,
 				C2241404AF7DAC6A05432526 /* EmojiCatalog.swift in Sources */,
 				57C6864CA7DA671770FF6B70 /* EnableKeyboardView.swift in Sources */,
+				D8CB55017526554696C1B8E4 /* GlideCommit.swift in Sources */,
 				BFA3C42364D6B21A459771C6 /* GlideDecoder.swift in Sources */,
 				95067880DB72ED989B000428 /* GlideLexicon.swift in Sources */,
 				2FD9335ECE2878702E72A37D /* GlideSession.swift in Sources */,
@@ -522,6 +530,7 @@
 				CF02186A21A344E4500C8337 /* CanvasMetricsTests.swift in Sources */,
 				575D6680455D83D39675AEDF /* CapsLockTapTests.swift in Sources */,
 				AC1A26ED0D8398378F9E5AE0 /* EmojiCatalogTests.swift in Sources */,
+				D22BCFE7388B6909A755689A /* GlideCommitTests.swift in Sources */,
 				43430AA2625D99411F64C8FA /* GlideDecoderTests.swift in Sources */,
 				77F5A46FCF3E5B12B9F53C27 /* GlideLexiconTests.swift in Sources */,
 				A55C27CD819D31EB21B87F32 /* GlideSessionTests.swift in Sources */,
@@ -558,6 +567,7 @@
 				F2CC7DFCC64884EE7891C849 /* Autocapitalization.swift in Sources */,
 				1EA6FFF730429068341BDF00 /* CapsLockTap.swift in Sources */,
 				1F0A6E91264D901B1A39145F /* EmojiCatalog.swift in Sources */,
+				110F8CC5C468CAFCED9309BD /* GlideCommit.swift in Sources */,
 				EA6707BB5C6813B6ABC335AD /* GlideDecoder.swift in Sources */,
 				CCA2C4AA993A6B43B0076B90 /* GlideLexicon.swift in Sources */,
 				5905969C03844583EDC4BC30 /* GlideSession.swift in Sources */,

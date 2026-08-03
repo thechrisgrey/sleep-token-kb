@@ -95,6 +95,7 @@ targets:
       - path: Shared/GlideLexicon.swift
       - path: Shared/GlideDecoder.swift
       - path: Shared/GlideSession.swift
+      - path: Shared/GlideCommit.swift
       - path: Shared/Resources/glide_lexicon.txt
       - path: Shared/KeyRepeat.swift
       - path: Shared/SpaceTracker.swift
