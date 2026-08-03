@@ -62,6 +62,7 @@
 		86A589639603B13DC7653154 /* ReadableWidthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5602A7FD096023BA0CAFC4 /* ReadableWidthTests.swift */; };
 		8CCA69B7F95473DF3EAEF8E0 /* RuneExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D34CF559D2C60AEE4558833F /* RuneExport.swift */; };
 		8CDF1518E5AF4A7B8385C199 /* KeyRepeat.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3C3E2E099208283DFD8B528 /* KeyRepeat.swift */; };
+		921A7B4E3D98F3E697311F00 /* EnableThresholdTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 397F69FA36F53AB2E47E0016 /* EnableThresholdTests.swift */; };
 		93F1C84E847CB3E7121A9814 /* KeyboardRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A6A4EC0AD28FD24AE067D6 /* KeyboardRootView.swift */; };
 		95067880DB72ED989B000428 /* GlideLexicon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FDA9270C9CD591CD4236C6C /* GlideLexicon.swift */; };
 		A55C27CD819D31EB21B87F32 /* GlideSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CDCD08CDD1E74653B181659 /* GlideSessionTests.swift */; };
@@ -101,6 +102,7 @@
 		F574B07F87156C0EDE13C0C4 /* ShiftState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CAFEA8E748BFEF65ED884D4 /* ShiftState.swift */; };
 		F61A8DF54444A92F24AD1B10 /* RuneCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = B17A5FE4C09C83C14AE57624 /* RuneCanvas.swift */; };
 		F6A48E898292917D44243D10 /* SpaceTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A88EA39EABC548CE19DBF3F /* SpaceTracker.swift */; };
+		F6DFC4900EA4DAF62C0BD56B /* EnableThreshold.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED25CC070EB7859E0B3307A3 /* EnableThreshold.swift */; };
 		FF245544F3A2999030474BEC /* PeriodShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CAD573554E150B9EB32650B /* PeriodShortcutTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -150,6 +152,7 @@
 		3027B80208E51D6B3304FA50 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		34E1A88128F1BD5AF27E4A48 /* SuggestionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionsTests.swift; sourceTree = "<group>"; };
 		37D295A68B5AF8F366030F89 /* PageAfterSpaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageAfterSpaceTests.swift; sourceTree = "<group>"; };
+		397F69FA36F53AB2E47E0016 /* EnableThresholdTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnableThresholdTests.swift; sourceTree = "<group>"; };
 		3A5602A7FD096023BA0CAFC4 /* ReadableWidthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadableWidthTests.swift; sourceTree = "<group>"; };
 		3CAD573554E150B9EB32650B /* PeriodShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeriodShortcutTests.swift; sourceTree = "<group>"; };
 		434AC2364F4B983B3DD35DB4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -207,6 +210,7 @@
 		EA62FC9BC1B80D936DB64FE2 /* HostField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostField.swift; sourceTree = "<group>"; };
 		EBE29BE51A6CB3B8E9BEE8B6 /* Suggestions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Suggestions.swift; sourceTree = "<group>"; };
 		EBF5D1804587436E77458D73 /* AutocapitalizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutocapitalizationTests.swift; sourceTree = "<group>"; };
+		ED25CC070EB7859E0B3307A3 /* EnableThreshold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnableThreshold.swift; sourceTree = "<group>"; };
 		EEF43754E7EFEBEE3DBE885E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		EF6A8D3881DC7EE73BFE5D2E /* RunePadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunePadView.swift; sourceTree = "<group>"; };
 		F26CE74A2AB7629489EC2649 /* KeyRepeatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyRepeatTests.swift; sourceTree = "<group>"; };
@@ -272,6 +276,7 @@
 				8CC6AA14C3002A819481F7D6 /* CanvasMetricsTests.swift */,
 				193874995F99EB2CF56ACC56 /* CapsLockTapTests.swift */,
 				BCEAE8D6B08FD285C2D9F7BE /* EmojiCatalogTests.swift */,
+				397F69FA36F53AB2E47E0016 /* EnableThresholdTests.swift */,
 				C102AEF6A2CB89F1F0427BB3 /* GlideCommitTests.swift */,
 				AB81B92E00EE8488AE4CA7B5 /* GlideDecoderTests.swift */,
 				9F92E847BDDC50C20E3312CC /* GlideLexiconTests.swift */,
@@ -320,6 +325,7 @@
 				3027B80208E51D6B3304FA50 /* Assets.xcassets */,
 				9A8C769BA84F84C9A399166F /* ContentView.swift */,
 				552C9BA590F343156D99A70D /* EnableKeyboardView.swift */,
+				ED25CC070EB7859E0B3307A3 /* EnableThreshold.swift */,
 				75BF6E6C381599E1617A8935 /* Info.plist */,
 				7BD59817881E4F731E45CD5D /* JerryHunt.swift */,
 				6E2C60A1ED5255A7B399E354 /* PrivacyInfo.xcprivacy */,
@@ -494,6 +500,7 @@
 				EB6C02B83B7D5AAE2E33D972 /* ContentView.swift in Sources */,
 				C2241404AF7DAC6A05432526 /* EmojiCatalog.swift in Sources */,
 				57C6864CA7DA671770FF6B70 /* EnableKeyboardView.swift in Sources */,
+				F6DFC4900EA4DAF62C0BD56B /* EnableThreshold.swift in Sources */,
 				D8CB55017526554696C1B8E4 /* GlideCommit.swift in Sources */,
 				BFA3C42364D6B21A459771C6 /* GlideDecoder.swift in Sources */,
 				95067880DB72ED989B000428 /* GlideLexicon.swift in Sources */,
@@ -530,6 +537,7 @@
 				CF02186A21A344E4500C8337 /* CanvasMetricsTests.swift in Sources */,
 				575D6680455D83D39675AEDF /* CapsLockTapTests.swift in Sources */,
 				AC1A26ED0D8398378F9E5AE0 /* EmojiCatalogTests.swift in Sources */,
+				921A7B4E3D98F3E697311F00 /* EnableThresholdTests.swift in Sources */,
 				D22BCFE7388B6909A755689A /* GlideCommitTests.swift in Sources */,
 				43430AA2625D99411F64C8FA /* GlideDecoderTests.swift in Sources */,
 				77F5A46FCF3E5B12B9F53C27 /* GlideLexiconTests.swift in Sources */,
