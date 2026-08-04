@@ -80,6 +80,9 @@ struct KeyboardRootView: View {
     /// so it must outlive a single body evaluation — this is reached on every keystroke.
     @State private var suggestionEngine = SuggestionEngine()
     @State private var suggestions = SuggestionSet(literal: "", candidates: [])
+    /// Token holder for in-flight `SpellWorker` requests. Reference type in `@State`
+    /// for the same reason `spaceTracker` is: nothing renders it.
+    @State private var suggestionRequest = SuggestionRequest()
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -88,6 +91,10 @@ struct KeyboardRootView: View {
     @ScaledMetric(relativeTo: .caption2) private var hintSize: CGFloat = 9
     @ScaledMetric(relativeTo: .body) private var letterFaceSize: CGFloat = 17
     @ScaledMetric(relativeTo: .body) private var symbolFaceSize: CGFloat = 16
+    /// The candidate bar scales with the keycaps it sits above: these are the exact
+    /// words a low-vision user has to read to accept or decline a correction, and a
+    /// fixed size left them small while every key face grew.
+    @ScaledMetric(relativeTo: .body) private var candidateSize: CGFloat = 16
 
     /// One generator for the life of the extension. As an instance property it was
     /// re-allocated with every root view, so the object `prepare()` warmed was discarded
@@ -117,6 +124,7 @@ struct KeyboardRootView: View {
         VStack(spacing: KeyboardMetrics.rowGap) {
             SuggestionBar(
                 suggestions: suggestions,
+                faceSize: candidateSize,
                 onKeepLiteral: keepTypedWord,
                 onAccept: acceptSuggestion
             )
@@ -491,9 +499,13 @@ struct KeyboardRootView: View {
         autoShift.didInsertLetter()
         applyAutocapitalization()
 
+        // A glide's alternates, not spell candidates: four fixed columns, and the bar
+        // must not treat the committed word as something to correct.
+        suggestionRequest.cancelAll()
         suggestions = SuggestionSet(
             literal: commit.word,
-            candidates: results.dropFirst().map { GlideCommit.cased($0.word, shift: shift) }
+            candidates: results.dropFirst().map { GlideCommit.cased($0.word, shift: shift) },
+            origin: .glide
         )
         showsGlideAlternates = !results.isEmpty
     }
@@ -590,12 +602,35 @@ struct KeyboardRootView: View {
               // goes quiet mid-word; so does the bar.
               !WordBoundary.caretIsInsideWord(contextAfter: host.contextAfter())
         else {
+            suggestionRequest.cancelAll()
             if !suggestions.isEmpty { suggestions = SuggestionSet(literal: "", candidates: []) }
             return
         }
         let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
-        let updated = suggestionEngine.suggestions(forPartialWord: word)
-        if updated != suggestions { suggestions = updated }
+
+        // Anything the engine can answer for free — a kept word, one under the length
+        // floor, the pronoun, or a memo already filled — lands in this keystroke.
+        if let immediate = suggestionEngine.immediateSuggestions(forPartialWord: word) {
+            suggestionRequest.cancelAll()
+            if immediate != suggestions { suggestions = immediate }
+            return
+        }
+
+        // Otherwise the dictionary has to be consulted, which costs milliseconds this
+        // keystroke does not have. Show the literal now and let the candidates land a
+        // beat later, the way stock's bar fills in.
+        let token = suggestionRequest.issue()
+        let literalOnly = SuggestionSet(literal: word, candidates: [])
+        if literalOnly != suggestions { suggestions = literalOnly }
+
+        Task { @MainActor in
+            let candidates = await SpellWorker.shared.corrections(for: word)
+            // A newer keystroke has already asked a different question.
+            guard suggestionRequest.isCurrent(token) else { return }
+            suggestionEngine.remember(word, corrections: candidates)
+            let updated = SuggestionSet(literal: word, candidates: candidates)
+            if updated != suggestions { suggestions = updated }
+        }
     }
 
     /// Replaces the word in progress with `replacement`, by deleting exactly as many
@@ -624,6 +659,8 @@ struct KeyboardRootView: View {
         let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
         guard !word.isEmpty else { return }
         suggestionEngine.keepAsTyped(word)
+        // The bar's checker is a different instance; keep the two vocabularies in step.
+        Task { await SpellWorker.shared.keep(word) }
         refreshSuggestions()
     }
 
@@ -870,8 +907,16 @@ private struct GlideTrailView: View {
 /// but never style it, so this bar is the same substitute every third-party keyboard
 /// uses. The user's own spelling always occupies the first slot, quoted, so a correction
 /// can be declined rather than merely undone.
+/// The candidate strip above the keys.
+///
+/// Its geometry is fixed by `origin.slotCount`, never by how many candidates happen to
+/// exist: the columns and the gaps between them hold still while `UITextChecker` results
+/// come and go, so a slot the thumb was aiming at does not move out from under it
+/// mid-word. Unfilled columns render blank, and their dividers render clear rather than
+/// collapsing, which is what keeps the occupied columns the same width throughout.
 private struct SuggestionBar: View {
     let suggestions: SuggestionSet
+    let faceSize: CGFloat
     let onKeepLiteral: () -> Void
     let onAccept: (String) -> Void
 
@@ -885,18 +930,28 @@ private struct SuggestionBar: View {
                 slot(title: "\u{201C}\(suggestions.literal)\u{201D}", isLiteral: true) {
                     onKeepLiteral()
                 }
-                ForEach(suggestions.candidates, id: \.self) { candidate in
-                    divider
-                    slot(title: candidate, isLiteral: false) { onAccept(candidate) }
+                // One pass per reserved column, occupied or not.
+                ForEach(0..<(suggestions.origin.slotCount - 1), id: \.self) { index in
+                    let candidate = index < suggestions.candidates.count
+                        ? suggestions.candidates[index]
+                        : nil
+                    divider(visible: candidate != nil)
+                    if let candidate {
+                        slot(title: candidate, isLiteral: false) { onAccept(candidate) }
+                    } else {
+                        Color.clear.frame(maxWidth: .infinity)
+                    }
                 }
             }
         }
         .frame(maxWidth: .infinity)
     }
 
-    private var divider: some View {
+    /// Always occupies its 1pt, so the columns either side keep their width whether or
+    /// not the candidate beyond it exists.
+    private func divider(visible: Bool) -> some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.18))
+            .fill(visible ? Color.primary.opacity(0.18) : Color.clear)
             .frame(width: 1, height: 16)
     }
 
@@ -907,7 +962,7 @@ private struct SuggestionBar: View {
     ) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 16, weight: isLiteral ? .regular : .semibold))
+                .font(.system(size: faceSize, weight: isLiteral ? .regular : .semibold))
                 .foregroundStyle(Color.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)

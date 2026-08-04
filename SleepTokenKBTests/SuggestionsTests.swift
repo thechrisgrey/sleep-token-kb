@@ -55,6 +55,33 @@ final class SuggestionsTests: XCTestCase {
         }
     }
 
+    // MARK: - Multi-scalar emoji
+
+    /// Emoji are routinely more than one scalar, and neither VS16 nor a ZWJ belongs to
+    /// a boundary category — so an every-scalar rule called "❤️" a word character and
+    /// glued it to whatever followed. This keyboard ships both of these in its own
+    /// emoji catalog.
+    func testMultiScalarEmojiEndAWord() {
+        for emoji in ["❤️", "😮‍💨", "🏳️‍🌈", "😀", "🇺🇸"] {
+            XCTAssertTrue(
+                WordBoundary.isBoundary(Character(emoji)),
+                "\(emoji) should end a word"
+            )
+        }
+    }
+
+    func testAnEmojiDoesNotGlueToTheNextWord() {
+        XCTAssertEqual(WordBoundary.currentWord(in: "hi ❤️hey"), "hey")
+        XCTAssertEqual(WordBoundary.currentWord(in: "sent 😮‍💨"), "")
+    }
+
+    /// Combining marks are the case the ANY-scalar rule must not break: neither "e"
+    /// nor U+0301 is a boundary on its own, so the composed character stays in-word.
+    func testAccentedLettersStayInsideTheWord() {
+        XCTAssertEqual(WordBoundary.currentWord(in: "caf\u{65}\u{301}"), "cafe\u{301}")
+        XCTAssertFalse(WordBoundary.isBoundary("é"))
+    }
+
     // MARK: - The caret inside a word
 
     /// "wor|lds": the fragment left of the caret is not a finished word, and
@@ -208,5 +235,123 @@ final class SuggestionsTests: XCTestCase {
         let engine = SuggestionEngine()
         engine.keepAsTyped("vessel")
         XCTAssertEqual(engine.autoReplacement(for: "teh"), "the")
+    }
+
+    // MARK: - Case-sensitive memoisation
+
+    /// The cache is keyed by the exact word because `guesses` preserves the query's
+    /// case. Sharing a lowercased key let whichever casing was computed first win the
+    /// session: a sentence-start "Teh" cached as "The" then silently capitalised a
+    /// mid-sentence "teh" — a wrong capital applied without review.
+    func testCorrectionsKeepTheCaseOfTheWordAsked() {
+        let engine = SuggestionEngine()
+        XCTAssertEqual(engine.autoReplacement(for: "Teh"), "The")
+        XCTAssertEqual(
+            engine.autoReplacement(for: "teh"), "the",
+            "a lowercase typo must not inherit the capitalised form's correction"
+        )
+    }
+
+    func testTheReverseOrderIsAlsoStable() {
+        let engine = SuggestionEngine()
+        XCTAssertEqual(engine.autoReplacement(for: "teh"), "the")
+        XCTAssertEqual(engine.autoReplacement(for: "Teh"), "The")
+    }
+
+    // MARK: - The synchronous fast path
+
+    /// What the engine can answer without the dictionary, so the typing path never
+    /// waits on `SpellWorker` for these.
+    func testFreeAnswersNeedNoDictionary() {
+        let engine = SuggestionEngine()
+        XCTAssertEqual(engine.immediateSuggestions(forPartialWord: "")?.candidates, [])
+        XCTAssertEqual(engine.immediateSuggestions(forPartialWord: "hm")?.candidates, [])
+        XCTAssertEqual(engine.immediateSuggestions(forPartialWord: "i")?.candidates, ["I"])
+
+        engine.keepAsTyped("vessel")
+        XCTAssertEqual(engine.immediateSuggestions(forPartialWord: "vessel")?.candidates, [])
+    }
+
+    /// A word needing real guesses reports "not yet" rather than paying for them.
+    func testAWordNeedingTheDictionaryHasNoImmediateAnswer() {
+        let engine = SuggestionEngine()
+        XCTAssertNil(engine.immediateSuggestions(forPartialWord: "teh"))
+    }
+
+    /// Once a background result is filed, the next keystroke gets it for free.
+    func testRememberedResultsBecomeImmediate() {
+        let engine = SuggestionEngine()
+        engine.remember("teh", corrections: ["the", "ten"])
+        XCTAssertEqual(
+            engine.immediateSuggestions(forPartialWord: "teh")?.candidates,
+            ["the", "ten"]
+        )
+    }
+
+    /// Keeping a word must invalidate what was already memoised for it, in any casing,
+    /// or the bar keeps offering the correction the user just rejected.
+    func testKeepingAWordClearsItsMemo() {
+        let engine = SuggestionEngine()
+        engine.remember("Teh", corrections: ["The"])
+        engine.keepAsTyped("teh")
+        XCTAssertEqual(engine.immediateSuggestions(forPartialWord: "Teh")?.candidates, [])
+        XCTAssertEqual(engine.immediateSuggestions(forPartialWord: "teh")?.candidates, [])
+    }
+
+    // MARK: - The background speller
+
+    /// The two checkers must answer the same question the same way — the sync engine
+    /// serves boundary replacement, the actor serves the bar, and a disagreement would
+    /// mean the bar offers one word while space commits another.
+    func testTheWorkerAgreesWithTheSynchronousEngine() async {
+        let engine = SuggestionEngine()
+        for word in ["teh", "recieve", "keyboard", "ritual"] {
+            let fromWorker = await SpellWorker.shared.corrections(for: word)
+            let fromEngine = engine.suggestions(forPartialWord: word).candidates
+            XCTAssertEqual(fromWorker, fromEngine, "the two checkers disagree about \(word)")
+        }
+    }
+}
+
+/// The bar's geometry is fixed per origin, not per candidate count.
+final class SuggestionOriginTests: XCTestCase {
+
+    /// Three columns for spelling (the literal plus two guesses), four for a glide
+    /// round (the committed word plus three alternates) — the counts the engine and
+    /// decoder actually produce.
+    func testSlotCountsMatchWhatEachSourceProduces() {
+        XCTAssertEqual(SuggestionOrigin.spelling.slotCount, 3)
+        XCTAssertEqual(SuggestionOrigin.glide.slotCount, 4)
+    }
+
+    /// A set never carries more candidates than its origin reserves room for.
+    func testEngineCandidatesFitTheSpellingSlots() {
+        let engine = SuggestionEngine()
+        let set = engine.suggestions(forPartialWord: "teh")
+        XCTAssertLessThanOrEqual(set.candidates.count, SuggestionOrigin.spelling.slotCount - 1)
+    }
+
+    func testSpellingIsTheDefaultOrigin() {
+        XCTAssertEqual(SuggestionSet(literal: "a", candidates: []).origin, .spelling)
+    }
+}
+
+/// Only the newest request may publish: `SpellWorker` results arrive out of order
+/// whenever a long word's guesses outlast a short one's.
+final class SuggestionRequestTests: XCTestCase {
+
+    func testOnlyTheNewestTokenIsCurrent() {
+        let request = SuggestionRequest()
+        let first = request.issue()
+        let second = request.issue()
+        XCTAssertFalse(request.isCurrent(first), "a superseded request must not publish")
+        XCTAssertTrue(request.isCurrent(second))
+    }
+
+    func testCancelAllAbandonsEveryRequestInFlight() {
+        let request = SuggestionRequest()
+        let token = request.issue()
+        request.cancelAll()
+        XCTAssertFalse(request.isCurrent(token))
     }
 }
