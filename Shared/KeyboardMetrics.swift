@@ -11,21 +11,45 @@ import CoreGraphics
 public enum KeyboardMetrics {
 
     // MARK: - Spacing scale
+    //
+    // These are not chosen numbers. Every one of them was measured off the stock iOS 26
+    // English keyboard, screenshotted at native scale on four iPhone widths — 390, 402,
+    // 420 and 440pt — and read back in points. All four agree exactly, and the row
+    // arithmetic below closes to the pixel on all four:
+    //
+    //     screenWidth == 2 * edgeInset + 10 * keyUnit + 9 * keyGap
+    //
+    // A keyboard extension is a guest inside other apps, and the muscle memory it
+    // inherits belongs to the system keyboard. Typing on ours used to mean typing on a
+    // grid whose row pitch was 46pt against stock's 54pt — by the third row a thumb was
+    // 16pt off its remembered target, which is the "one step taller than the rest"
+    // feeling that made this measurement necessary. Do not retune these by eye.
 
     /// Horizontal inset applied once at the root, so every row shares an edge.
-    public static let edgeInset: CGFloat = 3
+    public static let edgeInset: CGFloat = 6.5
     /// Gap between keys within a row.
-    public static let keyGap: CGFloat = 5
+    public static let keyGap: CGFloat = 6
     /// Gap between rows, and between the last row and the bottom bar.
-    public static let rowGap: CGFloat = 6
+    ///
+    /// Stock tightens this in a compact height class — 8pt against 11 — rather than
+    /// letting a landscape keyboard eat the screen. A function, not a constant, so the
+    /// compiler names every call site that has to decide which one it means.
+    public static func rowGap(compact: Bool = false) -> CGFloat {
+        compact ? 8 : 11
+    }
     public static let topPadding: CGFloat = 8
     public static let bottomPadding: CGFloat = 4
+    /// Stock's bottom row — 123, space, return — is a key row like any other, at the
+    /// same height and behind the same row gap, so the regular value is `baseKeyHeight`
+    /// exactly. (Stock then hangs emoji and dictation below it on a strip of their own;
+    /// ours fold into this one bar, which is why it is a bar and not a fourth row.)
+    ///
     /// The chrome bar shrinks alongside the keys in a compact height class: 32pt keys
     /// under a fixed 42pt bar inverted the size hierarchy between typing keys and
     /// chrome. It stays a shade taller than the compact keys because it hosts the
     /// widest touch targets.
     public static func bottomBarHeight(compact: Bool = false) -> CGFloat {
-        compact ? 34 : 42
+        compact ? 30 : 43
     }
 
     /// The candidate strip above the keys.
@@ -38,20 +62,54 @@ public enum KeyboardMetrics {
     }
     public static let keyCornerRadius: CGFloat = 6
 
-    /// Width of shift and backspace. At least 44pt to meet the minimum touch target.
-    public static let functionKeyWidth: CGFloat = 44
+    /// The 44pt floor every touch target has to clear. Chrome that is not part of the
+    /// letter grid — the bottom bar's page key, the options panel, the emoji strip's
+    /// delete — sizes itself against this rather than against a key unit it has no
+    /// business knowing.
+    public static let minimumTouchTarget: CGFloat = 44
+
+    /// Width of shift and backspace.
+    ///
+    /// Derived, because stock derives it: the function row has to tile the same ten
+    /// units as the row above it, so shift and delete each swallow one key plus the two
+    /// gaps around it. Measured against stock this lands within a point on every iPhone
+    /// width (44.3 / 45.5 / 47.3 / 49.3 against 44.0 / 45.5 / 48.0 / 50.3) where the old
+    /// flat 44pt literal was 5pt narrow on a Pro Max and left the key floating inboard
+    /// of the keyboard's own edge.
+    public static func functionKeyWidth(keyUnit: CGFloat) -> CGFloat {
+        keyUnit + 2 * keyGap
+    }
+
+    /// The gap stock leaves between a function key and the letters beside it — wider
+    /// than the gap between two letters, so a thumb aiming at Z has room to miss shift.
+    /// Falls out of the tiling identity above: it is exactly the slack left over.
+    public static func functionKeyFlank(keyUnit: CGFloat) -> CGFloat {
+        max(0, (keyUnit - keyGap) / 2)
+    }
+
+    /// What a row's own `HStack` must add between a function key and the letter block,
+    /// given the layout already contributes one `keyGap` on each side of it.
+    public static func functionKeySpacer(keyUnit: CGFloat) -> CGFloat {
+        max(0, functionKeyFlank(keyUnit: keyUnit) - 2 * keyGap)
+    }
 
     // MARK: - Key heights
 
-    public static let baseKeyHeight: CGFloat = 40
+    /// Stock's portrait keycap. Measured 43pt on every iPhone up to 402pt wide; the
+    /// 420pt and 440pt bodies (Air, Pro Max) take 45pt instead. We hold one height for
+    /// every width, so the two largest phones run 2pt under stock — a deliberate trade
+    /// against threading a layout width into a height the container has to reserve
+    /// before it has been laid out.
+    public static let baseKeyHeight: CGFloat = 43
     /// Rune keys grow slightly when the Latin hint is shown beneath the glyph.
-    public static let hintedKeyHeight: CGFloat = 44
+    public static let hintedKeyHeight: CGFloat = 47
 
     /// Landscape equivalents. Vertical room is scarce in a compact height class, so the
     /// keys shrink rather than the total being clamped — clamping the total is what let
-    /// the container promise less space than the rows actually occupy.
-    public static let compactBaseKeyHeight: CGFloat = 32
-    public static let compactHintedKeyHeight: CGFloat = 36
+    /// the container promise less space than the rows actually occupy. Stock lands on
+    /// 27.5pt keys behind an 8pt row gap in landscape, on both a 402pt and a 440pt body.
+    public static let compactBaseKeyHeight: CGFloat = 27.5
+    public static let compactHintedKeyHeight: CGFloat = 31.5
 
     /// `compact` is the vertical size class being `.compact` (landscape on iPhone).
     /// The view and the view controller both derive it from the trait environment and
@@ -140,7 +198,7 @@ public enum KeyboardMetrics {
     ) -> CGFloat {
         let rows = CGFloat(rowCount(page: page, mode: mode))
         let height = keyHeight(page: page, style: style, compact: compact)
-        return rows * height + max(rows - 1, 0) * rowGap
+        return rows * height + max(rows - 1, 0) * rowGap(compact: compact)
     }
 
     /// Exact height the SwiftUI content needs, which is what the controller reserves.
@@ -151,9 +209,10 @@ public enum KeyboardMetrics {
         compact: Bool = false
     ) -> CGFloat {
         let rows = pageHeight(page: page, mode: mode, style: style, compact: compact)
+        let gap = rowGap(compact: compact)
         return topPadding
-            + suggestionBarHeight(compact: compact) + rowGap
-            + rows + rowGap
+            + suggestionBarHeight(compact: compact) + gap
+            + rows + gap
             + bottomBarHeight(compact: compact)
             + bottomPadding
     }

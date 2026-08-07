@@ -77,9 +77,9 @@ final class KeyboardMetricsTests: XCTestCase {
         let rows: CGFloat = 3
         let expected = KeyboardMetrics.topPadding
             + KeyboardMetrics.suggestionBarHeight(compact: false)
-            + KeyboardMetrics.rowGap
-            + (rows * KeyboardMetrics.baseKeyHeight + (rows - 1) * KeyboardMetrics.rowGap)
-            + KeyboardMetrics.rowGap
+            + KeyboardMetrics.rowGap()
+            + (rows * KeyboardMetrics.baseKeyHeight + (rows - 1) * KeyboardMetrics.rowGap())
+            + KeyboardMetrics.rowGap()
             + KeyboardMetrics.bottomBarHeight(compact: false)
             + KeyboardMetrics.bottomPadding
         XCTAssertEqual(height, expected, accuracy: 0.001)
@@ -103,9 +103,9 @@ final class KeyboardMetricsTests: XCTestCase {
         let height = KeyboardMetrics.contentHeight(page: .letters, mode: .qwerty, style: .letters, compact: true)
         let expected = KeyboardMetrics.topPadding
             + KeyboardMetrics.suggestionBarHeight(compact: true)
-            + KeyboardMetrics.rowGap
+            + KeyboardMetrics.rowGap(compact: true)
             + KeyboardMetrics.pageHeight(page: .letters, mode: .qwerty, style: .letters, compact: true)
-            + KeyboardMetrics.rowGap
+            + KeyboardMetrics.rowGap(compact: true)
             + KeyboardMetrics.bottomBarHeight(compact: true)
             + KeyboardMetrics.bottomPadding
         XCTAssertEqual(height, expected, accuracy: 0.001)
@@ -150,8 +150,89 @@ final class KeyboardMetricsTests: XCTestCase {
         XCTAssertEqual(KeyboardMetrics.keyUnit(availableWidth: -50), 0)
     }
 
-    /// Function keys must clear the 44pt minimum touch target.
-    func testFunctionKeyWidthMeetsMinimumTouchTarget() {
-        XCTAssertGreaterThanOrEqual(KeyboardMetrics.functionKeyWidth, 44)
+    /// Chrome that is not part of the letter grid must clear the 44pt touch target.
+    func testMinimumTouchTargetMeetsTheGuideline() {
+        XCTAssertGreaterThanOrEqual(KeyboardMetrics.minimumTouchTarget, 44)
+    }
+
+    /// The function row has to tile exactly the width the row above it tiles, or the
+    /// letter block drifts off the columns and glide decoding drifts with it:
+    ///
+    ///     shift + flank + 7 keys + 6 gaps + flank + delete == 10 keys + 9 gaps
+    ///
+    /// This is the identity stock's own row three satisfies, and it is what sizes
+    /// `functionKeyWidth` — so if either it or `functionKeyFlank` is retuned by hand,
+    /// this test is what notices.
+    func testFunctionRowTilesTheSameWidthAsTheTopRow() {
+        for width in [375.0, 390.0, 402.0, 420.0, 440.0] as [CGFloat] {
+            let unit = KeyboardMetrics.keyUnit(availableWidth: width)
+            let function = KeyboardMetrics.functionKeyWidth(keyUnit: unit)
+            let flank = KeyboardMetrics.functionKeyFlank(keyUnit: unit)
+            let functionRow = 2 * function
+                + 2 * flank
+                + 7 * unit
+                + 6 * KeyboardMetrics.keyGap
+            XCTAssertEqual(functionRow, width, accuracy: 0.001,
+                           "function row must tile width \(width)")
+        }
+    }
+
+    /// The spacer a row inserts beside a function key, plus the two gaps the layout
+    /// already contributes, must come to the flank — otherwise the drawn row and the
+    /// arithmetic above disagree about where Z starts.
+    func testFunctionKeySpacerCompletesTheFlank() {
+        for width in [375.0, 390.0, 402.0, 420.0, 440.0] as [CGFloat] {
+            let unit = KeyboardMetrics.keyUnit(availableWidth: width)
+            let spacer = KeyboardMetrics.functionKeySpacer(keyUnit: unit)
+            XCTAssertEqual(spacer + 2 * KeyboardMetrics.keyGap,
+                           KeyboardMetrics.functionKeyFlank(keyUnit: unit),
+                           accuracy: 0.001)
+            XCTAssertGreaterThanOrEqual(spacer, 0)
+        }
+    }
+
+    /// The stock iOS 26 English keyboard, measured off native-scale screenshots on four
+    /// iPhone widths. These are the numbers the whole spacing scale exists to match, so
+    /// they are asserted directly rather than left to a comment: a keyboard extension
+    /// inherits its muscle memory from the system keyboard, and a drift here is a drift
+    /// under someone's thumb.
+    func testGeometryMatchesTheMeasuredStockKeyboard() {
+        XCTAssertEqual(KeyboardMetrics.edgeInset, 6.5)
+        XCTAssertEqual(KeyboardMetrics.keyGap, 6)
+        XCTAssertEqual(KeyboardMetrics.rowGap(), 11)
+        XCTAssertEqual(KeyboardMetrics.rowGap(compact: true), 8)
+        XCTAssertEqual(KeyboardMetrics.baseKeyHeight, 43)
+        XCTAssertEqual(KeyboardMetrics.compactBaseKeyHeight, 27.5)
+        // Stock's bottom row is a key row, not chrome: same height, same gap above it.
+        XCTAssertEqual(KeyboardMetrics.bottomBarHeight(), KeyboardMetrics.baseKeyHeight)
+
+        // Key width and the row-three function width, on the two commonest iPhone
+        // widths, against what the screenshots measured.
+        for (width, keyWidth, functionWidth) in [
+            (390.0, 32.3, 44.3), (402.0, 33.5, 45.5)
+        ] as [(CGFloat, CGFloat, CGFloat)] {
+            let unit = KeyboardMetrics.keyUnit(availableWidth: width - 2 * KeyboardMetrics.edgeInset)
+            XCTAssertEqual(unit, keyWidth, accuracy: 0.05, "key width at \(width)pt")
+            XCTAssertEqual(KeyboardMetrics.functionKeyWidth(keyUnit: unit), functionWidth,
+                           accuracy: 0.05, "function key width at \(width)pt")
+        }
+    }
+
+    /// Row pitch — key height plus the gap under it — is what a thumb actually
+    /// remembers, and it is where ours was most wrong: 46pt against stock's 54 put the
+    /// third row 16pt off its remembered target. Stock measures 54pt portrait and 35.5pt
+    /// landscape; the horizontal pitch is the key unit plus one gap and tiles by
+    /// construction (see testKeyUnitTilesTheAvailableWidth).
+    func testRowPitchMatchesStock() {
+        XCTAssertEqual(
+            KeyboardMetrics.baseKeyHeight + KeyboardMetrics.rowGap(),
+            54,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            KeyboardMetrics.compactBaseKeyHeight + KeyboardMetrics.rowGap(compact: true),
+            35.5,
+            accuracy: 0.001
+        )
     }
 }

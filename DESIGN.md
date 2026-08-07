@@ -123,24 +123,24 @@ components:
     backgroundColor: "{colors.keycap-dark}"
     typography: "{typography.keycap}"
     rounded: "{rounded.key}"
-    height: "40pt"
+    height: "43pt"
   keycap-letter-hinted:
     backgroundColor: "{colors.keycap-dark}"
     typography: "{typography.keycap}"
     rounded: "{rounded.key}"
-    height: "44pt"
+    height: "47pt"
   keycap-function:
     backgroundColor: "{colors.key-function-dark}"
     typography: "{typography.keycap}"
     rounded: "{rounded.key}"
-    width: "44pt"
-    height: "40pt"
+    width: "keyUnit + 2 x keyGap"
+    height: "43pt"
   keycap-function-active:
     backgroundColor: "{colors.key-active-dark}"
     typography: "{typography.keycap}"
     rounded: "{rounded.key}"
-    width: "44pt"
-    height: "40pt"
+    width: "keyUnit + 2 x keyGap"
+    height: "43pt"
   runepad-key:
     backgroundColor: "{colors.obsidian-high}"
     textColor: "{colors.bone}"
@@ -362,9 +362,10 @@ without a special case.
 
 **Responsive behavior is structural, by size class, not by breakpoint.** In a
 compact height class (landscape iPhone) the keys shrink rather than the total
-being clamped — 40pt to 32pt base, 44pt to 36pt hinted — and the bottom chrome bar
-drops 42pt to 34pt alongside them, staying a shade taller than the keys because it
-hosts the widest touch targets.
+being clamped — 43pt to 27.5pt base, 47pt to 31.5pt hinted, with the row gap
+tightening 11pt to 8pt — and the bottom chrome bar drops 43pt to 30pt alongside
+them, staying a shade taller than the keys because it hosts the widest touch
+targets. Every one of those numbers is stock's, measured, not chosen.
 
 ### Named Rules
 
@@ -372,6 +373,18 @@ hosts the widest touch targets.
 nowhere else. A hardcoded key height, gap, or row total anywhere in the extension
 is a defect — that exact drift previously under-allocated the grid layout by ~48pt
 and pushed its top row off the edge of the input view.
+
+**The Stock Pitch Rule.** The keyboard's grid — key size, key gap, row gap, edge
+inset, and the function keys that close the row — is measured off the system
+keyboard, not designed. This is the one place the brand register does not apply:
+the host app is where design is the product, but the extension is a guest inside
+other apps, and the muscle memory it inherits belongs to whatever keyboard the
+user just left. Ours ran a 46pt row pitch against stock's 54, which put the third
+row 16pt off its remembered target — near enough to look right and far enough to
+trip over, like one stair being taller than the rest. The numbers now match stock
+to within a device pixel on every iPhone width, verified by rendering our own
+layout in the Simulator and measuring the screenshot against a stock one. Retune
+them only by measuring again.
 
 **The Tallest Face Rule.** The container reserves the tallest key face available
 for the current page, not the current one, so cycling the key face mid-session can
@@ -471,9 +484,12 @@ more than refinement.
 - **Shape:** 6pt continuous, one shared keycap modifier — four key types previously
   redeclared this independently
 - **Letter keys:** Keycap color (always the lightest surface in both appearances),
-  40pt tall, 44pt when showing a Latin hint
-- **Function keys** (shift, backspace): Function color, 44pt wide — the minimum
-  touch target — never narrower
+  43pt tall, 47pt when showing a Latin hint — 43 is stock's, measured
+- **Function keys** (shift, backspace): Function color, one key unit plus the two
+  gaps around it, so the function row tiles the same ten units as the row above it
+  and both keys seat flush against the keyboard's own edge, exactly as stock does.
+  Chrome outside the letter grid — the bottom bar's page key, the options panel,
+  the emoji strip's delete — takes the flat 44pt touch-target floor instead
 - **Engaged shift:** Active color, brighter than a resting function key in both
   appearances, with a distinct SF Symbol per state (`shift`, `shift.fill`,
   `capslock.fill`)

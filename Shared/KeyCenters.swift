@@ -10,14 +10,16 @@ public enum KeyCenters {
 
     public static func qwerty(
         availableWidth: CGFloat,
-        keyHeight: CGFloat
+        keyHeight: CGFloat,
+        compact: Bool = false
     ) -> [SleepTokenLetter: CGPoint] {
         let unit = KeyboardMetrics.keyUnit(availableWidth: availableWidth)
         let step = unit + KeyboardMetrics.keyGap
+        let rowGap = KeyboardMetrics.rowGap(compact: compact)
         var centers: [SleepTokenLetter: CGPoint] = [:]
 
         for (rowIndex, row) in KeyboardLayout.qwertyRows.enumerated() {
-            let y = CGFloat(rowIndex) * (keyHeight + KeyboardMetrics.rowGap) + keyHeight / 2
+            let y = CGFloat(rowIndex) * (keyHeight + rowGap) + keyHeight / 2
             let leadingX: CGFloat
             switch rowIndex {
             case 0:
