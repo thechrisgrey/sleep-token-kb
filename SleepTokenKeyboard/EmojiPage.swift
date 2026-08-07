@@ -19,12 +19,17 @@ struct EmojiPage: View {
     /// the grid the bulk of a page budget that is already fixed.
     private static let stripHeight: CGFloat = 44
 
+    /// Read here rather than passed, exactly as KeyboardRootView reads it. See LetterPage.
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    private var compact: Bool { verticalSizeClass == .compact }
+
     private var entries: [String] {
         category == .recents ? recents : EmojiCatalog.emoji(in: category)
     }
 
     var body: some View {
-        VStack(spacing: KeyboardMetrics.rowGap) {
+        VStack(spacing: KeyboardMetrics.rowGap(compact: compact)) {
             if entries.isEmpty {
                 // Recents on a fresh install. Teach the interface rather than showing
                 // an empty box.
@@ -46,7 +51,7 @@ struct EmojiPage: View {
                             .adaptive(minimum: 38),
                             spacing: KeyboardMetrics.keyGap
                         )],
-                        spacing: KeyboardMetrics.rowGap
+                        spacing: KeyboardMetrics.rowGap(compact: compact)
                     ) {
                         ForEach(entries, id: \.self) { emoji in
                             Button { onInsert(emoji) } label: {

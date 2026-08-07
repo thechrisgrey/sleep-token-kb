@@ -33,7 +33,7 @@ final class KeyCentersTests: XCTestCase {
         let centers = KeyCenters.qwerty(availableWidth: width, keyHeight: keyHeight)
         let a = centers[.a]!
         XCTAssertEqual(a.x, inset + unit / 2, accuracy: 0.001)
-        XCTAssertEqual(a.y, keyHeight + KeyboardMetrics.rowGap + keyHeight / 2, accuracy: 0.001)
+        XCTAssertEqual(a.y, keyHeight + KeyboardMetrics.rowGap() + keyHeight / 2, accuracy: 0.001)
     }
 
     /// Shift and backspace flank row three at equal widths, so the seven-letter

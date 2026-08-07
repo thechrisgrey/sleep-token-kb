@@ -20,6 +20,7 @@
 		12813A39050692D6B9CD141A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4315CBADCF7386040D16A945 /* SettingsView.swift */; };
 		150178E1D5BE55C1EE0DF45B /* SpellCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62E7F5B096A51669B58B9C7C /* SpellCheckerTests.swift */; };
 		1538BBE1F8EF0C458D8C86A5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EEF43754E7EFEBEE3DBE885E /* PrivacyInfo.xcprivacy */; };
+		16383E6D80CFA6E45AA8EF36 /* SymbolsPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 334B5AF76863B8FB30583091 /* SymbolsPage.swift */; };
 		17A9D58D634C22CCD79F2885 /* ShiftState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CAFEA8E748BFEF65ED884D4 /* ShiftState.swift */; };
 		1C069107C79837E2C3297973 /* Alphabet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F8B191D3CC54F363C6833E /* Alphabet.swift */; };
 		1EA6FFF730429068341BDF00 /* CapsLockTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2929973F0B22C50F0B7F78F /* CapsLockTap.swift */; };
@@ -154,6 +155,7 @@
 		2DC71CFEE0A72F1981885FAD /* LayoutMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutMode.swift; sourceTree = "<group>"; };
 		2FEF2D03A1421B388A159704 /* ReturnKeyTitleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnKeyTitleTests.swift; sourceTree = "<group>"; };
 		3027B80208E51D6B3304FA50 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		334B5AF76863B8FB30583091 /* SymbolsPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolsPage.swift; sourceTree = "<group>"; };
 		34E1A88128F1BD5AF27E4A48 /* SuggestionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionsTests.swift; sourceTree = "<group>"; };
 		37D295A68B5AF8F366030F89 /* PageAfterSpaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageAfterSpaceTests.swift; sourceTree = "<group>"; };
 		397F69FA36F53AB2E47E0016 /* EnableThresholdTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnableThresholdTests.swift; sourceTree = "<group>"; };
@@ -272,6 +274,7 @@
 				B7FFDCF2286E61D11706D975 /* KeyPalette.swift */,
 				EEF43754E7EFEBEE3DBE885E /* PrivacyInfo.xcprivacy */,
 				588BCFC4A4EB5774183C06C3 /* SleepTokenKeyboard.entitlements */,
+				334B5AF76863B8FB30583091 /* SymbolsPage.swift */,
 			);
 			path = SleepTokenKeyboard;
 			sourceTree = "<group>";
@@ -610,6 +613,7 @@
 				DD4214EEAAA250B612B47B23 /* SpaceTracker.swift in Sources */,
 				3B1AD544FB9049C01F66D17C /* Suggestions.swift in Sources */,
 				E7603E6FDDF6B258CCA53197 /* SymbolGlyphView.swift in Sources */,
+				16383E6D80CFA6E45AA8EF36 /* SymbolsPage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

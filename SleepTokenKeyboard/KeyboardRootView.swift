@@ -121,7 +121,7 @@ struct KeyboardRootView: View {
     }
 
     var body: some View {
-        VStack(spacing: KeyboardMetrics.rowGap) {
+        VStack(spacing: KeyboardMetrics.rowGap(compact: isCompact)) {
             SuggestionBar(
                 suggestions: suggestions,
                 faceSize: candidateSize,
@@ -258,7 +258,7 @@ struct KeyboardRootView: View {
                 haptic()
                 setPage(page == .letters ? .symbols : .letters)
             }
-            .frame(width: KeyboardMetrics.functionKeyWidth)
+            .frame(width: KeyboardMetrics.minimumTouchTarget)
 
             if needsInputModeSwitchKey {
                 // UIKit, not a SwiftUI Button: `handleInputModeList(from:with:)` needs
@@ -382,7 +382,7 @@ struct KeyboardRootView: View {
                         Text(label)
                             .font(.footnote.weight(.semibold))
                             .frame(maxWidth: .infinity)
-                            .frame(minHeight: KeyboardMetrics.functionKeyWidth)
+                            .frame(minHeight: KeyboardMetrics.minimumTouchTarget)
                             .background(
                                 RoundedRectangle(
                                     cornerRadius: KeyboardMetrics.keyCornerRadius,
@@ -482,7 +482,7 @@ struct KeyboardRootView: View {
     /// insert stock-style, hand the alternates to the bar, arm whole-word undo.
     private func handleGlide(_ trace: [CGPoint], availableWidth: CGFloat) {
         let unit = KeyboardMetrics.keyUnit(availableWidth: availableWidth)
-        let centers = KeyCenters.qwerty(availableWidth: availableWidth, keyHeight: keyHeight)
+        let centers = KeyCenters.qwerty(availableWidth: availableWidth, keyHeight: keyHeight, compact: isCompact)
         let results = GlideDecoder.decode(trace: trace, centers: centers, keyUnit: unit,
                                           lexicon: .shared)
         let word = results.first?.word
@@ -730,6 +730,12 @@ private struct LetterPage: View {
     /// mid-glide cannot wedge the keyboard.
     @GestureState private var isGliding = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Read here rather than passed, exactly as KeyboardRootView reads it: both sit in
+    /// one hosting controller's trait environment, so there is only ever one answer —
+    /// and the row pitch this page draws with must be the one height was reserved for.
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    private var compact: Bool { verticalSizeClass == .compact }
 
     private var rows: [[SleepTokenLetter]] {
         layoutMode == .qwerty ? KeyboardLayout.qwertyRows : KeyboardLayout.gridRows
@@ -740,11 +746,18 @@ private struct LetterPage: View {
         // and columns line up. Height is pinned by the caller, so it cannot expand.
         GeometryReader { geo in
             let unit = KeyboardMetrics.keyUnit(availableWidth: geo.size.width)
-            VStack(spacing: KeyboardMetrics.rowGap) {
+            VStack(spacing: KeyboardMetrics.rowGap(compact: compact)) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                     HStack(spacing: KeyboardMetrics.keyGap) {
                         if layoutMode == .qwerty && index == rows.count - 1 {
-                            shiftKey
+                            shiftKey(unit: unit)
+                            // Stock seats shift and delete flush against the keyboard's
+                            // own edge and leaves a wider gap before the letters than
+                            // between them, so a thumb aiming at Z has room to miss.
+                            // The HStack already contributes one keyGap either side of
+                            // this spacer, so it carries only the remainder.
+                            Color.clear
+                                .frame(width: KeyboardMetrics.functionKeySpacer(keyUnit: unit))
                         }
 
                         ForEach(row) { letter in
@@ -771,7 +784,9 @@ private struct LetterPage: View {
                         }
 
                         if layoutMode == .qwerty && index == rows.count - 1 {
-                            backspaceKey
+                            Color.clear
+                                .frame(width: KeyboardMetrics.functionKeySpacer(keyUnit: unit))
+                            backspaceKey(unit: unit)
                         }
                     }
                     // Centre the 9-key home row under the 10-key top row. The old flat
@@ -786,9 +801,9 @@ private struct LetterPage: View {
 
                 if layoutMode == .grid {
                     HStack(spacing: KeyboardMetrics.keyGap) {
-                        shiftKey
+                        shiftKey(unit: unit)
                         Spacer(minLength: 0)
-                        backspaceKey
+                        backspaceKey(unit: unit)
                     }
                     .frame(height: keyHeight)
                 }
@@ -845,11 +860,15 @@ private struct LetterPage: View {
     }
 
     private func nearestLetterDistance(to point: CGPoint, width: CGFloat) -> CGFloat {
-        let centers = KeyCenters.qwerty(availableWidth: width, keyHeight: keyHeight)
+        let centers = KeyCenters.qwerty(
+            availableWidth: width,
+            keyHeight: keyHeight,
+            compact: compact
+        )
         return centers.values.map { hypot($0.x - point.x, $0.y - point.y) }.min() ?? .infinity
     }
 
-    private var shiftKey: some View {
+    private func shiftKey(unit: CGFloat) -> some View {
         IconKeyButton(
             systemName: shift.symbolName,
             fill: shift == .off ? KeyPalette.function : KeyPalette.active,
@@ -862,11 +881,18 @@ private struct LetterPage: View {
         // not a gesture VoiceOver or Switch Control users can perform. The named
         // action is their road in; everyone else double-taps.
         .accessibilityAction(named: Text("Caps lock"), onCapsLock)
-        .frame(width: KeyboardMetrics.functionKeyWidth, height: keyHeight)
+        .frame(
+            width: KeyboardMetrics.functionKeyWidth(keyUnit: unit),
+            height: keyHeight
+        )
     }
 
-    private var backspaceKey: some View {
-        BackspaceKey(keyHeight: keyHeight, onBackspace: onBackspace)
+    private func backspaceKey(unit: CGFloat) -> some View {
+        BackspaceKey(
+            width: KeyboardMetrics.functionKeyWidth(keyUnit: unit),
+            keyHeight: keyHeight,
+            onBackspace: onBackspace
+        )
     }
 }
 
@@ -979,55 +1005,6 @@ private struct SuggestionBar: View {
     }
 }
 
-/// The 123 and #+= pages.
-///
-/// Stock flanks the short third row with the other symbol page's key on the left and
-/// delete on the right. Ours used to run ten symbols across row three and put delete on
-/// a row of its own, which is what made the keyboard grow 46pt whenever you tapped 123.
-private struct SymbolsPage: View {
-    let rows: [[String]]
-    /// Title of the page this switches to — "#+=" from 123, "123" from #+=.
-    let switchTitle: String
-    let keyHeight: CGFloat
-    let faceSize: CGFloat
-    let onInsert: (String) -> Void
-    let onSwitchPage: () -> Void
-    let onBackspace: (Bool) -> Void
-
-    var body: some View {
-        VStack(spacing: KeyboardMetrics.rowGap) {
-            ForEach(rows.indices, id: \.self) { index in
-                let isLastRow = index == rows.count - 1
-                HStack(spacing: KeyboardMetrics.keyGap) {
-                    if isLastRow {
-                        ChromeKeyButton(
-                            content: .text(switchTitle),
-                            fontSize: 14,
-                            weight: .semibold,
-                            label: switchTitle == "123"
-                                ? "Switch to numbers"
-                                : "Switch to more symbols",
-                            action: onSwitchPage
-                        )
-                        .frame(width: KeyboardMetrics.functionKeyWidth, height: keyHeight)
-                    }
-
-                    ForEach(rows[index], id: \.self) { symbol in
-                        SymbolKeyButton(symbol: symbol, faceSize: faceSize) {
-                            onInsert(symbol)
-                        }
-                        .frame(height: keyHeight)
-                    }
-
-                    if isLastRow {
-                        BackspaceKey(keyHeight: keyHeight, onBackspace: onBackspace)
-                    }
-                }
-            }
-        }
-    }
-}
-
 /// The globe key, in UIKit.
 ///
 /// `handleInputModeList(from:with:)` is the only supported way to show the system
@@ -1132,6 +1109,10 @@ private extension View {
 /// behaviour cannot drift apart — the construction previously existed verbatim twice.
 /// Internal, not private: EmojiPage builds its strip around this key from its own file.
 struct BackspaceKey: View {
+    /// Passed rather than derived: on the letter and symbol pages delete is a grid key
+    /// and takes the grid's function width, while the emoji strip is chrome with no key
+    /// unit to speak of and takes the plain touch-target floor.
+    var width: CGFloat = KeyboardMetrics.minimumTouchTarget
     let keyHeight: CGFloat
     let onBackspace: (Bool) -> Void
 
@@ -1142,7 +1123,7 @@ struct BackspaceKey: View {
             label: "Delete",
             action: onBackspace
         )
-        .frame(width: KeyboardMetrics.functionKeyWidth, height: keyHeight)
+        .frame(width: width, height: keyHeight)
     }
 }
 
@@ -1238,7 +1219,8 @@ private struct LetterKeyButton: View, Equatable {
     }
 }
 
-private struct SymbolKeyButton: View {
+/// Internal, not private: SymbolsPage builds its rows from this key in its own file.
+struct SymbolKeyButton: View {
     let symbol: String
     let faceSize: CGFloat
     let action: () -> Void
@@ -1368,7 +1350,8 @@ private struct RepeatingIconKeyButton: View {
 /// deliberately do not — VoiceOver keeps its confirm-before-acting behaviour for actions
 /// that change the keyboard rather than the text. The July trait rollout opted the whole
 /// bar out; that over-included exactly the two most-typed keys.
-private struct ChromeKeyButton: View {
+/// Internal, not private: SymbolsPage builds its page-switch key from this in its own file.
+struct ChromeKeyButton: View {
     enum Content {
         case text(String)
         case symbol(String)
