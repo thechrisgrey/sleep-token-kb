@@ -1445,10 +1445,11 @@ do_metadata() {
 
   # ---- content rights ------------------------------------------------------
   #
-  # Left unauthored on purpose. This is the declaration that tells Apple whether
-  # the app contains third-party content, and for this app it is the same question
-  # Guideline 5.2 asks. It is a legal position, not a config value, so the script
-  # will write whatever app.json says and will never pick for you.
+  # The declaration that tells Apple whether the app contains, shows or accesses
+  # third-party content. It is a legal position rather than a config value, so it is
+  # authored in app.json and the script will never pick on its own -- an unset value
+  # is skipped with a note instead of defaulted. release/metadata/README.md records
+  # the reasoning behind the current answer.
   step "Content rights"
   local rights
   rights="$(meta_value contentRightsDeclaration)"

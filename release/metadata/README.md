@@ -40,13 +40,36 @@ so they carry a numeric prefix.
 
 ## The three decisions that are not the script's to make
 
-**1. `contentRightsDeclaration` is deliberately `null`.**
+**1. `contentRightsDeclaration` is answered `DOES_NOT_USE_THIRD_PARTY_CONTENT`.**
 
-Its two legal values are `USES_THIRD_PARTY_CONTENT` and
-`DOES_NOT_USE_THIRD_PARTY_CONTENT`. For this app that is the same question
-Guideline 5.2 asks, and answering it is a legal position rather than a config value,
-so the stage skips the field with a note instead of choosing. Nothing else in the
-listing is blocked by leaving it unset; the submission is.
+Its only two values are that and `USES_THIRD_PARTY_CONTENT`; anything else is
+refused with an error naming both. Apple's question is whether the app *contains,
+shows, or accesses* third-party content, and the requirement it attaches is that an
+app which does must hold the necessary rights.
+
+The basis for answering no, recorded here because the reasoning is the valuable part
+and it will not be obvious to whoever reads this next:
+
+- **Nothing third-party ships.** No audio, no artwork, no lyrics, no photographs.
+  The reference art under `even-in-arcadia(theme)/` is gitignored precisely so it
+  cannot end up in a bundle.
+- **Referencing is not containing.** The band is named in order to disclaim
+  affiliation. Treating a mention as third-party content would put every app that
+  names another company in the same bucket.
+- **The song reward links out.** It opens a universal link that Apple Music
+  resolves. The app plays nothing and embeds nothing; a link to a licensed service
+  is not the app accessing that content.
+- **The alphabet is drawn here.** `scripts/build_rune_font.py` generates the font in
+  this repository. In the US, typeface *designs* are not copyrightable even though
+  font software is.
+
+The genuinely arguable item is the alphabet, and trademark or trade dress is a
+separate question from this field -- one this field does not settle either way. The
+declaration is a legal position, so the stage writes whatever `app.json` says and
+never picks on its own.
+
+`review/notes.txt` carries the same facts for the reviewer, which is the right place
+for them: the declaration is the answer, the notes are the showing of work.
 
 **2. `review/notes.txt` ends with a "Third-party references" paragraph.**
 

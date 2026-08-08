@@ -418,18 +418,24 @@ Guideline 5.2 exposure that no amount of tooling improves (see below), and the
 answer depends on a rights position that lives outside this repository. A script
 that could do it would eventually do it by accident.
 
-Two fields make the same point, and `metadata` leaves both alone rather than
-guessing:
+Two fields carry the position, and `metadata` writes whatever they say rather than
+deciding anything:
 
-- **`contentRightsDeclaration`** is `null` in `release/metadata/app.json` on
-  purpose. Its two values are `USES_THIRD_PARTY_CONTENT` and
-  `DOES_NOT_USE_THIRD_PARTY_CONTENT`, and for this app that is the same question
-  5.2 asks. It is a legal position, not a config value.
+- **`contentRightsDeclaration`** answers `DOES_NOT_USE_THIRD_PARTY_CONTENT`. Apple
+  asks whether the app contains, shows, or accesses third-party content; this one
+  bundles no audio, artwork, lyrics or photographs, names the band only to disclaim
+  affiliation, links out to a licensed service rather than playing anything, and
+  draws its own font in-repo. `release/metadata/README.md` records the full
+  reasoning. It is a legal position rather than a config value, which is why it is
+  authored in a file and not defaulted in the script.
 - **The "Third-party references" paragraph in `release/metadata/review/notes.txt`**
-  states what the app does -- fan project, labeled unaffiliated, no bundled artwork
-  or audio, the song reward links out rather than embedding -- and deliberately
-  claims no permission, because none has been recorded. If that changes, that
-  paragraph changes with it.
+  states the same facts for the reviewer and deliberately claims no permission,
+  because none has been recorded. The declaration is the answer; the notes are the
+  showing of work. If the rights position changes, that paragraph changes with it.
+
+Note what the declaration does **not** do: it is not a 5.2 ruling. Answering it
+honestly clears a submission gate; it does not make the guideline go away, and a
+band-themed fan app remains exposed to it either way.
 
 So the honest shape of a real App Store release is: `metadata` fills the listing,
 `status` confirms Apple agrees nothing is missing, and then a human decides whether
