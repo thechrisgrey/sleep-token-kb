@@ -1,13 +1,13 @@
 <div align="center">
 
-# Sleep Token KB
+# Ceremonial Scripts
 
 **A custom iOS system keyboard that puts the ritual alphabet on your keys — and a composer that writes real vertical runes.**
 
 [![Platform](https://img.shields.io/badge/platform-iOS%2026.5%2B-C8A968?style=for-the-badge&logo=apple&logoColor=white&labelColor=0E0D0F)](https://developer.apple.com/ios/)
 [![Swift](https://img.shields.io/badge/Swift-5.0-DE9BA9?style=for-the-badge&logo=swift&logoColor=white&labelColor=0E0D0F)](https://swift.org)
 [![SwiftUI](https://img.shields.io/badge/SwiftUI-native-C8A968?style=for-the-badge&logo=swift&logoColor=white&labelColor=0E0D0F)](https://developer.apple.com/xcode/swiftui/)
-[![Tests](https://img.shields.io/badge/tests-252%20passing-4F7A5C?style=for-the-badge&logo=checkmarx&logoColor=white&labelColor=0E0D0F)](#testing)
+[![Tests](https://img.shields.io/badge/tests-285%20passing-4F7A5C?style=for-the-badge&logo=checkmarx&logoColor=white&labelColor=0E0D0F)](#testing)
 [![License](https://img.shields.io/badge/license-MIT-C8A968?style=for-the-badge&labelColor=0E0D0F)](LICENSE)
 
 [![Targets](https://img.shields.io/badge/targets-3-DE9BA9?style=flat-square&labelColor=1A1820)](#project-structure)
@@ -21,7 +21,7 @@
 
 <br>
 
-<img src="docs/og-image.png" width="880" alt="Sleep Token KB — the ritual alphabet, on every key">
+<img src="docs/og-image.png" width="880" alt="Ceremonial Scripts — the ritual alphabet, on every key">
 
 </div>
 
@@ -448,8 +448,8 @@ The keyboard's ID must stay a suffix of the app's, and both targets need the App
 iOS never auto-enables a third-party keyboard. Once, after installing:
 
 1. Open **Settings** (the app has a button that deep-links straight there)
-2. Tap **Keyboards** on the Sleep Token KB page — or go the long way: **General → Keyboard → Keyboards**
-3. Turn on **Sleep Token KB**
+2. Tap **Keyboards** on the Ceremonial Scripts page — or go the long way: **General → Keyboard → Keyboards**
+3. Turn on **Ceremonial Scripts**
 4. In any text field, long-press the **globe** key and pick it
 
 Missing from the list? Force-quit Settings, reinstall the app, try again. Extensions only appear after the host app has been installed at least once.
@@ -648,11 +648,11 @@ in the web UI.
 
 ## Legal
 
-**Unofficial fan project. Not affiliated with, endorsed by, or connected to Sleep Token or their rights holders.**
+**Unofficial fan art. Not affiliated with, endorsed by, sponsored by, or connected to Sleep Token, their label, or their management.**
 
-Sleep Token's names, iconography, and the ritual alphabet are almost certainly protected. This is fine for personal and TestFlight use; public App Store distribution would need rights clearance and clear "not affiliated" labeling.
+This project claims no rights in Sleep Token's name, iconography, or the ritual alphabet, and never presents itself as theirs. What it ships is its own work: the rune font is generated from vectors in this repository by `scripts/build_rune_font.py`, and the code is MIT licensed.
 
-No album artwork, photography, or audio is included in this repository. The Damocles reward opens the official Apple Music listing — it does not bundle, stream, or reproduce the recording.
+No album artwork, photography, or audio is included in this repository. The Damocles reward opens the official Apple Music listing — it does not bundle, stream, or reproduce the recording. Reference art under `even-in-arcadia(theme)/` is gitignored specifically so it cannot reach a build.
 
 The code is [MIT licensed](LICENSE).
 

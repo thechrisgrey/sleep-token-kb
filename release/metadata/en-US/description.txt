@@ -1,10 +1,12 @@
-Ceremonial Scripts puts the ritual alphabet on your keys.
+The ritual alphabet, on every key.
 
-This is an unofficial fan project. It is not affiliated with, endorsed by, or connected to Sleep Token or their label.
+Type the way you always have: the runes stay on the keycaps and ordinary English arrives on the other end, so nothing breaks for whoever is reading it.
+
+Made by a fan, for fans. This is fan art — not an official app, and not affiliated with, endorsed by, or connected to Sleep Token, their label, or their management.
 
 THE KEYBOARD
 
-A system keyboard whose keycaps wear the runes. You type the way you always have, and the text that arrives is plain a to z, so nothing breaks for the person reading it. One-time setup in Settings. Then the runes follow you into every app.
+A system keyboard whose keycaps wear the runes. One-time setup in Settings. Then the runes follow you into every app.
 
 RUNE PAD
 
@@ -12,11 +14,13 @@ A composer for inscriptions meant to be kept. Write vertically, read the line ba
 
 TWO THEMES
 
-Ritual and Arcadia. One curtain-rise between them, and nothing else that moves without a reason.
+Obsidian and gold, or black stone and rose. One curtain-rise between them, and nothing else that moves without a reason.
 
 WHAT IT DOES NOT DO
 
-There is no networking code in either target. No accounts, no analytics, no tracking, no data collection of any kind. Full Access is requested for one reason: iOS will not deliver haptic feedback from a keyboard extension without it. Leave Full Access off and everything except haptics behaves identically. The source is public, so this is checkable rather than promised.
+There is no networking code in either target. No accounts, no analytics, no tracking, no data collection of any kind. Nothing of the band's is bundled either: no artwork, no photography, no audio, and the one song reference opens Apple Music rather than playing anything itself.
+
+Full Access is requested for one reason: iOS will not deliver haptic feedback from a keyboard extension without it. Leave Full Access off and everything except haptics behaves identically. The source is public, so this is checkable rather than promised.
 
 ACCESSIBILITY
 

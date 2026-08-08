@@ -517,7 +517,7 @@ def build():
     f_foot = font(F_SF, 12.8, "Regular")
 
     RUNES = rune_text("sleep") + " " + rune_text("token")
-    MARK = "Sleep Token KB"
+    MARK = "Ceremonial Scripts"
     DECK = "The ritual alphabet, on every key."
     META = "26 GLYPHS  ·  3 KEY FACES  ·  2 THEMES  ·  RUNE PAD"
     FOOT = "github.com/thechrisgrey/sleep-token-kb"

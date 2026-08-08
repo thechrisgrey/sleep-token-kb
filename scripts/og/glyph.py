@@ -451,7 +451,7 @@ def build():
                  kick_font, (142, 148, 134, 255), 3.4 * SS, anchor="ms")
 
     wm_font = var_font(NY, int(63 * SS), weight=450, optical=256)
-    draw_tracked(d, CW / 2, 474 * SS, "Sleep Token KB", wm_font, INK + (255,),
+    draw_tracked(d, CW / 2, 474 * SS, "Ceremonial Scripts", wm_font, INK + (255,),
                  2.4 * SS, anchor="ms")
 
     desc_font = var_font(SF, int(13.5 * SS), weight=530, optical=20)

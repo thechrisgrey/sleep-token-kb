@@ -86,6 +86,31 @@ struct SettingsView: View {
                         .ritualCard()
                     }
                 }
+
+                // Last, because that is where a reader looks for it -- but in the
+                // same card and row language as everything above, not shrunk into a
+                // footnote. Principle 5 in PRODUCT.md asks for labelling that is part
+                // of the design, and a legal-looking block at the bottom of a settings
+                // screen is exactly the afterthought it warns about.
+                //
+                // No HiddenJerry here on purpose: a new spot would raise the hunt's
+                // totalCount, and the one card whose job is to be unambiguous is not
+                // the place to hide something.
+                VStack(alignment: .leading, spacing: 10) {
+                    SectionLabel(text: "About")
+                    VStack(alignment: .leading, spacing: 14) {
+                        waysRow(
+                            title: "What this is",
+                            detail: "Fan art. A keyboard and rune composer built by one person, for people who already read the alphabet. The keys wear the runes; the text that arrives is ordinary English."
+                        )
+                        Rectangle().fill(Theme.hairline).frame(height: 1)
+                        waysRow(
+                            title: "What this is not",
+                            detail: "Not affiliated with, endorsed by, sponsored by, or connected to Sleep Token, their label, or their management. No artwork, photography, or audio of theirs is bundled, and the one song reference opens Apple Music rather than playing anything."
+                        )
+                    }
+                    .ritualCard()
+                }
             }
             .padding(20)
             .readableColumn()

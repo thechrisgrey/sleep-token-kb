@@ -424,8 +424,8 @@ def build():
                  rgba(ROSE, 235), tracking=px(3.5))
 
     # wordmark
-    f_word = fit_font(d, "Sleep Token KB", F_NEWYORK, COL_W, 60.0, "Semibold")
-    d.text((px(X) - px(1.5), px(276)), "Sleep Token KB", font=f_word,
+    f_word = fit_font(d, "Ceremonial Scripts", F_NEWYORK, COL_W, 60.0, "Semibold")
+    d.text((px(X) - px(1.5), px(276)), "Ceremonial Scripts", font=f_word,
            fill=INK + (255,), anchor="ls")
 
     # rune ornament: s l e e p t o k e n  (with a word gap)
