@@ -67,3 +67,13 @@ and screenshot it, including at accessibility Dynamic Type sizes.
 - Uploading is not distributing. A build reaches testers only once it is added to
   the TestFlight group and submitted for beta review — `externalBuildState` must
   read `IN_BETA_TESTING`. Full runbook: `docs/RELEASE.md`.
+- **"Get it on TestFlight" is an instruction, not a question.** Run the release all
+  the way through to `IN_BETA_TESTING` — archive, validate, upload, distribute, then
+  poll `status` until it reads back. Do not stop at `upload`, do not ask whether to
+  proceed, and do not reply with a list of things to check on a device first.
+  Shipping is Christian's call and asking is him making it; hand-testing is his to
+  schedule, never a gate a build is held behind. "Final verification happens on a
+  device" describes who does it, not permission the release needs.
+- Say what a build has behind it, not what it needs before it can go. If something
+  is genuinely unverified, that is a sentence in the report after the upload — not a
+  precondition, a recommendation, or a question.

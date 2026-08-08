@@ -3,7 +3,18 @@ name: SleepTokenKB
 options:
   bundleIdPrefix: ai.altivum
   deploymentTarget:
-    iOS: "26.5"
+    # 17.0, not whatever SDK is current. The floor is set by @Observable (Theme.swift)
+    # and registerForTraitChanges (KeyboardViewController) — both iOS 17 — and nothing
+    # in the app, the extension, or Shared/ needs anything newer; every version-gated
+    # symbol was audited against Apple's own availability declarations and the real
+    # minimum came out at 17.0, with Shared/ alone as low as 16.0.
+    #
+    # This WAS "17.0" until it was silently raised to the then-current SDK inside a
+    # project-consolidation commit (64862f6). Nobody chose it, and it cost the entire
+    # tester base: every build uploaded since required the newest iOS in existence, so
+    # TestFlight offered them to almost nobody. A deployment target is a product
+    # decision about who can install this, never a side effect of which Xcode built it.
+    iOS: "17.0"
   createIntermediateGroups: true
   groupSortPosition: top
 settings:

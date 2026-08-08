@@ -790,6 +790,56 @@ do_distribute() {
     elapsed=$((elapsed + POLL_INTERVAL))
   done
 
+  # ---- 3b. submission readiness --------------------------------------------
+  #
+  # processingState VALID is not the same question as "may this build be put in a
+  # group". The binary is processed; the build's external record is still being
+  # assembled, and until it settles the relationship endpoint refuses the write --
+  # as HTTP 404, phrased "There is no resource of type 'builds' with id <id>".
+  #
+  # That message names the build, so it reads as a wrong or stale identifier and
+  # sends you looking at the id. The id is fine: on 2026-08-07 build 89 was rejected
+  # twice this way, `GET /v1/builds/<same id>` answered 200 with version 89
+  # throughout, and the identical POST succeeded 204 minutes later once the state
+  # below had moved off PROCESSING. Apple is saying "not yet" in the vocabulary of
+  # "not found".
+  #
+  # So the wait belongs here, before anything is written, rather than as a retry
+  # around the write: a 404 that means "too early" is indistinguishable from a 404
+  # that means "wrong id", and retrying on it would paper over both.
+  step "Submission readiness"
+  local ext_state ext_last="" ext_elapsed=0
+  while :; do
+    asc_token_fresh
+    ext_state="$(build_external_state "$build_id")"
+    if external_dead_end "$ext_state"; then
+      bad "build $BUILD_NUMBER is $ext_state and cannot be distributed"
+      note "$(external_dead_end_note "$ext_state")"
+      note "no group was touched and nothing was expired"
+      return 1
+    fi
+    # PROCESSING is the only state that has not yet reached the group endpoint.
+    # Everything else -- including the states past it, which a re-run legitimately
+    # sees -- means the write below will be accepted.
+    if [ -n "$ext_state" ] && [ "$ext_state" != "PROCESSING" ]; then
+      ok "ready for the beta group: $ext_state"
+      break
+    fi
+    if [ "$ext_state" != "$ext_last" ]; then
+      note "external state: ${ext_state:-not published yet}"
+      ext_last="$ext_state"
+    elif [ "$ext_elapsed" -gt 0 ] && [ "$((ext_elapsed % 300))" -eq 0 ]; then
+      note "still ${ext_state:-unpublished} after $((ext_elapsed / 60))m"
+    fi
+    if [ "$ext_elapsed" -ge "$PROCESSING_TIMEOUT" ]; then
+      bad "build $BUILD_NUMBER was still ${ext_state:-unpublished} after $((PROCESSING_TIMEOUT / 60)) minutes"
+      note "no group was touched and nothing was expired; re-run distribute later"
+      return 1
+    fi
+    sleep "$POLL_INTERVAL"
+    ext_elapsed=$((ext_elapsed + POLL_INTERVAL))
+  done
+
   # ---- 4. the beta group ---------------------------------------------------
   step "Beta group \"$ASC_BETA_GROUP\""
   local groups group_id

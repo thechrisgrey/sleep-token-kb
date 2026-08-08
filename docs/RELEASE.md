@@ -382,6 +382,27 @@ It is local design reference, not ours to redistribute.
 | `Invalid Bundle. ... extension ... version` | The extension and app disagree on a version key. Both come from build settings; regenerate |
 | `xcodebuild requires Xcode` | `xcode-select -p` points at the Command Line Tools. The scripts already override `DEVELOPER_DIR` |
 | Authentication fails in CI only | `ASC_KEY_P8` pasted raw instead of base64 encoded |
+| `distribute` fails adding the build to the group: **404, "There is no resource of type 'builds' with id …"** | Apple saying *not yet* in the vocabulary of *not found*. See below — the id is not the problem |
+
+### The 404 that names your build id
+
+`distribute` used to fire the group-add as soon as `processingState` read `VALID`.
+That is the wrong question: the binary is processed, but the build's external
+record is still being assembled, and until it settles the relationship endpoint
+rejects the write as a 404 that quotes your build id back at you.
+
+The message sends you hunting for a stale or wrong identifier. It is not that. On
+2026-08-07 build 89 was refused twice this way while `GET /v1/builds/<that same
+id>` answered 200 with version 89 throughout, and the identical POST returned 204
+minutes later once `externalBuildState` had moved off `PROCESSING`.
+
+`distribute` now waits for that state before it writes anything, which is why the
+stage has a **Submission readiness** step between Processing and the beta group.
+The wait is deliberately not a retry around the write: a 404 meaning "too early"
+and a 404 meaning "wrong id" are indistinguishable, so retrying would hide both.
+
+If you see this error on a build made before that fix, waiting a few minutes and
+re-running `distribute` is the whole remedy.
 
 ### An empty keychain is the normal state
 
