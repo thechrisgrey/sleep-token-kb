@@ -42,7 +42,12 @@ struct RunePadView: View {
         .background(RitualBackground())
         .navigationTitle("Rune Pad")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { _ = RuneFont.registerIfNeeded() }
+        .onAppear {
+            _ = RuneFont.registerIfNeeded()
+            #if DEBUG
+            applyScreenshotSeed()
+            #endif
+        }
         .toolbar {
             // Jerry roosts beside the back button, where nobody looks.
             ToolbarItem(placement: .topBarLeading) {
@@ -78,6 +83,24 @@ struct RunePadView: View {
             .presentationDetents([.medium, .large])
         }
     }
+
+    #if DEBUG
+    /// `-seed-runes "<latin words>"` composes the canvas from the command line.
+    ///
+    /// A screenshot of this screen is worth having only once something is written on
+    /// it, and the Simulator cannot be typed into by a script. Latin in, runes out —
+    /// the same string the pad keys would have produced, one column per word.
+    private func applyScreenshotSeed() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard text.isEmpty,
+              let flag = arguments.firstIndex(of: "-seed-runes"),
+              arguments.indices.contains(flag + 1) else { return }
+        text = String(arguments[flag + 1].lowercased().compactMap { character in
+            SleepTokenLetter(rawValue: String(character))?.exactRuneCharacter
+                ?? (character == " " ? " " : nil)
+        })
+    }
+    #endif
 
     // MARK: - Canvas
 

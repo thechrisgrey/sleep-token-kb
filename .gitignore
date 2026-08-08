@@ -32,3 +32,7 @@ even-in-arcadia(theme)/
 __pycache__/
 *.pyc
 .claude/worktrees/
+
+# Personal data, not product copy: the App Review contact phone. This repository
+# is public, and a phone number committed here would outlive any later deletion.
+release/metadata/review/contact.local.json

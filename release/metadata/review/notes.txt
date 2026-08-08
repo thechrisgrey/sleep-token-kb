@@ -1,0 +1,40 @@
+Ceremonial Scripts is a custom keyboard extension plus a host app. The two questions
+reviewers usually have about a keyboard, answered directly.
+
+WHY FULL ACCESS IS REQUESTED
+
+Haptic feedback, and nothing else. iOS does not deliver UIFeedbackGenerator events
+from a keyboard extension unless RequestsOpenAccess is true; while that flag was
+false, the haptics toggle in the host app was a silent no-op. No other feature
+depends on it. KeyboardRootView.haptic() checks hasFullAccess before firing rather
+than assuming the grant, so the keyboard behaves correctly whether or not the user
+grants it. Full Access is off by default and the keyboard is fully functional
+without it, minus haptics.
+
+WHAT LEAVES THE DEVICE
+
+Nothing. There is no networking code in either target: no URLSession, no
+third-party SDKs, no analytics. Both bundles ship a privacy manifest declaring zero
+data collection and zero tracking, and each declares only the UserDefaults
+required-reason API it actually uses (1C8F.1 for the shared App Group suite,
+CA92.1 for its own defaults). The source is public at
+https://github.com/thechrisgrey/sleep-token-kb, so this is verifiable rather than
+asserted.
+
+WHAT THE KEYBOARD INSERTS
+
+Plain a to z. The runes are on the keycaps only. Rune text would arrive as tofu in
+any app that lacks the font, so the keyboard never inserts glyphs. Rune Pad, in the
+host app, exports them as images instead.
+
+HOW TO EXERCISE THE KEYBOARD
+
+Settings > General > Keyboard > Keyboards > Add New Keyboard > Ceremonial Scripts.
+No account and no demo credentials are needed anywhere in the app.
+
+THIRD-PARTY REFERENCES
+
+The app is a fan project themed on the band Sleep Token. It is labeled as
+unaffiliated in the App Store description, on first run, and in Settings. No band
+artwork or audio is bundled; the one reward that references a song links out to it
+rather than embedding it.

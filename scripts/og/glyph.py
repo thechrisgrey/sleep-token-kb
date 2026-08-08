@@ -22,7 +22,6 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 ROOT = "/Users/cperez/dev/delta-centric-dev/sleep-token-kb"
 OUT = os.path.join(ROOT, "docs", "og-glyph.png")
-OUT_THUMB = "/private/tmp/claude-501/-Users-cperez-dev-altivum-dev-sleep-token-kb/09ba2e3c-f49f-4058-963f-42064224b8e8/scratchpad/og-glyph-500.png"
 
 W, H = 1280, 640
 SS = 3                      # supersample factor
@@ -451,7 +450,7 @@ def build():
                  kick_font, (142, 148, 134, 255), 3.4 * SS, anchor="ms")
 
     wm_font = var_font(NY, int(63 * SS), weight=450, optical=256)
-    draw_tracked(d, CW / 2, 474 * SS, "Sleep Token KB", wm_font, INK + (255,),
+    draw_tracked(d, CW / 2, 474 * SS, "Ceremonial Scripts", wm_font, INK + (255,),
                  2.4 * SS, anchor="ms")
 
     desc_font = var_font(SF, int(13.5 * SS), weight=530, optical=20)
@@ -501,7 +500,5 @@ if __name__ == "__main__":
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     im.save(OUT, optimize=True)
     # link-unfurl proof: the size this is actually seen at most of the time
-    if os.path.isdir(os.path.dirname(OUT_THUMB)):
-        im.resize((500, 250), Image.LANCZOS).save(OUT_THUMB, optimize=True)
     print("wrote %s  %dx%d  %.0f KB"
           % (OUT, im.width, im.height, os.path.getsize(OUT) / 1024))

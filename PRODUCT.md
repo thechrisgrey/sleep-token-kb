@@ -1,6 +1,6 @@
 # Product
 
-Ritual Keyboard — an unofficial Sleep Token fan project. Two targets in one app:
+Ceremonial Scripts — an unofficial Sleep Token fan project. Two targets in one app:
 a system keyboard extension whose keycaps wear the ritual alphabet, and Rune Pad,
 a composer that writes real vertical runes and carries them out as images.
 
