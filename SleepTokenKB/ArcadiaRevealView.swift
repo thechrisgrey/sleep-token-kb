@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The ceremony played when the user chooses "Even in Arcadia".
+/// The ceremony played when the user chooses the EIA theme.
 ///
 /// A black curtain rises, petals begin to fall, the SLEEP TOKEN wordmark breathes in
 /// out of the dark in champagne serif, the black flamingo takes its place beneath —
@@ -79,7 +79,7 @@ struct ArcadiaRevealView: View {
         .ignoresSafeArea()
         .opacity(curtain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Switching to the Even in Arcadia theme")
+        .accessibilityLabel("Switching to the EIA theme")
         .task { await play() }
     }
 
@@ -113,7 +113,7 @@ struct ArcadiaRevealView: View {
 
     @MainActor
     private func play() async {
-        AccessibilityNotification.Announcement("Switching to the Even in Arcadia theme").post()
+        AccessibilityNotification.Announcement("Switching to the EIA theme").post()
 
         // Curtain up: cover the app before the theme flips.
         withAnimation(.easeIn(duration: 0.30)) { curtain = 1 }

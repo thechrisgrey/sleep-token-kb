@@ -79,7 +79,7 @@ The split exists because iOS keyboards can only insert text, and rune text would
 | **Emoji page** | Nine categories behind a recents tab; recents persist the same way every other preference does |
 | **Entrance hall** | The app opens as a welcome that routes — hero, a card that shows only until the keyboard is enabled, three doors |
 | **Rune Pad** | Vertical composition, live Latin read-back, spell check, five export formats |
-| **Two themes** | Ritual (obsidian and gold) or Even in Arcadia (pink on black stone) |
+| **Two themes** | Ritual (obsidian and gold) or EIA (pink on black stone) |
 | **Haptics** | Per-keystroke feedback, toggleable |
 | **Jerry** | He is in the app. Ten times. [Find him](#jerry) |
 | **Full Access** | **Optional, off by default.** Needed only for haptics. `RequestsOpenAccess = true` |
@@ -163,10 +163,10 @@ Everything the front page used to spill now lives behind the Settings door: the 
 ## Rune Pad
 
 <div align="center">
-<img src="docs/screenshots/runepad-arcadia.png" width="260" alt="Rune Pad in the Even in Arcadia theme">
+<img src="docs/screenshots/runepad-arcadia.png" width="260" alt="Rune Pad in the EIA theme">
 <img src="docs/screenshots/runepad-ritual.png" width="260" alt="Rune Pad in the Ritual theme">
 <br>
-<sub><i>The same composition in both themes — Even in Arcadia (left) and Ritual (right)</i></sub>
+<sub><i>The same composition in both themes — EIA (left) and Ritual (right)</i></sub>
 </div>
 
 <br>
@@ -216,7 +216,7 @@ Copies write an explicit `public.png` pasteboard item so alpha survives into app
 Twenty-six glyphs, one per letter, mapped into the Unicode **Private Use Area** at `U+E900`–`U+E919`. The keyboard draws them from vector assets; Rune Pad can also render them from the bundled `SleepTokenRunes.ttf`.
 
 <div align="center">
-<img src="docs/screenshots/alphabet-arcadia.png" width="260" alt="Alphabet chart in Even in Arcadia">
+<img src="docs/screenshots/alphabet-arcadia.png" width="260" alt="Alphabet chart in EIA">
 <img src="docs/screenshots/alphabet-ritual.png" width="260" alt="Alphabet chart in Ritual">
 </div>
 
@@ -247,13 +247,13 @@ The host app wears one of two aesthetics. Switching is purely cosmetic — no sc
 <div align="center">
 
 <img src="docs/screenshots/home-ritual.png" width="260" alt="Home in the Ritual theme">
-<img src="docs/screenshots/home-arcadia.png" width="260" alt="Home in the Even in Arcadia theme">
+<img src="docs/screenshots/home-arcadia.png" width="260" alt="Home in the EIA theme">
 
-<sub><i>Ritual (left) and Even in Arcadia (right)</i></sub>
+<sub><i>Ritual (left) and EIA (right)</i></sub>
 
 </div>
 
-| | **Ritual** | **Even in Arcadia** |
+| | **Ritual** | **EIA** |
 |---|---|---|
 | Field | Obsidian, near-black | Black stone with a breath of green |
 | Cards | Neutral raised surface | Deep arcadian green — the flag |
@@ -262,7 +262,7 @@ The host app wears one of two aesthetics. Switching is purely cosmetic — no sc
 | Ornament | The word `worship` in runes | Jerry, the black flamingo |
 | Atmosphere | A single candlelit bloom | Two blooms and drifting pink petals |
 
-Choosing **Even in Arcadia** plays a one-time ceremony: a black curtain rises, petals begin to fall, the `SLEEP TOKEN` wordmark breathes in from the dark in champagne serif — letterspacing settling, blur burning off — then dissolves into the re-themed app. The theme flip happens *behind* the opaque curtain, so the recolour is never seen raw. Reduce Motion gets a clean crossfade instead.
+Choosing **EIA** plays a one-time ceremony: a black curtain rises, petals begin to fall, the `SLEEP TOKEN` wordmark breathes in from the dark in champagne serif — letterspacing settling, blur burning off — then dissolves into the re-themed app. The theme flip happens *behind* the opaque curtain, so the recolour is never seen raw. Reduce Motion gets a clean crossfade instead.
 
 ---
 
@@ -628,7 +628,7 @@ The script expands every stroked centerline into a filled outline (TrueType has 
 Three 1280×640 social cards ship with the repo, each generated from source by a script in
 `scripts/og/` — no design tool, no external assets. They composite real app captures, real
 rune glyphs set from `SleepTokenRunes.ttf`, and Jerry drawn from the same geometry the app
-uses, over the Even in Arcadia palette.
+uses, over the EIA palette.
 
 | Card | File | Direction |
 |---|---|---|
