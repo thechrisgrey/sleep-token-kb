@@ -163,7 +163,7 @@ Everything the front page used to spill now lives behind the Settings door: the 
 ## Rune Pad
 
 <div align="center">
-<img src="docs/screenshots/runepad-arcadia.png" width="260" alt="Rune Pad in the EIA theme">
+<img src="docs/screenshots/runepad-eia.png" width="260" alt="Rune Pad in the EIA theme">
 <img src="docs/screenshots/runepad-ritual.png" width="260" alt="Rune Pad in the Ritual theme">
 <br>
 <sub><i>The same composition in both themes — EIA (left) and Ritual (right)</i></sub>
@@ -216,7 +216,7 @@ Copies write an explicit `public.png` pasteboard item so alpha survives into app
 Twenty-six glyphs, one per letter, mapped into the Unicode **Private Use Area** at `U+E900`–`U+E919`. The keyboard draws them from vector assets; Rune Pad can also render them from the bundled `SleepTokenRunes.ttf`.
 
 <div align="center">
-<img src="docs/screenshots/alphabet-arcadia.png" width="260" alt="Alphabet chart in EIA">
+<img src="docs/screenshots/alphabet-eia.png" width="260" alt="Alphabet chart in EIA">
 <img src="docs/screenshots/alphabet-ritual.png" width="260" alt="Alphabet chart in Ritual">
 </div>
 
@@ -247,7 +247,7 @@ The host app wears one of two aesthetics. Switching is purely cosmetic — no sc
 <div align="center">
 
 <img src="docs/screenshots/home-ritual.png" width="260" alt="Home in the Ritual theme">
-<img src="docs/screenshots/home-arcadia.png" width="260" alt="Home in the EIA theme">
+<img src="docs/screenshots/home-eia.png" width="260" alt="Home in the EIA theme">
 
 <sub><i>Ritual (left) and EIA (right)</i></sub>
 

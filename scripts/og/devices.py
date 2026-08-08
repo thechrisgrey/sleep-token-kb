@@ -22,7 +22,6 @@ from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFo
 ROOT = "/Users/cperez/dev/delta-centric-dev/sleep-token-kb"
 SHOTS = os.path.join(ROOT, "docs", "screenshots")
 OUT = os.path.join(ROOT, "docs", "og-devices.png")
-OUT_THUMB = "/private/tmp/claude-501/-Users-cperez-dev-altivum-dev-sleep-token-kb/09ba2e3c-f49f-4058-963f-42064224b8e8/scratchpad/og-devices-500.png"
 
 F_NEWYORK = "/System/Library/Fonts/NewYork.ttf"
 F_NEWYORK_IT = "/System/Library/Fonts/NewYorkItalic.ttf"
@@ -366,14 +365,14 @@ def build():
           shadows=[(56, -8, 26, 0.55), (17, -4, 8, 0.55)])
 
     # back right: arcadia / pink alphabet grid -- same screen, other theme
-    dev_r = make_device(load_shot("alphabet-arcadia.png"), 306, 10.0,
+    dev_r = make_device(load_shot("alphabet-eia.png"), 306, 10.0,
                         focal=False, dim=0.03, veil=0.02, soften=0.38, lift=0.055,
                         sat=1.38, bright=1.20)
     place(canvas, dev_r, 1150, 490,
           shadows=[(56, 8, 26, 0.55), (17, 4, 8, 0.55)])
 
     # focal: arcadia / pink Rune Pad
-    dev_c = make_device(load_shot("runepad-arcadia.png", splice=(458, 528)),
+    dev_c = make_device(load_shot("runepad-eia.png", splice=(458, 528)),
                         380, -3.0, focal=True, lift=0.05, sat=1.26, bright=1.13)
     place(canvas, dev_c, 875, 434,
           shadows=[(74, 0, 36, 0.66), (26, 0, 13, 0.60), (8, 0, 3, 0.52)])
@@ -468,9 +467,6 @@ def build():
     print("wrote", OUT, os.path.getsize(OUT) // 1024, "KB")
 
     # thumbnail proof (link-unfurl size) -- written outside the repo, best effort
-    if os.path.isdir(os.path.dirname(OUT_THUMB)):
-        out.resize((500, 250), Image.Resampling.LANCZOS).save(OUT_THUMB, "PNG")
-        print("wrote", OUT_THUMB)
 
 
 if __name__ == "__main__":

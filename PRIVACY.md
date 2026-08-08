@@ -1,7 +1,7 @@
 # Privacy Policy
 
 **Ceremonial Scripts** (`ai.altivum.SleepTokenKB`)
-Last updated: 30 July 2026
+Last updated: 8 August 2026
 
 ## The short version
 

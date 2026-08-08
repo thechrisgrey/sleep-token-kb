@@ -24,7 +24,6 @@ from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFo
 ROOT = "/Users/cperez/dev/delta-centric-dev/sleep-token-kb"
 SHOTS = os.path.join(ROOT, "docs", "screenshots")
 OUT = os.path.join(ROOT, "docs", "og-editorial.png")
-OUT_THUMB = "/private/tmp/claude-501/-Users-cperez-dev-altivum-dev-sleep-token-kb/09ba2e3c-f49f-4058-963f-42064224b8e8/scratchpad/og-editorial-500.png"
 
 F_NY = "/System/Library/Fonts/NewYork.ttf"
 F_NYI = "/System/Library/Fonts/NewYorkItalic.ttf"
@@ -477,7 +476,7 @@ def build():
     # right - which also drops the front phone's shadow onto the back one and
     # keeps the pair from fusing into a single mass.
     back = phone(
-        os.path.join(SHOTS, "alphabet-arcadia.png"),
+        os.path.join(SHOTS, "alphabet-eia.png"),
         width_1x=330, angle=-12, center_1x=(1206, 318),
         shadow=(10, 20, 34, 0.60), border_alpha=0.24,
         # Lifted and de-hazed relative to the first pass: at unfurl size the
@@ -488,7 +487,7 @@ def build():
         tint=((10, 16, 13), 0.14),
         halo=(-10, -8, 30, 0.18, ROSE_DEEP))
     front = phone(
-        os.path.join(SHOTS, "runepad-arcadia.png"),
+        os.path.join(SHOTS, "runepad-eia.png"),
         width_1x=320, angle=-7, center_1x=(910, 396),
         shadow=(18, 24, 26, 0.80), border_alpha=0.36,
         lift=(1.10, 1.12, 1.06), sheen=0.07,
@@ -612,9 +611,7 @@ def build():
     out = Image.blend(out, grained, 0.44)
 
     out.save(OUT, optimize=True)
-    out.resize((500, 250), Image.LANCZOS).save(OUT_THUMB, optimize=True)
     print("wrote", OUT, out.size, f"{os.path.getsize(OUT)/1024:.0f} KB")
-    print("wrote", OUT_THUMB)
 
 
 if __name__ == "__main__":

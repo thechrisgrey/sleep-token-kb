@@ -26,9 +26,16 @@
 #
 #   DEVICE        the iPhone to shoot on   (default iPhone 17 Pro Max -> 1320x2868)
 #   DEVICE_IPAD   the iPad to shoot on     (default iPad Pro 12.9-inch 6th gen -> 2048x2732)
-#   ONLY          iphone or ipad, to shoot a single set
+#   ONLY          iphone, ipad, store (both store sets), or docs. Unset shoots all three
 #   KEEP_BOOTED   1 leaves the simulators running when the run finishes
 #   DEVELOPER_DIR overrides which Xcode is used
+#
+# The docs set is the README and Open Graph art in docs/screenshots/, captured on the
+# same device and downscaled to 420px wide. It is part of the default run rather than
+# an extra step on purpose: those files are *inputs to* scripts/og/*.py, and when they
+# were maintained by hand they rotted silently -- the README hero still read
+# "Sleep Token KB" long after the app did not, and a Rune Pad capture spelling the
+# band's name was being composited into the repository's own social preview.
 #
 # Re-running is the normal case and costs nothing but time: each set reinstalls the
 # app from scratch and overwrites its own files in place.
@@ -54,11 +61,13 @@ OUT_ROOT="$REPO_ROOT/release/metadata/screenshots"
 
 DEVICE="${DEVICE:-iPhone 17 Pro Max}"
 DEVICE_IPAD="${DEVICE_IPAD:-iPad Pro (12.9-inch) (6th generation)}"
-ONLY="${ONLY:-both}"
+# Defaults to everything, docs included. "store" and the older "both" mean the two
+# App Store sets only.
+ONLY="${ONLY:-all}"
 
 case "$ONLY" in
-  both|iphone|ipad) ;;
-  *) echo "ONLY=$ONLY is not a set (expected iphone, ipad, or unset)" >&2; exit 2 ;;
+  both|all|store|iphone|ipad|docs) ;;
+  *) echo "ONLY=$ONLY is not a set (expected iphone, ipad, store, docs, or unset)" >&2; exit 2 ;;
 esac
 
 ok()   { printf '  [ok]   %s\n' "$*"; }
@@ -110,6 +119,23 @@ SHOTS=(
   "04|home-eia||-force-arcadia -force-enable-card"
   "05|settings-eia||-force-arcadia -route-settings"
 )
+
+# The docs set: both themes of every screen the README shows, plus the two the Open
+# Graph generators composite. Same slug names the README and scripts/og/*.py already
+# reference, no ordering prefix -- these are named assets rather than a sequence.
+DOCS_SHOTS=(
+  "home-ritual||-force-ritual -force-enable-card"
+  "home-eia||-force-arcadia -force-enable-card"
+  "alphabet-ritual||-force-ritual -route-alphabet"
+  "alphabet-eia||-force-arcadia -route-alphabet"
+  "runepad-ritual|the runes follow you|-force-ritual -route-runepad"
+  "runepad-eia|the runes follow you|-force-arcadia -route-runepad"
+)
+
+DOCS_OUT="$REPO_ROOT/docs/screenshots"
+# 1320 / 420 is 3.142..., which puts the height at 913 -- the size the existing docs
+# images already are, so the README's own width attributes keep working untouched.
+DOCS_WIDTH=420
 
 # ------------------------------------------------------------------ devices ---
 
@@ -340,11 +366,66 @@ shoot_set() {
       *) verdict="NOT a size Apple lists for this set" ;;
     esac
     ok "$order-$slug.png  $dims  ($verdict)"
-    CAPTURED+=("$display_type/$order-$slug.png	$dims	$verdict")
+    CAPTURED+=("release/metadata/screenshots/$display_type/$order-$slug.png	$dims	$verdict")
   done
 
   xcrun simctl terminate "$udid" "$APP_BUNDLE_ID" >/dev/null 2>&1 || true
   note "shot on $device, $runtime"
+}
+
+# Same capture path as the store sets, then downscaled. LANCZOS through Pillow rather
+# than sips, because scripts/og/*.py composite these and already draw everything at 3x
+# and LANCZOS down -- one resampler for the whole pipeline.
+#
+# This set is never cleared wholesale: keyboard-safari.png lives in the same directory
+# and cannot be regenerated here at all. The keyboard extension does not run in the
+# Simulator, so that file is a hand capture from a device, and a run that tidied the
+# directory would delete the one image nothing can replace.
+shoot_docs() {
+  local udid runtime entry slug seed args dims
+  local -a launch_args
+
+  step "Docs set -- docs/screenshots"
+  boot_device "$DEVICE" || return 1
+  udid="$DEVICE_UDID"
+  runtime="$DEVICE_RUNTIME"
+
+  xcrun simctl terminate "$udid" "$APP_BUNDLE_ID" >/dev/null 2>&1 || true
+  xcrun simctl uninstall "$udid" "$APP_BUNDLE_ID" >/dev/null 2>&1 || true
+  xcrun simctl install "$udid" "$APP_PATH"
+  ok "installed $SCHEME.app"
+
+  mkdir -p "$DOCS_OUT"
+  for entry in "${DOCS_SHOTS[@]}"; do
+    IFS='|' read -r slug seed args <<<"$entry"
+    IFS=' ' read -r -a launch_args <<<"$args"
+    [ -n "$seed" ] && launch_args+=(-seed-runes "$seed")
+
+    xcrun simctl terminate "$udid" "$APP_BUNDLE_ID" >/dev/null 2>&1 || true
+    xcrun simctl launch "$udid" "$APP_BUNDLE_ID" "${launch_args[@]}" >/dev/null
+
+    if ! wait_for_app "$udid" || ! capture_settled "$udid" "$TMP_ROOT/$slug.png"; then
+      bad "docs/screenshots/$slug.png was not captured"
+      return 1
+    fi
+
+    python3 - "$TMP_ROOT/$slug.png" "$DOCS_OUT/$slug.png" "$DOCS_WIDTH" <<'PY'
+import sys
+from PIL import Image
+
+source, target, width = sys.argv[1], sys.argv[2], int(sys.argv[3])
+with Image.open(source) as im:
+    height = round(im.height * width / im.width)
+    im.resize((width, height), Image.Resampling.LANCZOS).save(target, optimize=True)
+PY
+
+    dims="$(png_dimensions "$DOCS_OUT/$slug.png")"
+    ok "$slug.png  $dims"
+    CAPTURED+=("docs/screenshots/$slug.png	$dims	README and Open Graph art")
+  done
+
+  xcrun simctl terminate "$udid" "$APP_BUNDLE_ID" >/dev/null 2>&1 || true
+  note "shot on $DEVICE, $runtime"
 }
 
 # ---------------------------------------------------------------------- main ---
@@ -373,14 +454,17 @@ xcodebuild build \
 [ -d "$APP_PATH" ] || { bad "no app bundle at $APP_PATH"; exit 1; }
 ok "$APP_PATH"
 
-if [ "$ONLY" != "ipad" ]; then
-  shoot_set "iPhone set -- APP_IPHONE_67" "$DEVICE" APP_IPHONE_67 "$IPHONE_ACCEPTED"
-fi
-if [ "$ONLY" != "iphone" ]; then
-  shoot_set "iPad set -- APP_IPAD_PRO_3GEN_129" "$DEVICE_IPAD" APP_IPAD_PRO_3GEN_129 "$IPAD_ACCEPTED"
-fi
+case "$ONLY" in
+  iphone|store|both|all) shoot_set "iPhone set -- APP_IPHONE_67" "$DEVICE" APP_IPHONE_67 "$IPHONE_ACCEPTED" ;;
+esac
+case "$ONLY" in
+  ipad|store|both|all) shoot_set "iPad set -- APP_IPAD_PRO_3GEN_129" "$DEVICE_IPAD" APP_IPAD_PRO_3GEN_129 "$IPAD_ACCEPTED" ;;
+esac
+case "$ONLY" in
+  docs|all) shoot_docs ;;
+esac
 
 step "Captured"
 printf '%s\n' ${CAPTURED[@]+"${CAPTURED[@]}"} | column -t -s $'\t'
-note "relative to $OUT_ROOT"
+note "relative to $REPO_ROOT"
 note "the keyboard extension is not here and cannot be: capture it by hand on a device"
