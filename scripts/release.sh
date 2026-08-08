@@ -1664,8 +1664,30 @@ FIELDS
   detail_id="$(jq -r '.data.id // empty' <<<"$detail")"
   contact="$(meta_file review/contact.json || true)"
   notes_file="$(meta_file review/notes.txt || true)"
+
+  # contact.local.json is merged over contact.json and is gitignored, because this
+  # repository is public and the review contact is the one field here that is
+  # personal data rather than product copy. A phone number committed to a public
+  # repo is permanent -- forks and mirrors keep it after any later deletion -- so
+  # the number reaches Apple without ever entering git history.
+  local contact_local="$METADATA_DIR/review/contact.local.json"
+  if [ -n "$contact" ] && [ -s "$contact_local" ]; then
+    if jq -se '.[0] * .[1]' "$contact" "$contact_local" >"$TMP_ROOT/contact.json" 2>/dev/null; then
+      contact="$TMP_ROOT/contact.json"
+      ok "merged review/contact.local.json over the committed contact"
+    else
+      # Not silently falling back to the committed file: it is the one with the
+      # blank phone, so the fallback would look like a clean run and send nothing.
+      bad "review/contact.local.json is not valid JSON, so the contact was not sent"
+      failed=1
+      contact=""
+    fi
+  elif [ -n "$contact" ] && [ ! -e "$contact_local" ]; then
+    note "no review/contact.local.json; the committed contact is being used as-is"
+  fi
+
   if [ -z "$contact" ]; then
-    note "no review/contact.json -- skipped"
+    note "no usable review contact -- skipped"
   else
     # Apple requires all four contact fields and answers a missing one with a 409
     # naming the entity rather than the field. Checking here turns that into the

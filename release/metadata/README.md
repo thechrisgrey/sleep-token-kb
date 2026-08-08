@@ -55,11 +55,28 @@ or audio, the song reward links out rather than embedding. It deliberately makes
 claim about permission, because none has been recorded. If the rights position
 changes, that paragraph is the one to change with it.
 
-**3. `review/contact.json` has an empty `contactPhone`.**
+**3. `review/contact.json` has an empty `contactPhone`, and it stays empty.**
 
 Apple requires all four contact fields and rejects a partial record, so the stage
 refuses to send an incomplete one rather than letting Apple do it less clearly.
-Fill the phone number in and the block goes through.
+
+The phone number is supplied by `review/contact.local.json`, which is gitignored and
+is merged over `contact.json` at run time:
+
+```json
+{ "contactPhone": "+1 555-555-5555" }
+```
+
+This repository is public, and the review contact is the only field here that is
+personal data rather than product copy. A phone number committed to a public repo
+outlives its own deletion -- forks, mirrors and clones keep it -- so it reaches
+Apple without ever entering git history. The email is already public as the commit
+author address, so it stays in the committed file.
+
+If the local file is missing, the stage says so and sends nothing. If it is present
+but malformed, the stage refuses rather than falling back to the committed file,
+because the committed file is the one with the blank phone and the fallback would
+look like a clean run.
 
 ## The name, and what a rename does not reach
 
