@@ -1,13 +1,13 @@
 <div align="center">
 
-# Sleep Token KB
+# Ceremonial Scripts
 
 **A custom iOS system keyboard that puts the ritual alphabet on your keys — and a composer that writes real vertical runes.**
 
 [![Platform](https://img.shields.io/badge/platform-iOS%2026.5%2B-C8A968?style=for-the-badge&logo=apple&logoColor=white&labelColor=0E0D0F)](https://developer.apple.com/ios/)
 [![Swift](https://img.shields.io/badge/Swift-5.0-DE9BA9?style=for-the-badge&logo=swift&logoColor=white&labelColor=0E0D0F)](https://swift.org)
 [![SwiftUI](https://img.shields.io/badge/SwiftUI-native-C8A968?style=for-the-badge&logo=swift&logoColor=white&labelColor=0E0D0F)](https://developer.apple.com/xcode/swiftui/)
-[![Tests](https://img.shields.io/badge/tests-252%20passing-4F7A5C?style=for-the-badge&logo=checkmarx&logoColor=white&labelColor=0E0D0F)](#testing)
+[![Tests](https://img.shields.io/badge/tests-285%20passing-4F7A5C?style=for-the-badge&logo=checkmarx&logoColor=white&labelColor=0E0D0F)](#testing)
 [![License](https://img.shields.io/badge/license-MIT-C8A968?style=for-the-badge&labelColor=0E0D0F)](LICENSE)
 
 [![Targets](https://img.shields.io/badge/targets-3-DE9BA9?style=flat-square&labelColor=1A1820)](#project-structure)
@@ -21,7 +21,7 @@
 
 <br>
 
-<img src="docs/og-image.png" width="880" alt="Sleep Token KB — the ritual alphabet, on every key">
+<img src="docs/og-image.png" width="880" alt="Ceremonial Scripts — the ritual alphabet, on every key">
 
 </div>
 
@@ -79,7 +79,7 @@ The split exists because iOS keyboards can only insert text, and rune text would
 | **Emoji page** | Nine categories behind a recents tab; recents persist the same way every other preference does |
 | **Entrance hall** | The app opens as a welcome that routes — hero, a card that shows only until the keyboard is enabled, three doors |
 | **Rune Pad** | Vertical composition, live Latin read-back, spell check, five export formats |
-| **Two themes** | Ritual (obsidian and gold) or Even in Arcadia (pink on black stone) |
+| **Two themes** | Ritual (obsidian and gold) or EIA (pink on black stone) |
 | **Haptics** | Per-keystroke feedback, toggleable |
 | **Jerry** | He is in the app. Ten times. [Find him](#jerry) |
 | **Full Access** | **Optional, off by default.** Needed only for haptics. `RequestsOpenAccess = true` |
@@ -163,10 +163,10 @@ Everything the front page used to spill now lives behind the Settings door: the 
 ## Rune Pad
 
 <div align="center">
-<img src="docs/screenshots/runepad-arcadia.png" width="260" alt="Rune Pad in the Even in Arcadia theme">
+<img src="docs/screenshots/runepad-arcadia.png" width="260" alt="Rune Pad in the EIA theme">
 <img src="docs/screenshots/runepad-ritual.png" width="260" alt="Rune Pad in the Ritual theme">
 <br>
-<sub><i>The same composition in both themes — Even in Arcadia (left) and Ritual (right)</i></sub>
+<sub><i>The same composition in both themes — EIA (left) and Ritual (right)</i></sub>
 </div>
 
 <br>
@@ -216,7 +216,7 @@ Copies write an explicit `public.png` pasteboard item so alpha survives into app
 Twenty-six glyphs, one per letter, mapped into the Unicode **Private Use Area** at `U+E900`–`U+E919`. The keyboard draws them from vector assets; Rune Pad can also render them from the bundled `SleepTokenRunes.ttf`.
 
 <div align="center">
-<img src="docs/screenshots/alphabet-arcadia.png" width="260" alt="Alphabet chart in Even in Arcadia">
+<img src="docs/screenshots/alphabet-arcadia.png" width="260" alt="Alphabet chart in EIA">
 <img src="docs/screenshots/alphabet-ritual.png" width="260" alt="Alphabet chart in Ritual">
 </div>
 
@@ -247,13 +247,13 @@ The host app wears one of two aesthetics. Switching is purely cosmetic — no sc
 <div align="center">
 
 <img src="docs/screenshots/home-ritual.png" width="260" alt="Home in the Ritual theme">
-<img src="docs/screenshots/home-arcadia.png" width="260" alt="Home in the Even in Arcadia theme">
+<img src="docs/screenshots/home-arcadia.png" width="260" alt="Home in the EIA theme">
 
-<sub><i>Ritual (left) and Even in Arcadia (right)</i></sub>
+<sub><i>Ritual (left) and EIA (right)</i></sub>
 
 </div>
 
-| | **Ritual** | **Even in Arcadia** |
+| | **Ritual** | **EIA** |
 |---|---|---|
 | Field | Obsidian, near-black | Black stone with a breath of green |
 | Cards | Neutral raised surface | Deep arcadian green — the flag |
@@ -262,7 +262,7 @@ The host app wears one of two aesthetics. Switching is purely cosmetic — no sc
 | Ornament | The word `worship` in runes | Jerry, the black flamingo |
 | Atmosphere | A single candlelit bloom | Two blooms and drifting pink petals |
 
-Choosing **Even in Arcadia** plays a one-time ceremony: a black curtain rises, petals begin to fall, the `SLEEP TOKEN` wordmark breathes in from the dark in champagne serif — letterspacing settling, blur burning off — then dissolves into the re-themed app. The theme flip happens *behind* the opaque curtain, so the recolour is never seen raw. Reduce Motion gets a clean crossfade instead.
+Choosing **EIA** plays a one-time ceremony: a black curtain rises, petals begin to fall, the `SLEEP TOKEN` wordmark breathes in from the dark in champagne serif — letterspacing settling, blur burning off — then dissolves into the re-themed app. The theme flip happens *behind* the opaque curtain, so the recolour is never seen raw. Reduce Motion gets a clean crossfade instead.
 
 ---
 
@@ -448,8 +448,8 @@ The keyboard's ID must stay a suffix of the app's, and both targets need the App
 iOS never auto-enables a third-party keyboard. Once, after installing:
 
 1. Open **Settings** (the app has a button that deep-links straight there)
-2. Tap **Keyboards** on the Sleep Token KB page — or go the long way: **General → Keyboard → Keyboards**
-3. Turn on **Sleep Token KB**
+2. Tap **Keyboards** on the Ceremonial Scripts page — or go the long way: **General → Keyboard → Keyboards**
+3. Turn on **Ceremonial Scripts**
 4. In any text field, long-press the **globe** key and pick it
 
 Missing from the list? Force-quit Settings, reinstall the app, try again. Extensions only appear after the host app has been installed at least once.
@@ -628,7 +628,7 @@ The script expands every stroked centerline into a filled outline (TrueType has 
 Three 1280×640 social cards ship with the repo, each generated from source by a script in
 `scripts/og/` — no design tool, no external assets. They composite real app captures, real
 rune glyphs set from `SleepTokenRunes.ttf`, and Jerry drawn from the same geometry the app
-uses, over the Even in Arcadia palette.
+uses, over the EIA palette.
 
 | Card | File | Direction |
 |---|---|---|
@@ -648,11 +648,11 @@ in the web UI.
 
 ## Legal
 
-**Unofficial fan project. Not affiliated with, endorsed by, or connected to Sleep Token or their rights holders.**
+**Unofficial fan art. Not affiliated with, endorsed by, sponsored by, or connected to Sleep Token, their label, or their management.**
 
-Sleep Token's names, iconography, and the ritual alphabet are almost certainly protected. This is fine for personal and TestFlight use; public App Store distribution would need rights clearance and clear "not affiliated" labeling.
+This project claims no rights in Sleep Token's name, iconography, or the ritual alphabet, and never presents itself as theirs. What it ships is its own work: the rune font is generated from vectors in this repository by `scripts/build_rune_font.py`, and the code is MIT licensed.
 
-No album artwork, photography, or audio is included in this repository. The Damocles reward opens the official Apple Music listing — it does not bundle, stream, or reproduce the recording.
+No album artwork, photography, or audio is included in this repository. The Damocles reward opens the official Apple Music listing — it does not bundle, stream, or reproduce the recording. Reference art under `even-in-arcadia(theme)/` is gitignored specifically so it cannot reach a build.
 
 The code is [MIT licensed](LICENSE).
 

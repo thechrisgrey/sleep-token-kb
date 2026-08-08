@@ -10,10 +10,17 @@
 #   scripts/release.sh validate     ...then run App Store validation on it
 #   scripts/release.sh upload       ...then upload it to App Store Connect
 #   scripts/release.sh distribute   put an already-uploaded build in front of testers
+#   scripts/release.sh metadata     fill in everything App Review needs, and stop
 #
 # distribute is not cumulative and never archives, validates or uploads. Apple
 # rejects a second upload of a build number outright, so the build it works on is
 # always one that is already there.
+#
+# metadata writes the App Store listing from release/metadata/ and deliberately
+# stops one step short of submitting: it never POSTs /v1/reviewSubmissions. Sending
+# a version to App Review is a judgement about rights clearance, not a build step,
+# and this app's exposure to Guideline 5.2 makes that the operator's call every
+# time. See docs/RELEASE.md.
 #
 # Signing authenticates with an App Store Connect API key rather than a checked-in
 # certificate, so no .p12, no certificate password, and no keychain juggling. With
@@ -68,17 +75,24 @@ EXPORT_DIR="$BUILD_DIR/export"
 IPA_PATH="$EXPORT_DIR/$SCHEME.ipa"
 
 ASC_KEY_PATH="${ASC_KEY_PATH:-$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID:-unset}.p8}"
+
+# Whether BUILD_NUMBER was asked for or merely defaulted, recorded before the
+# default lands. The commit count names the build this checkout *would* produce,
+# which is routinely one that has not been uploaded yet -- fine for archive, wrong
+# for metadata, where attaching a build nobody has tested to the version going to
+# App Review is a quiet way to ship the wrong thing.
+BUILD_NUMBER_WAS_SET="${BUILD_NUMBER:+1}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 
 STAGE="${1:-archive}"
 case "$STAGE" in
-  preflight|status|archive|validate|upload|distribute) ;;
+  preflight|status|archive|validate|upload|distribute|metadata) ;;
   # Print the header comment and stop at the first line that is not one, so the
   # usage text cannot drift out of range as this file grows.
   -h|--help|help)
     awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"
     exit 0 ;;
-  *) echo "Unknown stage: $STAGE (expected preflight, status, archive, validate, upload, or distribute)" >&2; exit 2 ;;
+  *) echo "Unknown stage: $STAGE (expected preflight, status, archive, validate, upload, distribute, or metadata)" >&2; exit 2 ;;
 esac
 
 TMP_ROOT="$(mktemp -d)"
@@ -297,7 +311,7 @@ do_status() {
   # ---- App Store ----------------------------------------------------------
   step "App Store review"
   local versions version_id version_state review
-  versions="$(asc_get "/v1/apps/$app_id/appStoreVersions?limit=5&fields%5BappStoreVersions%5D=versionString,appStoreState,appVersionState,createdDate")"
+  versions="$(asc_get "/v1/apps/$app_id/appStoreVersions?limit=5&fields%5BappStoreVersions%5D=versionString,appStoreState,appVersionState,createdDate,copyright,usesIdfa")"
   version_id="$(jq -r '.data[0].id // empty' <<<"$versions")"
   version_state="$(jq -r '.data[0].attributes.appStoreState // empty' <<<"$versions")"
   if [ -z "$version_id" ]; then
@@ -352,13 +366,30 @@ do_status() {
   [ -n "$version_id" ] || return 0
 
   step "Before this version can be submitted"
-  local loc loc_id shots infos
+  local loc loc_id shots infos info_loc
 
   required "content rights declaration" \
     "$(jq -r '.data[0].attributes.contentRightsDeclaration' <<<"$app")" || true
 
-  infos="$(asc_get "/v1/apps/$app_id/appInfos?fields%5BappInfos%5D=appStoreAgeRating")"
+  # Four of the checks below hang off appInfos rather than off the version, and
+  # that distinction is not cosmetic: /v1/appStoreVersions/<id>/ageRatingDeclaration
+  # answers 404 PATH_ERROR, "The relationship 'ageRatingDeclaration' does not
+  # exist". Age rating, both categories and the privacy policy URL are properties
+  # of the app's *info* record, which outlives any one version.
+  infos="$(asc_get "/v1/apps/$app_id/appInfos?include=primaryCategory&fields%5BappInfos%5D=appStoreAgeRating,primaryCategory")"
   required "age rating" "$(jq -r '.data[0].attributes.appStoreAgeRating' <<<"$infos")" || true
+  required "primary category" \
+    "$(jq -r '.data[0].relationships.primaryCategory.data.id // "null"' <<<"$infos")" || true
+
+  info_loc="$(asc_get "/v1/appInfos/$(jq -r '.data[0].id' <<<"$infos")/appInfoLocalizations?fields%5BappInfoLocalizations%5D=locale,privacyPolicyUrl")"
+  required "privacy policy URL" \
+    "$(jq -r '[.data[] | select(.attributes.locale == "en-US")][0].attributes.privacyPolicyUrl' <<<"$info_loc")" || true
+
+  required "copyright" "$(jq -r '.data[0].attributes.copyright' <<<"$versions")" || true
+  # usesIdfa is a tri-state: true, false, and never answered. false is a complete
+  # answer and must read as one, so the test is on null rather than on falsiness.
+  required "IDFA declaration" \
+    "$(jq -r '.data[0].attributes.usesIdfa | if . == null then null else tostring end' <<<"$versions")" || true
 
   if [ -n "$(jq -r ".data // empty" <<<"$(asc_get "/v1/appStoreVersions/$version_id/build")")" ]; then
     ok "a build is attached to the version"
@@ -377,7 +408,7 @@ do_status() {
     if [ "$(jq -r '.data | length' <<<"$shots")" = "0" ]; then
       bad "screenshots -- not set"
     else
-      ok "screenshots: $(jq -r '.data | length' <<<"$shots") set(s)"
+      ok "screenshots: $(jq -r '[.data[].attributes.screenshotDisplayType] | join(", ")' <<<"$shots")"
     fi
   fi
 
@@ -387,7 +418,12 @@ do_status() {
     bad "App Review contact details -- not set"
   fi
 
-  note "all of the above are web-UI only; the API cannot fill them in for you"
+  # This line used to read "all of the above are web-UI only; the API cannot fill
+  # them in for you". That was wrong, and wrong in the expensive direction: it sent
+  # the operator to a browser for eight fields that all have documented write
+  # endpoints. Creating the *app record* has no API; filling this list does.
+  note "every field above is API-writable -- run ./scripts/release.sh metadata"
+  note "what needs a human is the content of the copy and the rights position, not the writing of it"
 }
 
 # Provisioning flags shared by archive and export.
@@ -1140,6 +1176,647 @@ do_distribute() {
   return "$outcome"
 }
 
+# ------------------------------------------------------------------ metadata ---
+#
+# Fill in everything App Review needs, from files under release/metadata/, and
+# stop there.
+#
+# The split is deliberate: this stage is the mechanism, and the files are the
+# content. Copy, category, age rating and the rights position are judgements, and
+# they belong in the repository where they can be diffed and argued with -- not in
+# argv, and not in a browser tab where the only record of the decision is that
+# somebody once clicked something.
+#
+# What it never does is submit. POST /v1/reviewSubmissions exists and works; it is
+# not called here and must not be added here. This app is named after a band and
+# draws its alphabet from that band's iconography, which is Guideline 5.2 territory
+# exactly, and whether the rights position is good enough to spend a submission on
+# is not a decision a build script gets to make on someone's behalf.
+#
+# Everything is idempotent. A field already carrying the wanted value is reported
+# and not rewritten, an unauthored file is skipped rather than blanking what is
+# there, and the stage ends by re-reading Apple's answer rather than trusting its
+# own writes.
+
+METADATA_DIR="$REPO_ROOT/release/metadata"
+METADATA_LOCALE="${METADATA_LOCALE:-en-US}"
+
+# An absent file and an empty one say the same thing -- not authored yet -- so both
+# answer no. That is what makes the stage safe to run against a half-written
+# release/metadata/: it fills what exists and leaves the rest alone.
+meta_file() {
+  local path="$METADATA_DIR/$1"
+  [ -s "$path" ] && printf '%s' "$path"
+}
+
+# Pull a structured value out of app.json. null, absent and empty string all mean
+# unauthored; false does not, so the test cannot be on truthiness.
+meta_value() {
+  local path="$METADATA_DIR/app.json"
+  [ -f "$path" ] || return 0
+  jq -r --arg k "$1" '.[$k] | if . == null or . == "" then empty else tostring end' "$path"
+}
+
+# Apple enforces these server-side and answers a long field with a generic 409 that
+# names the entity rather than the limit. Checking locally turns that into the one
+# sentence the operator can act on, before a single request is sent.
+meta_too_long() {
+  local label="$1" file="$2" limit="$3" len
+  # Counted through jq on the same trimmed string the PATCH will carry, so the
+  # number checked here is the number Apple receives. wc -m would count the
+  # trailing newline this stage strips, and disagree at exactly the boundary.
+  len="$(jq -rn --rawfile v "$file" '$v | sub("\\s+$"; "") | length')"
+  if [ "$len" -gt "$limit" ]; then
+    bad "$label is $len characters; Apple's limit is $limit"
+    return 0
+  fi
+  return 1
+}
+
+# PATCH a single-attribute change only when it is actually a change. The read is
+# free, the write is not idempotent in Apple's audit log, and a stage that rewrites
+# every field on every run makes its own output useless for spotting what moved.
+meta_patch_attr() {
+  local label="$1" path="$2" type="$3" id="$4" attr="$5" value="$6" current="$7" raw="${8:-string}"
+  if [ "$current" = "$value" ]; then
+    # The description is 1600 characters long, and echoing it back to say it did
+    # not change would bury every line that did.
+    if [ "${#value}" -gt 48 ]; then
+      ok "$label is already set (${#value} characters, unchanged)"
+    else
+      ok "$label is already \"$value\""
+    fi
+    return 0
+  fi
+  local body
+  if [ "$raw" = "bool" ]; then
+    body="$(jq -nc --arg id "$id" --arg t "$type" --arg a "$attr" --argjson v "$value" \
+      '{data: {id: $id, type: $t, attributes: {($a): $v}}}')"
+  else
+    body="$(jq -nc --arg id "$id" --arg t "$type" --arg a "$attr" --arg v "$value" \
+      '{data: {id: $id, type: $t, attributes: {($a): $v}}}')"
+  fi
+  if ! asc_patch "set $label" "$path/$id" "$body"; then
+    asc_rejected "could not set $label"
+    return 1
+  fi
+}
+
+# ---- screenshots -------------------------------------------------------------
+#
+# Three calls per image, and the order is fixed: reserve the asset, upload the
+# bytes to the URLs Apple hands back, then commit it with a checksum. The commit is
+# what makes the asset real; an uploaded-but-uncommitted screenshot sits in
+# UPLOAD_COMPLETE forever and does not count towards the submission.
+
+SCREENSHOT_SET_ID=""
+
+ensure_screenshot_set() {
+  local loc_id="$1" display_type="$2" sets
+  sets="$(asc_get "/v1/appStoreVersionLocalizations/$loc_id/appScreenshotSets?limit=50&fields%5BappScreenshotSets%5D=screenshotDisplayType")"
+  SCREENSHOT_SET_ID="$(jq -r --arg t "$display_type" \
+    '[.data[]? | select(.attributes.screenshotDisplayType == $t) | .id][0] // empty' <<<"$sets")"
+  [ -z "$SCREENSHOT_SET_ID" ] || return 0
+
+  local body
+  body="$(jq -nc --arg t "$display_type" --arg loc "$loc_id" \
+    '{data: {type: "appScreenshotSets",
+             attributes: {screenshotDisplayType: $t},
+             relationships: {appStoreVersionLocalization:
+               {data: {type: "appStoreVersionLocalizations", id: $loc}}}}}')"
+  if ! asc_post "create the $display_type screenshot set" "/v1/appScreenshotSets" "$body"; then
+    asc_rejected "could not create the $display_type screenshot set"
+    return 1
+  fi
+  # A dry run has no set to add anything to, and inventing an id here would make
+  # the rest of the preview a fiction.
+  [ "$DRY_RUN" = "1" ] && return 0
+  SCREENSHOT_SET_ID="$(jq -r '.data.id // empty' <<<"$ASC_BODY")"
+  [ -n "$SCREENSHOT_SET_ID" ] || { bad "the $display_type set was created but Apple returned no id"; return 1; }
+}
+
+# Apple returns one or more upload operations per asset: a method, a URL, headers
+# to replay verbatim, and the byte range each one covers. A small PNG comes back as
+# a single whole-file PUT, but the range is honoured rather than assumed -- a
+# multi-part reservation uploaded as one part yields an asset that never leaves
+# UPLOAD_COMPLETE, and the failure surfaces days later as a missing screenshot.
+upload_screenshot_parts() {
+  local file="$1" operations="$2" count i method url offset length headers part code
+  count="$(jq -r 'length' <<<"$operations")"
+  for (( i = 0; i < count; i++ )); do
+    method="$(jq -r ".[$i].method" <<<"$operations")"
+    url="$(jq -r ".[$i].url" <<<"$operations")"
+    offset="$(jq -r ".[$i].offset" <<<"$operations")"
+    length="$(jq -r ".[$i].length" <<<"$operations")"
+    headers="$(jq -c ".[$i].requestHeaders // []" <<<"$operations")"
+
+    part="$TMP_ROOT/part.bin"
+    # tail | head rather than dd: dd with bs=1 spends a syscall per byte, and these
+    # files are megabytes.
+    tail -c "+$((offset + 1))" "$file" | head -c "$length" >"$part"
+
+    local args=(-sS -X "$method" --data-binary "@$part" -o /dev/null -w '%{http_code}')
+    while IFS= read -r header; do
+      [ -n "$header" ] && args+=(-H "$header")
+    done < <(jq -r '.[] | "\(.name): \(.value)"' <<<"$headers")
+
+    code="$(curl "${args[@]}" "$url")"
+    case "$code" in
+      2*) ;;
+      *)  bad "uploading part $((i + 1)) of $(basename "$file") failed (HTTP $code)"; return 1 ;;
+    esac
+  done
+}
+
+upload_screenshot() {
+  local set_id="$1" file="$2" name size checksum body ss_id operations
+  name="$(basename "$file")"
+  size="$(stat -f%z "$file")"
+
+  body="$(jq -nc --arg n "$name" --argjson s "$size" --arg set "$set_id" \
+    '{data: {type: "appScreenshots",
+             attributes: {fileName: $n, fileSize: $s},
+             relationships: {appScreenshotSet: {data: {type: "appScreenshotSets", id: $set}}}}}')"
+  if ! asc_post "reserve $name" "/v1/appScreenshots" "$body"; then
+    asc_rejected "could not reserve $name"
+    return 1
+  fi
+  [ "$DRY_RUN" = "1" ] && { note "       would then upload $size bytes and commit with an md5 checksum"; return 0; }
+
+  ss_id="$(jq -r '.data.id // empty' <<<"$ASC_BODY")"
+  operations="$(jq -c '.data.attributes.uploadOperations // []' <<<"$ASC_BODY")"
+  if [ -z "$ss_id" ] || [ "$(jq -r 'length' <<<"$operations")" = "0" ]; then
+    bad "$name was reserved but Apple returned no upload operations"
+    return 1
+  fi
+
+  upload_screenshot_parts "$file" "$operations" || return 1
+
+  # The checksum is Apple's own integrity check on what it just received, and the
+  # commit is refused without it.
+  checksum="$(md5 -q "$file")"
+  body="$(jq -nc --arg id "$ss_id" --arg sum "$checksum" \
+    '{data: {id: $id, type: "appScreenshots", attributes: {uploaded: true, sourceFileChecksum: $sum}}}')"
+  if ! asc_patch "commit $name" "/v1/appScreenshots/$ss_id" "$body"; then
+    asc_rejected "could not commit $name"
+    return 1
+  fi
+}
+
+# Apple validates dimensions after the commit, not during it, so a wrong-sized
+# screenshot uploads cleanly and then fails asynchronously. Reading the delivery
+# state back is the only way to know an accepted upload produced a usable asset.
+#
+# Three states, and conflating the middle one with the last is the mistake worth
+# avoiding: COMPLETE is accepted, FAILED is rejected and names why, and
+# UPLOAD_COMPLETE means Apple has the bytes and has not finished looking at them.
+# Reporting "not yet" as a failure a second after uploading would make every clean
+# run look broken.
+report_screenshot_state() {
+  local set_id="$1" shots
+  shots="$(asc_get "/v1/appScreenshotSets/$set_id/appScreenshots?limit=50&fields%5BappScreenshots%5D=fileName,assetDeliveryState")"
+  jq -r '.data[]? | .attributes as $a
+    | ($a.assetDeliveryState.state // "?") as $state
+    | ([$a.assetDeliveryState.errors[]?.description] | join("; ")) as $why
+    | if $state == "COMPLETE" then "  [ok]   \($a.fileName) accepted"
+      elif $state == "UPLOAD_COMPLETE" and $why == ""
+        then "  [--]   \($a.fileName) uploaded, still being validated by Apple"
+      else "  [!!]   \($a.fileName) is \($state)" + (if $why == "" then "" else ": \($why)" end)
+      end' <<<"$shots"
+}
+
+do_metadata() {
+  if ! have_asc_key; then
+    bad "metadata needs an App Store Connect API key"
+    note "set ASC_KEY_ID and ASC_ISSUER_ID, and put the .p8 at $ASC_KEY_PATH"
+    return 1
+  fi
+  command -v jq >/dev/null || { bad "metadata needs jq"; return 1; }
+  if [ ! -d "$METADATA_DIR" ]; then
+    bad "no $METADATA_DIR"
+    note "the listing content lives in files there; see release/metadata/README.md"
+    return 1
+  fi
+
+  asc_token_fresh
+  if [ "$DRY_RUN" = "1" ]; then
+    step "Dry run"
+    note "every read below is real; every write is printed and not sent"
+  fi
+
+  # ---- the app record ------------------------------------------------------
+  step "App record"
+  local app app_id
+  app="$(asc_get "/v1/apps?filter%5BbundleId%5D=$APP_BUNDLE_ID&fields%5Bapps%5D=name,bundleId,contentRightsDeclaration")"
+  if [ -n "$(jq -r '.errors // empty' <<<"$app")" ]; then
+    bad "App Store Connect rejected the request:"
+    jq -r '.errors[] | "         \(.title): \(.detail)"' <<<"$app" >&2
+    return 1
+  fi
+  app_id="$(jq -r '.data[0].id // empty' <<<"$app")"
+  if [ -z "$app_id" ]; then
+    bad "no app record for $APP_BUNDLE_ID"
+    note "the app record is created by hand in App Store Connect; see docs/RELEASE.md"
+    return 1
+  fi
+  ok "$(jq -r '.data[0].attributes.name' <<<"$app") ($APP_BUNDLE_ID), Apple ID $app_id"
+
+  # ---- the version, and whether it is still writable -----------------------
+  local versions version_id version_state
+  versions="$(asc_get "/v1/apps/$app_id/appStoreVersions?limit=1&fields%5BappStoreVersions%5D=versionString,appStoreState,copyright,usesIdfa")"
+  version_id="$(jq -r '.data[0].id // empty' <<<"$versions")"
+  version_state="$(jq -r '.data[0].attributes.appStoreState // empty' <<<"$versions")"
+  if [ -z "$version_id" ]; then
+    bad "no App Store version exists yet"
+    note "create version $(marketing_version) in App Store Connect first"
+    return 1
+  fi
+  # Once a version is with Apple these fields are frozen, and a PATCH against a
+  # frozen version is refused per-field with errors that read like bugs in this
+  # script. Stopping up front is the honest failure.
+  if [ "$version_state" != "PREPARE_FOR_SUBMISSION" ]; then
+    bad "version $(jq -r '.data[0].attributes.versionString' <<<"$versions") is $version_state, not PREPARE_FOR_SUBMISSION"
+    note "its metadata is frozen while Apple holds it; nothing was written"
+    return 1
+  fi
+  ok "version $(jq -r '.data[0].attributes.versionString' <<<"$versions") is editable"
+
+  local failed=0
+
+  # ---- content rights ------------------------------------------------------
+  #
+  # The declaration that tells Apple whether the app contains, shows or accesses
+  # third-party content. It is a legal position rather than a config value, so it is
+  # authored in app.json and the script will never pick on its own -- an unset value
+  # is skipped with a note instead of defaulted. release/metadata/README.md records
+  # the reasoning behind the current answer.
+  step "Content rights"
+  local rights
+  rights="$(meta_value contentRightsDeclaration)"
+  if [ -z "$rights" ]; then
+    note "contentRightsDeclaration is unset in app.json -- skipped"
+    note "USES_THIRD_PARTY_CONTENT or DOES_NOT_USE_THIRD_PARTY_CONTENT; yours to answer, see release/metadata/README.md"
+  else
+    meta_patch_attr "content rights" "/v1/apps" "apps" "$app_id" \
+      contentRightsDeclaration "$rights" \
+      "$(jq -r '.data[0].attributes.contentRightsDeclaration // empty' <<<"$app")" || failed=1
+  fi
+
+  # ---- app info: categories, age rating, privacy policy --------------------
+  #
+  # These live on appInfos rather than on the version. Reaching for
+  # /v1/appStoreVersions/<id>/ageRatingDeclaration looks right and answers 404
+  # PATH_ERROR: the relationship genuinely does not exist there.
+  step "App information"
+  local infos info_id primary secondary
+  infos="$(asc_get "/v1/apps/$app_id/appInfos?include=primaryCategory,secondaryCategory&fields%5BappInfos%5D=appStoreState,appStoreAgeRating,primaryCategory,secondaryCategory")"
+  info_id="$(jq -r '[.data[] | select(.attributes.appStoreState == "PREPARE_FOR_SUBMISSION")][0].id // .data[0].id' <<<"$infos")"
+
+  primary="$(meta_value primaryCategory)"
+  secondary="$(meta_value secondaryCategory)"
+  local cat_body="{}" cat_label=""
+  if [ -n "$primary" ] && \
+     [ "$primary" != "$(jq -r --arg i "$info_id" '[.data[] | select(.id == $i)][0].relationships.primaryCategory.data.id // empty' <<<"$infos")" ]; then
+    cat_body="$(jq -nc --arg c "$primary" '{primaryCategory: {data: {type: "appCategories", id: $c}}}')"
+    cat_label="primary category $primary"
+  fi
+  if [ -n "$secondary" ] && \
+     [ "$secondary" != "$(jq -r --arg i "$info_id" '[.data[] | select(.id == $i)][0].relationships.secondaryCategory.data.id // empty' <<<"$infos")" ]; then
+    cat_body="$(jq -nc --argjson base "$cat_body" --arg c "$secondary" \
+      '$base + {secondaryCategory: {data: {type: "appCategories", id: $c}}}')"
+    cat_label="${cat_label:+$cat_label, }secondary category $secondary"
+  fi
+  if [ "$cat_body" != "{}" ]; then
+    if ! asc_patch "set $cat_label" "/v1/appInfos/$info_id" \
+         "$(jq -nc --arg id "$info_id" --argjson rel "$cat_body" \
+            '{data: {id: $id, type: "appInfos", relationships: $rel}}')"; then
+      asc_rejected "could not set the categories"
+      failed=1
+    fi
+  else
+    [ -n "$primary" ] && ok "categories already set" || note "no categories in app.json -- skipped"
+  fi
+
+  # The age rating declaration shares the app info's id, which looks like a bug in
+  # the API and is not: the relationship resolves to the same uuid.
+  local rating_file
+  if rating_file="$(meta_file age-rating.json)"; then
+    local rating_body
+    rating_body="$(jq -nc --arg id "$info_id" --slurpfile attrs "$rating_file" \
+      '{data: {id: $id, type: "ageRatingDeclarations", attributes: $attrs[0]}}')"
+    if ! asc_patch "set the age rating declaration" "/v1/ageRatingDeclarations/$info_id" "$rating_body"; then
+      asc_rejected "could not set the age rating declaration"
+      failed=1
+    fi
+  else
+    note "no age-rating.json -- skipped"
+  fi
+
+  local info_locs info_loc_id subtitle privacy
+  info_locs="$(asc_get "/v1/appInfos/$info_id/appInfoLocalizations?fields%5BappInfoLocalizations%5D=locale,name,subtitle,privacyPolicyUrl")"
+  info_loc_id="$(jq -r --arg l "$METADATA_LOCALE" '[.data[] | select(.attributes.locale == $l)][0].id // empty' <<<"$info_locs")"
+  if [ -z "$info_loc_id" ]; then
+    bad "no $METADATA_LOCALE app info localization"
+    failed=1
+  else
+    # The App Store name is a localization attribute, not an app attribute, and it
+    # is the one field here that is also a trademark decision -- so it is authored
+    # in app.json like everything else rather than derived from the bundle.
+    local store_name
+    store_name="$(meta_value name)"
+    if [ -n "$store_name" ]; then
+      printf '%s' "$store_name" >"$TMP_ROOT/store_name"
+      if meta_too_long "app name" "$TMP_ROOT/store_name" 30; then
+        failed=1
+      else
+        meta_patch_attr "app name" "/v1/appInfoLocalizations" appInfoLocalizations "$info_loc_id" \
+          name "$store_name" \
+          "$(jq -r --arg l "$METADATA_LOCALE" '[.data[] | select(.attributes.locale == $l)][0].attributes.name // empty' <<<"$info_locs")" || failed=1
+      fi
+    else
+      note "no name in app.json -- skipped"
+    fi
+
+    subtitle="$(meta_value subtitle)"
+    if [ -n "$subtitle" ]; then
+      printf '%s' "$subtitle" >"$TMP_ROOT/subtitle"
+      if meta_too_long "subtitle" "$TMP_ROOT/subtitle" 30; then
+        failed=1
+      else
+        meta_patch_attr "subtitle" "/v1/appInfoLocalizations" appInfoLocalizations "$info_loc_id" \
+          subtitle "$subtitle" \
+          "$(jq -r --arg l "$METADATA_LOCALE" '[.data[] | select(.attributes.locale == $l)][0].attributes.subtitle // empty' <<<"$info_locs")" || failed=1
+      fi
+    else
+      note "no subtitle in app.json -- skipped"
+    fi
+
+    privacy="$(meta_value privacyPolicyUrl)"
+    if [ -n "$privacy" ]; then
+      meta_patch_attr "privacy policy URL" "/v1/appInfoLocalizations" appInfoLocalizations "$info_loc_id" \
+        privacyPolicyUrl "$privacy" \
+        "$(jq -r --arg l "$METADATA_LOCALE" '[.data[] | select(.attributes.locale == $l)][0].attributes.privacyPolicyUrl // empty' <<<"$info_locs")" || failed=1
+    else
+      note "no privacyPolicyUrl in app.json -- skipped"
+    fi
+  fi
+
+  # ---- version attributes: copyright and IDFA ------------------------------
+  step "Version attributes"
+  local copyright idfa
+  copyright="$(meta_value copyright)"
+  if [ -n "$copyright" ]; then
+    meta_patch_attr "copyright" "/v1/appStoreVersions" appStoreVersions "$version_id" \
+      copyright "$copyright" "$(jq -r '.data[0].attributes.copyright // empty' <<<"$versions")" || failed=1
+  else
+    note "no copyright in app.json -- skipped"
+  fi
+
+  # usesIdfa is a tri-state and false is a real answer, so it is read as JSON
+  # rather than through the empty-means-unset shortcut the strings use.
+  idfa="$(jq -r '.usesIdfa | if . == null then empty else tostring end' "$METADATA_DIR/app.json" 2>/dev/null || true)"
+  if [ -n "$idfa" ]; then
+    meta_patch_attr "IDFA declaration" "/v1/appStoreVersions" appStoreVersions "$version_id" \
+      usesIdfa "$idfa" \
+      "$(jq -r '.data[0].attributes.usesIdfa | if . == null then empty else tostring end' <<<"$versions")" bool || failed=1
+  else
+    note "no usesIdfa in app.json -- skipped"
+  fi
+
+  # ---- the listing copy ----------------------------------------------------
+  step "Listing copy ($METADATA_LOCALE)"
+  local locs loc_id
+  locs="$(asc_get "/v1/appStoreVersions/$version_id/appStoreVersionLocalizations?fields%5BappStoreVersionLocalizations%5D=locale,description,keywords,supportUrl,marketingUrl,promotionalText,whatsNew")"
+  loc_id="$(jq -r --arg l "$METADATA_LOCALE" '[.data[] | select(.attributes.locale == $l)][0].id // empty' <<<"$locs")"
+  if [ -z "$loc_id" ]; then
+    bad "no $METADATA_LOCALE version localization to write to"
+    failed=1
+  else
+    local current="$(jq -c --arg l "$METADATA_LOCALE" '[.data[] | select(.attributes.locale == $l)][0].attributes' <<<"$locs")"
+    local field file limit attr label
+    # file basename, API attribute, Apple's character limit, what to call it.
+    while IFS='|' read -r field attr limit label; do
+      if ! file="$(meta_file "$METADATA_LOCALE/$field.txt")"; then
+        note "no $METADATA_LOCALE/$field.txt -- skipped"
+        continue
+      fi
+      if meta_too_long "$label" "$file" "$limit"; then
+        failed=1
+        continue
+      fi
+      # --rawfile keeps the file's trailing newline, which Apple stores verbatim
+      # and the web UI then shows as a stray blank line.
+      local want
+      want="$(jq -rn --rawfile v "$file" '$v | sub("\\s+$"; "")')"
+      meta_patch_attr "$label" "/v1/appStoreVersionLocalizations" appStoreVersionLocalizations "$loc_id" \
+        "$attr" "$want" "$(jq -r --arg a "$attr" '.[$a] // empty' <<<"$current")" || failed=1
+    done <<'FIELDS'
+description|description|4000|description
+keywords|keywords|100|keywords
+support-url|supportUrl|255|support URL
+marketing-url|marketingUrl|255|marketing URL
+promotional-text|promotionalText|170|promotional text
+whats-new|whatsNew|4000|what's new
+FIELDS
+  fi
+
+  # ---- the build under review ----------------------------------------------
+  #
+  # Which build goes to App Review is not the same question as which build this
+  # checkout would produce. Defaulting to the commit count would attach a build
+  # that may not exist yet, so the default here is the newest build Apple actually
+  # has, and BUILD_NUMBER only wins when it was asked for explicitly.
+  step "Build under review"
+  local builds want_build build_id attached
+  builds="$(asc_get "/v1/builds?limit=200&sort=-uploadedDate&filter%5Bapp%5D=$app_id&fields%5Bbuilds%5D=version,uploadedDate,processingState,expired")"
+  if ! jq -e '(.data | type) == "array"' <<<"$builds" >/dev/null 2>&1; then
+    bad "could not read the build list"
+    jq -r '.errors[]? | "         \(.title): \(.detail)"' <<<"$builds" >&2 2>/dev/null || true
+    failed=1
+  else
+    if [ -n "$BUILD_NUMBER_WAS_SET" ]; then
+      want_build="$BUILD_NUMBER"
+    else
+      want_build="$(jq -r '[.data[] | select(.attributes.expired == false and .attributes.processingState == "VALID")][0].attributes.version // empty' <<<"$builds")"
+      [ -n "$want_build" ] && note "no BUILD_NUMBER given, so using the newest live build: $want_build"
+    fi
+    build_id="$(jq -r --arg v "$want_build" \
+      '[.data[] | select(.attributes.version == $v and .attributes.expired == false)][0].id // empty' <<<"$builds")"
+    if [ -z "$build_id" ]; then
+      bad "no live build $want_build to attach"
+      note "live builds: $(jq -r '[.data[] | select(.attributes.expired == false) | .attributes.version] | join(", ")' <<<"$builds")"
+      failed=1
+    else
+      attached="$(asc_get "/v1/appStoreVersions/$version_id/build?fields%5Bbuilds%5D=version" | jq -r '.data.id // empty')"
+      if [ "$attached" = "$build_id" ]; then
+        ok "build $want_build is already attached"
+      elif ! asc_patch "attach build $want_build" "/v1/appStoreVersions/$version_id/relationships/build" \
+             "$(jq -nc --arg id "$build_id" '{data: {type: "builds", id: $id}}')"; then
+        asc_rejected "could not attach build $want_build"
+        failed=1
+      fi
+    fi
+  fi
+
+  # ---- App Review contact details ------------------------------------------
+  step "App Review contact"
+  local detail detail_id contact notes_file review_attrs
+  detail="$(asc_get "/v1/appStoreVersions/$version_id/appStoreReviewDetail")"
+  detail_id="$(jq -r '.data.id // empty' <<<"$detail")"
+  contact="$(meta_file review/contact.json || true)"
+  notes_file="$(meta_file review/notes.txt || true)"
+
+  # contact.local.json is merged over contact.json and is gitignored, because this
+  # repository is public and the review contact is the one field here that is
+  # personal data rather than product copy. A phone number committed to a public
+  # repo is permanent -- forks and mirrors keep it after any later deletion -- so
+  # the number reaches Apple without ever entering git history.
+  local contact_local="$METADATA_DIR/review/contact.local.json"
+  if [ -n "$contact" ] && [ -s "$contact_local" ]; then
+    if jq -se '.[0] * .[1]' "$contact" "$contact_local" >"$TMP_ROOT/contact.json" 2>/dev/null; then
+      contact="$TMP_ROOT/contact.json"
+      ok "merged review/contact.local.json over the committed contact"
+    else
+      # Not silently falling back to the committed file: it is the one with the
+      # blank phone, so the fallback would look like a clean run and send nothing.
+      bad "review/contact.local.json is not valid JSON, so the contact was not sent"
+      failed=1
+      contact=""
+    fi
+  elif [ -n "$contact" ] && [ ! -e "$contact_local" ]; then
+    note "no review/contact.local.json; the committed contact is being used as-is"
+  fi
+
+  if [ -z "$contact" ]; then
+    note "no usable review contact -- skipped"
+  else
+    # Apple requires all four contact fields and answers a missing one with a 409
+    # naming the entity rather than the field. Checking here turns that into the
+    # name of the thing to go and fill in.
+    local blank
+    blank="$(jq -r '["contactFirstName","contactLastName","contactEmail","contactPhone"]
+                    - [to_entries[] | select((.value | tostring) != "") | .key]
+                    | join(", ")' "$contact")"
+    if [ -n "$blank" ]; then
+      bad "review/contact.json is missing: $blank"
+      note "App Review will not accept a partial contact, so none of it was sent"
+      failed=1
+      contact=""
+    fi
+  fi
+  if [ -n "$contact" ]; then
+    review_attrs="$(jq -c '.' "$contact")"
+    if [ -n "$notes_file" ]; then
+      review_attrs="$(jq -c --rawfile n "$notes_file" '. + {notes: ($n | sub("\\s+$"; ""))}' <<<"$review_attrs")"
+    fi
+    if [ -n "$detail_id" ]; then
+      if ! asc_patch "update the review contact" "/v1/appStoreReviewDetails/$detail_id" \
+           "$(jq -nc --arg id "$detail_id" --argjson a "$review_attrs" \
+              '{data: {id: $id, type: "appStoreReviewDetails", attributes: $a}}')"; then
+        asc_rejected "could not update the review contact"
+        failed=1
+      fi
+    elif ! asc_post "create the review contact" "/v1/appStoreReviewDetails" \
+           "$(jq -nc --arg v "$version_id" --argjson a "$review_attrs" \
+              '{data: {type: "appStoreReviewDetails", attributes: $a,
+                       relationships: {appStoreVersion: {data: {type: "appStoreVersions", id: $v}}}}}')"; then
+      asc_rejected "could not create the review contact"
+      failed=1
+    fi
+  fi
+
+  # ---- screenshots ---------------------------------------------------------
+  step "Screenshots"
+  if [ -z "${loc_id:-}" ]; then
+    note "no version localization, so nothing to attach screenshots to"
+  elif [ ! -d "$METADATA_DIR/screenshots" ]; then
+    note "no release/metadata/screenshots/ -- skipped"
+  else
+    local display_dir display_type shot existing
+    for display_dir in "$METADATA_DIR"/screenshots/*/; do
+      [ -d "$display_dir" ] || continue
+      display_type="$(basename "$display_dir")"
+      # The set is per display type, and Apple validates the image dimensions
+      # against the type after the commit rather than before it.
+      ensure_screenshot_set "$loc_id" "$display_type" || { failed=1; continue; }
+      if [ -z "$SCREENSHOT_SET_ID" ]; then
+        note "the $display_type set does not exist yet, so its uploads are not previewed"
+        continue
+      fi
+      existing="$(asc_get "/v1/appScreenshotSets/$SCREENSHOT_SET_ID/appScreenshots?limit=50&fields%5BappScreenshots%5D=fileName,sourceFileChecksum,assetDeliveryState")"
+      local shot_name shot_sum stale
+      for shot in "$display_dir"*.png; do
+        [ -f "$shot" ] || continue
+        shot_name="$(basename "$shot")"
+        shot_sum="$(md5 -q "$shot")"
+        # Matched on checksum, not on filename. Screenshots get re-captured, and
+        # dedupe by name alone means an edited image under the same name is
+        # silently never replaced -- the listing keeps showing the old one and the
+        # run reports "already uploaded", which is the worst of both answers.
+        if [ -n "$(jq -r --arg n "$shot_name" --arg s "$shot_sum" \
+             '[.data[]? | select(.attributes.fileName == $n
+                                 and .attributes.sourceFileChecksum == $s
+                                 and (.attributes.assetDeliveryState.state // "") == "COMPLETE")][0].id // empty' <<<"$existing")" ]; then
+          ok "$shot_name is already uploaded, unchanged"
+          continue
+        fi
+        # Apple has no replace, so a changed image is a delete and a re-upload.
+        # Scoped and recoverable -- the source of truth is the file on disk -- but
+        # said out loud rather than done quietly.
+        stale="$(jq -r --arg n "$shot_name" \
+          '[.data[]? | select(.attributes.fileName == $n)][0].id // empty' <<<"$existing")"
+        if [ -n "$stale" ]; then
+          note "$shot_name changed on disk, so the uploaded copy is being replaced"
+          if ! asc_mutate "remove the previous $shot_name" DELETE "/v1/appScreenshots/$stale" ""; then
+            asc_rejected "could not remove the previous $shot_name"
+            failed=1
+            continue
+          fi
+        fi
+        upload_screenshot "$SCREENSHOT_SET_ID" "$shot" || failed=1
+      done
+
+      # Renaming a slug leaves the old upload behind under its old name, and
+      # nothing above would ever touch it: the loop only visits files that exist on
+      # disk. The listing would then show both, in filename order, and the extra one
+      # is invisible from here. The directory is the source of truth, so anything
+      # uploaded that is no longer in it goes.
+      local orphan_name
+      while IFS= read -r orphan_name; do
+        [ -n "$orphan_name" ] || continue
+        [ -f "$display_dir$orphan_name" ] && continue
+        note "$orphan_name is uploaded but no longer in $display_type/"
+        if ! asc_mutate "remove the orphaned $orphan_name" DELETE \
+             "/v1/appScreenshots/$(jq -r --arg n "$orphan_name" \
+               '[.data[]? | select(.attributes.fileName == $n)][0].id' <<<"$existing")" ""; then
+          asc_rejected "could not remove the orphaned $orphan_name"
+          failed=1
+        fi
+      done < <(jq -r '.data[]?.attributes.fileName' <<<"$existing")
+
+      [ "$DRY_RUN" = "1" ] || report_screenshot_state "$SCREENSHOT_SET_ID"
+    done
+  fi
+
+  # ---- what Apple says is still missing ------------------------------------
+  #
+  # Read back rather than reported from the writes above. A stage that trusts its
+  # own 204s is exactly how a version gets declared ready and then sits in
+  # PREPARE_FOR_SUBMISSION with one empty field nobody looked for.
+  if [ "$DRY_RUN" = "1" ]; then
+    step "Dry run complete"
+    note "nothing was written, so the state below is unchanged"
+  fi
+  do_status || true
+
+  step "Not submitted, deliberately"
+  note "this stage never POSTs /v1/reviewSubmissions -- submitting is a rights decision, not a build step"
+  note "see docs/RELEASE.md, 'Submitting for App Review', for what that costs and who decides"
+
+  [ "$failed" -eq 0 ] || { step "Some writes were refused"; return 1; }
+  return 0
+}
+
 # --------------------------------------------------------------------- main ---
 
 # status and distribute both act on a build that already exists, so they
@@ -1154,6 +1831,9 @@ case "$STAGE" in
     exit $? ;;
   distribute)
     do_distribute
+    exit $? ;;
+  metadata)
+    do_metadata
     exit $? ;;
 esac
 

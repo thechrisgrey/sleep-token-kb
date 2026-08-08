@@ -1,5 +1,5 @@
 ---
-name: Ritual Keyboard
+name: Ceremonial Scripts
 description: Obsidian and gold, or black stone and rose — a two-theme ritual system for an iOS keyboard and rune composer.
 colors:
   obsidian: "#0E0D0F"
@@ -154,7 +154,7 @@ components:
     padding: "4pt 10pt"
 ---
 
-# Design System: Ritual Keyboard
+# Design System: Ceremonial Scripts
 
 ## Overview
 

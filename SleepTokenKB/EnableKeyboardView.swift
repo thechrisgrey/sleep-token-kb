@@ -23,19 +23,19 @@ struct EnableKeyboardView: View {
         ),
         SetupStep(
             title: "Tap Keyboards",
-            detail: "The button opens Ritual Keyboard's own page in Settings, which has a Keyboards row. Prefer the manual route? Settings → General → Keyboard → Keyboards."
+            detail: "The button opens the Ceremonial Scripts page in Settings, which has a Keyboards row. Prefer the manual route? Settings → General → Keyboard → Keyboards."
         ),
         SetupStep(
-            title: "Turn on Ritual Keyboard",
-            detail: "Flip the Ritual Keyboard switch. On the manual route, tap Add New Keyboard… and choose Ritual Keyboard under THIRD-PARTY KEYBOARDS."
+            title: "Turn on Ceremonial Scripts",
+            detail: "Flip the Ceremonial Scripts switch. On the manual route, tap Add New Keyboard… and choose Ceremonial Scripts under THIRD-PARTY KEYBOARDS."
         ),
         SetupStep(
             title: "Optional: Full Access",
-            detail: "The Allow Full Access switch sits on the same Ritual Keyboard screen as the switch from the last step. Only needed for key press haptics — iOS will not deliver haptic feedback from a keyboard extension without it. Everything else works either way: both layouts, all three key faces, the themes, and Rune Pad. It stays off until you turn it on."
+            detail: "The Allow Full Access switch sits on the same Ceremonial Scripts screen as the switch from the last step. Only needed for key press haptics — iOS will not deliver haptic feedback from a keyboard extension without it. Everything else works either way: both layouts, all three key faces, the themes, and Rune Pad. It stays off until you turn it on."
         ),
         SetupStep(
             title: "Use it",
-            detail: "In any text field, long-press the globe key and select Ritual Keyboard. Keys can show runes or ABC; text is always English. For rune messages, use Rune Pad."
+            detail: "In any text field, long-press the globe key and select Ceremonial Scripts. Keys can show runes or ABC; text is always English. For rune messages, use Rune Pad."
         ),
     ]
 
@@ -49,7 +49,7 @@ struct EnableKeyboardView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("iOS only lists third-party keyboards after you add them once. The steps below register Ritual Keyboard system-wide.")
+                Text("iOS only lists third-party keyboards after you add them once. The steps below register Ceremonial Scripts system-wide.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.inkDim)
                     .lineSpacing(3)

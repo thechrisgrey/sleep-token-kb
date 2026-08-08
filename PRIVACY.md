@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Ritual Keyboard** (Sleep Token KB)
+**Ceremonial Scripts** (`ai.altivum.SleepTokenKB`)
 Last updated: 30 July 2026
 
 ## The short version
@@ -49,7 +49,7 @@ The app stores a small number of preferences **on your device only**:
 | Layout | QWERTY or A–Z |
 | Key face | Runes, runes with Latin hints, or plain letters |
 | Haptics | On or off |
-| Theme | Ritual or Even in Arcadia |
+| Theme | Ritual or EIA |
 | Easter egg progress | Which of the hidden flamingos you have found |
 
 These live in `UserDefaults` — an App Group container shared between the app and
@@ -98,5 +98,5 @@ christian.perez@altivum.io
 
 ---
 
-*Ritual Keyboard is an unofficial fan project. It is not affiliated with,
+*Ceremonial Scripts is an unofficial fan project. It is not affiliated with,
 endorsed by, or connected to Sleep Token or their rights holders.*

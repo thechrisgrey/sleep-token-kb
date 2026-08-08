@@ -1,5 +1,24 @@
 import SwiftUI
 
+#if DEBUG
+/// Screens the screenshot harness opens directly.
+///
+/// The keyboard is not the only thing the Simulator cannot be driven from a script:
+/// there is no way to *tap* a destination card either. So every surface an App Store
+/// shot needs is reachable by launch argument, or it is not reachable at all.
+private enum ScreenshotRoute: CaseIterable {
+    case settings, runePad, alphabet
+
+    var flag: String {
+        switch self {
+        case .settings: "-route-settings"
+        case .runePad: "-route-runepad"
+        case .alphabet: "-route-alphabet"
+        }
+    }
+}
+#endif
+
 struct ContentView: View {
     /// `@State` so the observable store's identity is stable for this view tree;
     /// reads of `Theme` colours inside any body register against it automatically.
@@ -20,7 +39,7 @@ struct ContentView: View {
     )
     @State private var enableGuidePresented = false
     #if DEBUG
-    @State private var debugRouteToSettings = false
+    @State private var debugRoute: ScreenshotRoute?
     @State private var debugForceEnableCard = false
     #endif
 
@@ -98,8 +117,12 @@ struct ContentView: View {
                 EnableKeyboardView()
             }
             #if DEBUG
-            .navigationDestination(isPresented: $debugRouteToSettings) {
-                SettingsView(theme: themeBinding)
+            .navigationDestination(item: $debugRoute) { route in
+                switch route {
+                case .settings: SettingsView(theme: themeBinding)
+                case .runePad: RunePadView()
+                case .alphabet: AlphabetChartView()
+                }
             }
             #endif
             .onAppear {
@@ -168,7 +191,7 @@ struct ContentView: View {
                 .tracking(2.6)
                 .foregroundStyle(Theme.gold)
 
-            Text("Ritual Keyboard")
+            Text("Ceremonial Scripts")
                 .font(Theme.display(scaledSize: heroTitleSize, weight: .bold))
                 .foregroundStyle(Theme.ink)
 
@@ -213,7 +236,15 @@ struct ContentView: View {
         }
         if arguments.contains("-force-arcadia") { store.mode = .evenInArcadia }
         if arguments.contains("-force-ritual") { store.mode = .ritual }
-        if arguments.contains("-route-settings") { debugRouteToSettings = true }
+        // One screen per launch. First flag present wins, rather than a second one
+        // silently overwriting the first and producing a shot of the wrong surface.
+        guard let route = ScreenshotRoute.allCases.first(where: { arguments.contains($0.flag) })
+        else { return }
+        // Deferred a turn on purpose. The destination modifiers are not registered
+        // until this update cycle finishes, so a route assigned inside onAppear is
+        // dropped silently -- the app stays on the root and the shot looks like a
+        // launch-argument typo rather than a timing bug.
+        Task { @MainActor in debugRoute = route }
     }
     #endif
 

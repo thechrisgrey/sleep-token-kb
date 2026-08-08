@@ -8,16 +8,23 @@ import Observation
 enum ThemeMode: String, CaseIterable, Identifiable {
     /// Obsidian and antique gold — the original ceremony.
     case ritual
-    /// "Even in Arcadia": pink overgrowth on black stone, deep arcadian-green
-    /// flag panels, champagne ink, and the black flamingo.
+    /// Pink overgrowth on black stone, deep arcadian-green flag panels, champagne
+    /// ink, and the black flamingo.
+    ///
+    /// The case name is load-bearing and deliberately unchanged: `rawValue` is what
+    /// `ThemeStore` writes to `appThemeMode`, and an unrecognised stored value falls
+    /// back to `.ritual`. Renaming it would silently reset the theme for everyone who
+    /// had already chosen this one.
     case evenInArcadia
 
     var id: String { rawValue }
 
+    /// What the picker shows. Shortened to initials so the album title is not a
+    /// user-visible label; see docs/RELEASE.md on Guideline 5.2.
     var title: String {
         switch self {
         case .ritual: "Ritual"
-        case .evenInArcadia: "Even in Arcadia"
+        case .evenInArcadia: "EIA"
         }
     }
 }

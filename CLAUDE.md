@@ -1,4 +1,4 @@
-# Ritual Keyboard
+# Ceremonial Scripts
 
 ## Design Context
 
@@ -54,8 +54,15 @@ tests; the view only wires it up. Final keyboard verification happens by hand on
 a device.
 
 The host app *is* drivable. DEBUG launch arguments — `-force-enable-card`,
-`-force-ritual`, `-force-arcadia`, `-route-settings` — plus `xcrun simctl` route
-and screenshot it, including at accessibility Dynamic Type sizes.
+`-force-ritual`, `-force-arcadia`, `-route-settings`, `-route-runepad`,
+`-route-alphabet`, `-seed-runes "<latin>"` — plus `xcrun simctl` route and
+screenshot it, including at accessibility Dynamic Type sizes.
+
+A script cannot tap a destination card any more than it can type into the
+keyboard, so every surface a screenshot needs is reachable by launch argument or it
+is not reachable at all. One route flag per launch; the first present wins.
+`scripts/screenshots.sh` drives all of it and writes App Store sets into
+`release/metadata/screenshots/`.
 
 ## Conventions
 
