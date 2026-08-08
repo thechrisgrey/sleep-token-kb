@@ -20,7 +20,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 # constants
 # ----------------------------------------------------------------------------
 
-ROOT = "/Users/cperez/dev/altivum-dev/sleep-token-kb"
+ROOT = "/Users/cperez/dev/delta-centric-dev/sleep-token-kb"
 OUT = os.path.join(ROOT, "docs", "og-glyph.png")
 OUT_THUMB = "/private/tmp/claude-501/-Users-cperez-dev-altivum-dev-sleep-token-kb/09ba2e3c-f49f-4058-963f-42064224b8e8/scratchpad/og-glyph-500.png"
 

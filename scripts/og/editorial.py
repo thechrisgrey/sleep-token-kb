@@ -21,7 +21,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFo
 # Paths
 # --------------------------------------------------------------------------- #
 
-ROOT = "/Users/cperez/dev/altivum-dev/sleep-token-kb"
+ROOT = "/Users/cperez/dev/delta-centric-dev/sleep-token-kb"
 SHOTS = os.path.join(ROOT, "docs", "screenshots")
 OUT = os.path.join(ROOT, "docs", "og-editorial.png")
 OUT_THUMB = "/private/tmp/claude-501/-Users-cperez-dev-altivum-dev-sleep-token-kb/09ba2e3c-f49f-4058-963f-42064224b8e8/scratchpad/og-editorial-500.png"
