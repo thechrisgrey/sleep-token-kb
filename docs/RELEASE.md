@@ -20,11 +20,25 @@ This document separates the two so it is always obvious which is which.
 | Read back review and submission state | Yes | `scripts/release.sh status` |
 | Build number management | Yes | commit count, see below |
 | Distribution certificate and profiles | Yes, on demand | Xcode, via the API key |
+| Description, keywords, subtitle, promotional text | Yes | `scripts/release.sh metadata` |
+| Categories, age rating, copyright, IDFA, privacy policy URL | Yes | `scripts/release.sh metadata` |
+| Screenshot upload | Yes | `scripts/release.sh metadata` |
+| Capturing the screenshots | Yes, for the host app | `scripts/screenshots.sh` |
+| Attach the build to the version | Yes | `scripts/release.sh metadata` |
+| App Review contact details | Yes | `scripts/release.sh metadata` |
 | Register the two bundle IDs | Once, by hand | App Store Connect |
 | Create the app record | Once, by hand | App Store Connect (no public API) |
-| Screenshots, description, keywords | By hand for v1 | App Store Connect |
-| Submit for review | By hand | App Store Connect |
+| The content rights declaration | No, and deliberately | a legal position, see below |
+| Submit for review | No, and deliberately | see "Submitting for App Review" |
 | **App Review** | **No. Humans, and days of latency** | Apple |
+
+This table used to say the listing fields were done by hand, and `status` used to
+print that they were "web-UI only; the API cannot fill them in for you". Both were
+wrong, and wrong in the expensive direction: every field on that list has a
+documented write endpoint, and the browser trip they sent you on was avoidable.
+Creating the *app record* is the step with no API. Filling it in is not.
+
+The two remaining `No`s are choices rather than limitations. See below.
 
 ---
 
@@ -300,6 +314,70 @@ Like `status`, it skips preflight and needs no Xcode -- it builds nothing, so
 gating it on a toolchain it never uses would only make it useless from a machine
 that has the key and nothing else.
 
+```bash
+./scripts/release.sh metadata
+```
+
+Fills in everything App Review needs, from files under `release/metadata/`, and
+stops. Builds nothing, uploads no build, and never submits.
+
+The split is the point: the stage is the mechanism and `release/metadata/` is the
+content. What the app claims about itself, and how it describes its relationship to
+a band it is not affiliated with, is the highest-stakes copy in the project, and
+keeping it in the repository makes a listing change a diff instead of a memory of
+having clicked something. `release/metadata/README.md` documents every file.
+
+It is idempotent by construction. A field already carrying the wanted value is
+reported and not rewritten, so a second run prints what did *not* change and the
+diff of its output is the list of what moved. An unauthored file is skipped rather
+than blanking what is already there, which is what makes it safe to run against a
+half-written `release/metadata/`.
+
+Character limits are checked locally, before anything is sent, and counted through
+`jq` on the same trimmed string the request will carry -- so the number checked is
+the number Apple receives. Apple answers an over-long field with a 409 that names
+the record rather than the field, which is a long way to find out that a subtitle is
+two characters over.
+
+It ends by running `status`, so the last thing it prints is Apple's answer rather
+than its own. A stage that trusts its own `204`s is how a version gets declared
+ready and then sits in `PREPARE_FOR_SUBMISSION` with one empty field nobody looked
+for.
+
+| Knob | Effect |
+|---|---|
+| `DRY_RUN` | performs every read, prints every write it would send, and sends none |
+| `BUILD_NUMBER` | the build to attach. **Unset is not the commit count here**: it defaults to the newest live build Apple actually has, because the commit count names the build this checkout *would* produce, which is routinely one that was never uploaded |
+| `METADATA_LOCALE` | which localization to write; defaults to `en-US` |
+
+Four things learned by running it, none of which are guessable from the docs:
+
+- **Age rating, both categories and the privacy policy URL hang off `appInfos`,
+  not off the version.** `/v1/appStoreVersions/<id>/ageRatingDeclaration` looks
+  right and answers `404 PATH_ERROR`, "The relationship 'ageRatingDeclaration' does
+  not exist". The age rating declaration's id is also the app info's own id, which
+  looks like a bug and is not.
+- **`ageRatingDeclarations` is all-or-nothing.** A partial PATCH is refused with a
+  409 that names every attribute you left out -- `ageAssurance`,
+  `gunsOrOtherWeapons`, `parentalControls`, `messagingAndChat`,
+  `healthOrWellnessTopics`, `advertising` among them. Usefully, the error names them
+  all at once, so one round trip tells you the whole required set.
+- **The declaration mixes enums and booleans, and the split is not intuitive.**
+  `gunsOrOtherWeapons` takes `"NONE"`; `healthOrWellnessTopics` is a boolean and
+  answers a string with "Expected a BOOLEAN but got STRING". The unset record reads
+  back as `null` for every field, so the types cannot be inferred without asking.
+- **Screenshot display types stop at `APP_IPHONE_67`.** There is no 6.9-inch type;
+  6.9-inch captures belong in the 6.7-inch set. The iPad set this app needs is
+  `APP_IPAD_PRO_3GEN_129`, because `TARGETED_DEVICE_FAMILY` is `1,2`.
+
+Screenshots take three calls each -- reserve the asset, upload the bytes to the URLs
+Apple hands back, commit with an md5 checksum -- and the commit is what makes the
+asset real. An uploaded-but-uncommitted screenshot sits in `UPLOAD_COMPLETE`
+forever and does not count towards the submission. Apple then validates the
+dimensions *after* the commit, so a wrong-sized image uploads cleanly and fails
+asynchronously; the stage reads `assetDeliveryState` back for every file rather than
+treating its own `204` as acceptance.
+
 ### From CI
 
 Actions -> Release -> Run workflow. Pick a stage. `archive` is the default, so a
@@ -326,6 +404,36 @@ That is deliberate, and preflight enforces it: with a hardcoded `CFBundleVersion
 `BUILD_NUMBER` is silently ignored and every upload after the first is rejected.
 
 ---
+
+## Submitting for App Review
+
+`POST /v1/reviewSubmissions` exists, works, and is not called anywhere in this
+repository. That is a decision, not a gap, and it is the one place in the pipeline
+where the missing automation is the feature.
+
+Every other stage automates something whose right answer does not change: a build
+number only goes up, a superseded build is superseded, `IN_BETA_TESTING` either came
+back or it did not. Submitting is not like that. It spends a submission against a
+Guideline 5.2 exposure that no amount of tooling improves (see below), and the
+answer depends on a rights position that lives outside this repository. A script
+that could do it would eventually do it by accident.
+
+Two fields make the same point, and `metadata` leaves both alone rather than
+guessing:
+
+- **`contentRightsDeclaration`** is `null` in `release/metadata/app.json` on
+  purpose. Its two values are `USES_THIRD_PARTY_CONTENT` and
+  `DOES_NOT_USE_THIRD_PARTY_CONTENT`, and for this app that is the same question
+  5.2 asks. It is a legal position, not a config value.
+- **The "Third-party references" paragraph in `release/metadata/review/notes.txt`**
+  states what the app does -- fan project, labeled unaffiliated, no bundled artwork
+  or audio, the song reward links out rather than embedding -- and deliberately
+  claims no permission, because none has been recorded. If that changes, that
+  paragraph changes with it.
+
+So the honest shape of a real App Store release is: `metadata` fills the listing,
+`status` confirms Apple agrees nothing is missing, and then a human decides whether
+to spend the submission. Nothing about the first two commits you to the third.
 
 ## Review notes specific to this app
 

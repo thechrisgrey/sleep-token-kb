@@ -1,0 +1,25 @@
+Ceremonial Scripts puts the ritual alphabet on your keys.
+
+This is an unofficial fan project. It is not affiliated with, endorsed by, or connected to Sleep Token or their label.
+
+THE KEYBOARD
+
+A system keyboard whose keycaps wear the runes. You type the way you always have, and the text that arrives is plain a to z, so nothing breaks for the person reading it. One-time setup in Settings. Then the runes follow you into every app.
+
+RUNE PAD
+
+A composer for inscriptions meant to be kept. Write vertically, read the line back in Latin, and carry it out as a transparent PNG, a plaque, or plain text. Real glyphs only survive as pictures, so that is how Rune Pad sends them.
+
+TWO THEMES
+
+Ritual and Arcadia. One curtain-rise between them, and nothing else that moves without a reason.
+
+WHAT IT DOES NOT DO
+
+There is no networking code in either target. No accounts, no analytics, no tracking, no data collection of any kind. Full Access is requested for one reason: iOS will not deliver haptic feedback from a keyboard extension without it. Leave Full Access off and everything except haptics behaves identically. The source is public, so this is checkable rather than promised.
+
+ACCESSIBILITY
+
+Full VoiceOver coverage, including the parts that are a game. Reduce Motion has a real alternative everywhere rather than a feature switched off. Dynamic Type scales through the accessibility sizes, and the alphabet chart reflows to two columns rather than truncating.
+
+Ten things are hidden in the app. Finding all of them unlocks one more.
