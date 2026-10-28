@@ -55,15 +55,18 @@ identifier_name:
     error: 1
 
 file_length:
-  # Real maximum is 1365 (SleepTokenKeyboard/KeyboardRootView.swift); next is 549 (Theme.swift).
-  # KeyboardRootView tripped the old 1450 ceiling on 2026-08-03 and EmojiPage moved to its
-  # own file in response — the recorded fix direction is the full MARK-seam split, not a
-  # higher ceiling.
+  # Real maximum is 1260 (SleepTokenKeyboard/KeyboardRootView.swift); next is 556 (Theme.swift).
+  # KeyboardRootView tripped the 1450 ceiling on 2026-08-03 (EmojiPage moved out) and
+  # again on 2026-10-27 (LetterPage and the options panel moved out) — the recorded fix
+  # direction is the full MARK-seam split, not a higher ceiling. The keycap chassis and
+  # the key button family are the seams that remain.
   warning: 1450
   error: 1600
 
 type_body_length:
-  # Real maximum is 412 lines (the RunePadView struct); KeyboardRootView is 409.
+  # Real maximum is 434 lines (the KeyboardRootView struct); RunePadView is 429.
+  # KeyboardRootView reached 494 on 2026-10-27 and the options panel moved to its own
+  # view in response — the same direction as file_length, not a higher ceiling.
   warning: 450
   error: 600
 
@@ -101,7 +104,7 @@ disabled_rules:
   - trailing_comma
   # Three optionals are written `= nil` on purpose: two opt-in callbacks, each
   # directly under the doc comment that explains it — `onComplete` on the
-  # ShareSheet in RuneExport.swift and `onHeightInputsChanged` on
+  # ShareSheet in RuneExport.swift and `onLayoutModeChanged` on
   # KeyboardRootView — and the optional `caption` on SettingsView's DefaultsRow.
   # The explicit default is the documentation; the rule is pure style and this
   # project already chose.

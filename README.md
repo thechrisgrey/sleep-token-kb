@@ -7,7 +7,7 @@
 [![Platform](https://img.shields.io/badge/platform-iOS%2026.5%2B-C8A968?style=for-the-badge&logo=apple&logoColor=white&labelColor=0E0D0F)](https://developer.apple.com/ios/)
 [![Swift](https://img.shields.io/badge/Swift-5.0-DE9BA9?style=for-the-badge&logo=swift&logoColor=white&labelColor=0E0D0F)](https://swift.org)
 [![SwiftUI](https://img.shields.io/badge/SwiftUI-native-C8A968?style=for-the-badge&logo=swift&logoColor=white&labelColor=0E0D0F)](https://developer.apple.com/xcode/swiftui/)
-[![Tests](https://img.shields.io/badge/tests-285%20passing-4F7A5C?style=for-the-badge&logo=checkmarx&logoColor=white&labelColor=0E0D0F)](#testing)
+[![Tests](https://img.shields.io/badge/tests-340%20passing-4F7A5C?style=for-the-badge&logo=checkmarx&logoColor=white&labelColor=0E0D0F)](#testing)
 [![License](https://img.shields.io/badge/license-MIT-C8A968?style=for-the-badge&labelColor=0E0D0F)](LICENSE)
 
 [![Targets](https://img.shields.io/badge/targets-3-DE9BA9?style=flat-square&labelColor=1A1820)](#project-structure)

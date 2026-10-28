@@ -109,6 +109,9 @@ enum SpellCheck {
 
     /// A word passes if either its lowercase *or* capitalised form is known, so proper
     /// nouns are not treated as mistakes — the same rule Rune Pad's checker uses.
+    /// `capitalized` keeps an apostrophe inside the word ("Don't", not "Don'T"), so
+    /// contractions are judged by both forms like any other word; SuggestionsTests
+    /// pins that.
     private static func isKnown(_ word: String, using checker: UITextChecker) -> Bool {
         !isUnknown(word, using: checker) || !isUnknown(word.capitalized, using: checker)
     }
@@ -138,16 +141,11 @@ public actor SpellWorker {
 
     public init() {}
 
+    /// Answers nothing for a request that was cancelled while it queued: a newer
+    /// keystroke has asked a different question, and `guesses()` is the whole cost.
     public func corrections(for word: String) -> [String] {
-        SpellCheck.corrections(for: word, using: checker)
-    }
-
-    /// Mirrors `SuggestionEngine.keepAsTyped` so the two checkers hold the same
-    /// vocabulary. The kept-word gate itself lives on the engine and runs before
-    /// anything reaches this actor; this only keeps the guesses in step.
-    public func keep(_ word: String) {
-        checker.ignoreWord(word)
-        checker.ignoreWord(word.lowercased())
+        guard !Task.isCancelled else { return [] }
+        return SpellCheck.corrections(for: word, using: checker)
     }
 }
 
@@ -160,11 +158,22 @@ public actor SpellWorker {
 /// one's; only the newest token may publish.
 final class SuggestionRequest {
     private var current = 0
+    /// The task behind the current request. Superseding or cancelling the request
+    /// cancels it, so a stale prefix's `guesses()` stops queueing ahead of the live one
+    /// in the actor instead of running to completion for an answer nobody can publish.
+    private var inFlight: Task<Void, Never>?
 
-    /// Issues the token for a request about to be made.
+    /// Issues the token for a request about to be made, cancelling the one before it.
     func issue() -> Int {
+        inFlight?.cancel()
+        inFlight = nil
         current += 1
         return current
+    }
+
+    /// Registers the task that will answer the request just issued.
+    func track(_ task: Task<Void, Never>) {
+        inFlight = task
     }
 
     func isCurrent(_ token: Int) -> Bool { token == current }
@@ -172,6 +181,8 @@ final class SuggestionRequest {
     /// Abandons every request in flight, so a stale answer cannot land after the
     /// field changed or correction was switched off.
     func cancelAll() {
+        inFlight?.cancel()
+        inFlight = nil
         current += 1
     }
 }
@@ -195,7 +206,7 @@ public final class SuggestionEngine {
     /// a cached sentence-start "Teh" then silently replaced a mid-sentence "teh" with
     /// a capitalised "The".
     private var guessCache: [String: [String]] = [:]
-    private static let cacheLimit = 512
+    static let cacheLimit = 512
 
     /// Words the user explicitly kept. Rejecting a correction has to stick, or the
     /// keyboard argues with them about their own vocabulary forever.
@@ -250,13 +261,14 @@ public final class SuggestionEngine {
         return corrections(for: word).first
     }
 
-    /// The user chose their own spelling. Stop correcting it, this session and after —
-    /// `ignoreWord` also keeps it out of the checker's own guesses.
+    /// The user chose their own spelling. Stop correcting it for the rest of this
+    /// session: every path that could consult the checker gates on `kept` first, so the
+    /// word never reaches the dictionary again and nothing needs telling. (An earlier
+    /// version also called `ignoreWord` here, which built the lazy checker on the first
+    /// keep for an effect nothing could observe.)
     public func keepAsTyped(_ word: String) {
         let lowered = word.lowercased()
         kept.insert(lowered)
-        checker.ignoreWord(word)
-        checker.ignoreWord(lowered)
         // Anything already memoised for this word, in any casing, is now wrong.
         guessCache = guessCache.filter { $0.key.lowercased() != lowered }
     }

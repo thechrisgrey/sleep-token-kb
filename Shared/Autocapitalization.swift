@@ -16,14 +16,10 @@ import UIKit
 /// are all textual and none of them need a live `UITextDocumentProxy` to answer.
 public enum Autocapitalization {
 
-    /// Characters that end a sentence for capitalisation purposes.
-    private static let terminators: Set<Character> = [".", "!", "?"]
-
-    /// Closing punctuation that may legally sit between the terminator and the space:
-    /// `He said "stop." ` still ends a sentence. Straight quotes double as openers, so
-    /// an opener directly before a space (`He said. " `) is conservatively not treated
-    /// as a boundary — a miss there costs one lowercase letter, not a wrong capital.
-    private static let closers: Set<Character> = ["\"", "'", ")", "]", "}", "\u{201D}", "\u{2019}"]
+    /// The terminators and closers live in `SentenceBoundary`, shared with the
+    /// double-space period: both rules look back past the same closing punctuation.
+    private static var terminators: Set<Character> { SentenceBoundary.terminators }
+    private static var closers: Set<Character> { SentenceBoundary.closers }
 
     /// The context arrives as an autoclosure so the host document is read only when the
     /// decision actually depends on it — never for `.none` fields, never when a manual

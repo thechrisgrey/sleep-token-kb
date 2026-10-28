@@ -77,3 +77,42 @@ final class PeriodShortcutTests: XCTestCase {
         )
     }
 }
+
+// MARK: - Closing punctuation
+
+extension PeriodShortcutTests {
+
+    /// `(see above)` then two quick spaces reads `(see above). ` on the system keyboard;
+    /// the closer sits between the word and the space and must not defeat the shortcut.
+    func testAClosingBracketOrQuoteAfterAWordStillEndsIt() {
+        for context in ["(see above) ", "he said \"stop\" ", "[fine] ", "{x} ", "it\u{2019}s \u{201D}ok\u{201D} ", "dogs' "] {
+            XCTAssertTrue(
+                PeriodShortcut.shouldSubstitute(contextBefore: context, sinceLastSpace: 0.2),
+                "\(context.debugDescription) should take a period"
+            )
+        }
+    }
+
+    /// Looking past the closer must still find a word, never a terminator: `"stop." `
+    /// already ends the sentence and a second period would read `"stop.". `.
+    func testACloserAfterATerminatorStillRefuses() {
+        for context in ["he said \"stop.\" ", "(done?) ", "[yes!] ", "\u{201C}no.\u{201D} "] {
+            XCTAssertFalse(
+                PeriodShortcut.shouldSubstitute(contextBefore: context, sinceLastSpace: 0.2),
+                "\(context.debugDescription) must not take a second period"
+            )
+        }
+    }
+
+    /// A bare closer with nothing before it is not a word end.
+    func testACloserAloneIsNotAWordEnd() {
+        XCTAssertFalse(PeriodShortcut.shouldSubstitute(contextBefore: ") ", sinceLastSpace: 0.2))
+        XCTAssertFalse(PeriodShortcut.shouldSubstitute(contextBefore: "\") ", sinceLastSpace: 0.2))
+    }
+
+    /// What VoiceOver speaks when the shortcut fires. Pinned because the view can only
+    /// post it; the silent sibling of the "Corrected X to Y" announcement.
+    func testTheShortcutHasASpokenAnnouncement() {
+        XCTAssertEqual(PeriodShortcut.announcement, "Period")
+    }
+}

@@ -38,12 +38,18 @@ final class SpaceTracker {
 
     /// The host document changed. The echo of this keyboard's own keystroke passes
     /// through; anything else breaks consecutiveness.
-    func hostTextDidChange() {
+    ///
+    /// Returns whether the change was external — the one fact the caps-lock double tap
+    /// also needs, so the echo of the keystroke before a quick shift-shift does not
+    /// land between the two taps as an interrupt.
+    @discardableResult
+    func hostTextDidChange() -> Bool {
         if pendingLocalEcho {
             pendingLocalEcho = false
-        } else {
-            lastSpace = nil
+            return false
         }
+        lastSpace = nil
+        return true
     }
 
     /// Any keystroke that is not a space breaks consecutiveness; so does a field change

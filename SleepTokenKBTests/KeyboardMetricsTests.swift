@@ -236,3 +236,62 @@ final class KeyboardMetricsTests: XCTestCase {
         )
     }
 }
+
+// MARK: - Grid tiling, bar widths and chrome faces
+
+extension KeyboardMetricsTests {
+
+    /// The A–Z grid's 9-key rows share one unit, the way the 10-key QWERTY rows do, so
+    /// columns align and the 8-key s–z row centres under them rather than stretching.
+    func testGridKeyUnitTilesNineKeysAcrossTheWidth() {
+        for width in [320.0, 375.0, 390.0, 430.0] as [CGFloat] {
+            let unit = KeyboardMetrics.keyUnit(availableWidth: width, keysPerRow: 9)
+            XCTAssertEqual(9 * unit + 8 * KeyboardMetrics.keyGap, width, accuracy: 0.001,
+                           "nine grid keys must tile width \(width)")
+            XCTAssertGreaterThan(unit, KeyboardMetrics.keyUnit(availableWidth: width),
+                                 "a 9-key unit is wider than the 10-key one")
+        }
+    }
+
+    /// The bottom bar's widths live here, not as literals in the view. Two of them sit
+    /// under the 44pt floor on purpose — stock's own globe and emoji keys do — and the
+    /// comment on the floor names them.
+    func testBottomBarWidthsAreNamed() {
+        XCTAssertEqual(KeyboardMetrics.globeKeyWidth, 38)
+        XCTAssertEqual(KeyboardMetrics.emojiKeyWidth, 38)
+        XCTAssertEqual(KeyboardMetrics.returnKeyWidth, 64)
+        XCTAssertGreaterThanOrEqual(KeyboardMetrics.returnKeyWidth, KeyboardMetrics.minimumTouchTarget)
+    }
+
+    /// Every face in the keyboard scales with Dynamic Type up to one ceiling, and the
+    /// chrome captions now scale with them. The ceiling is the controller's clamp.
+    func testTheDynamicTypeCeilingIsAccessibilityLarge() {
+        XCTAssertEqual(KeyboardMetrics.maximumContentSizeCategory, .accessibilityLarge)
+    }
+
+    /// The longest return titles must still fit the keycap at the ceiling: the title
+    /// scales with the body text style, shrinks no further than its minimum scale
+    /// factor, and has the cap width minus its inset to land in.
+    func testEveryReturnTitleFitsTheKeycapAtTheDynamicTypeCeiling() {
+        let ceiling = UITraitCollection(preferredContentSizeCategory: KeyboardMetrics.maximumContentSizeCategory)
+        let scaled = UIFontMetrics(forTextStyle: .body)
+            .scaledValue(for: KeyboardMetrics.returnFaceSize, compatibleWith: ceiling)
+        let smallest = scaled * KeyboardMetrics.returnMinimumScaleFactor
+        let descriptor = UIFont.systemFont(ofSize: smallest, weight: .semibold)
+            .fontDescriptor.withDesign(.rounded) ?? UIFont.systemFont(ofSize: smallest).fontDescriptor
+        let font = UIFont(descriptor: descriptor, size: smallest)
+        let available = KeyboardMetrics.returnKeyWidth - 2 * KeyboardMetrics.chromeTitleInset
+        let types: [UIReturnKeyType] = [
+            .default, .go, .google, .join, .next, .route,
+            .search, .send, .yahoo, .done, .emergencyCall, .continue
+        ]
+        for type in types {
+            let title = ReturnKeyTitle.title(for: type)
+            let width = (title as NSString).size(withAttributes: [.font: font]).width
+            XCTAssertLessThanOrEqual(
+                width, available,
+                String(format: "\"%@\" needs %.1fpt at the ceiling but the cap offers %.1f", title, width, available)
+            )
+        }
+    }
+}

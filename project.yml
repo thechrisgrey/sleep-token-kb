@@ -98,6 +98,7 @@ targets:
       - path: Shared/SymbolGlyphView.swift
       # Text-entry rules. Pure functions over the host field's state, kept out of the
       # views so they can be tested without a live UITextDocumentProxy.
+      - path: Shared/SentenceBoundary.swift
       - path: Shared/Autocapitalization.swift
       - path: Shared/AutoShift.swift
       - path: Shared/ReturnKeyTitle.swift
@@ -107,12 +108,15 @@ targets:
       - path: Shared/GlideDecoder.swift
       - path: Shared/GlideSession.swift
       - path: Shared/GlideCommit.swift
+      - path: Shared/GlideGate.swift
       - path: Shared/Resources/glide_lexicon.txt
       - path: Shared/KeyRepeat.swift
       - path: Shared/SpaceTracker.swift
       - path: Shared/CapsLockTap.swift
       - path: Shared/EmojiCatalog.swift
       - path: Shared/Suggestions.swift
+      - path: Shared/CorrectionUndo.swift
+      - path: Shared/SymbolVisit.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenKB.SleepTokenKeyboard
@@ -159,6 +163,10 @@ targets:
     platform: iOS
     sources:
       - path: SleepTokenKBTests
+      # The extension module cannot be imported by the tests, so its palette is
+      # compiled into the test bundle directly: KeyPaletteContrastTests holds the
+      # keyboard's own colours to the same WCAG floor ThemeContrastTests holds the app's.
+      - path: SleepTokenKeyboard/KeyPalette.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.altivum.SleepTokenKBTests

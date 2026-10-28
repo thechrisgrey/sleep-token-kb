@@ -22,21 +22,49 @@ struct EmojiPage: View {
     /// Read here rather than passed, exactly as KeyboardRootView reads it. See LetterPage.
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
+    /// The recents order this visit shows, frozen when the tab is opened. The root
+    /// promotes a tapped emoji to the front of the LIVE list at once, and rendering
+    /// that list reordered the grid under the thumb: tap the fifth cell and cells one
+    /// to four slid right while the finger was still down, so a second tap on the
+    /// same spot inserted whatever had been fourth. Stock holds the order for the
+    /// visit and shows the new order next time the tab opens; so does this.
+    @State private var shownRecents: [String]
+
+    init(
+        category: Binding<EmojiCategory>,
+        recents: [String],
+        cellHeight: CGFloat,
+        onInsert: @escaping (String) -> Void,
+        onBackspace: @escaping (Bool) -> Void
+    ) {
+        _category = category
+        self.recents = recents
+        self.cellHeight = cellHeight
+        self.onInsert = onInsert
+        self.onBackspace = onBackspace
+        // Seeded on arrival, here rather than in onAppear so the first frame already
+        // has the grid; `State(initialValue:)` is honoured once per visit, which is
+        // exactly the freeze.
+        _shownRecents = State(initialValue: recents)
+    }
+
     private var compact: Bool { verticalSizeClass == .compact }
 
     private var entries: [String] {
-        category == .recents ? recents : EmojiCatalog.emoji(in: category)
+        category == .recents ? shownRecents : EmojiCatalog.emoji(in: category)
     }
 
     var body: some View {
         VStack(spacing: KeyboardMetrics.rowGap(compact: compact)) {
             if entries.isEmpty {
                 // Recents on a fresh install. Teach the interface rather than showing
-                // an empty box.
+                // an empty box. The clock is decorative: the caption is the message,
+                // and the combined element must not open with "Clock".
                 VStack(spacing: 6) {
                     Image(systemName: "clock")
                         .font(.title3)
                         .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
                     Text("Emoji you use will appear here")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -88,6 +116,17 @@ struct EmojiPage: View {
                                 .frame(maxWidth: .infinity)
                                 .frame(height: Self.stripHeight)
                                 .contentShape(Rectangle())
+                                // The selected tab sits on the active fill — the same
+                                // "this one is on" the options panel and the emoji key
+                                // use — not on a tint change alone. Stock puts a filled
+                                // rounded square behind the current category.
+                                .background(
+                                    RoundedRectangle(
+                                        cornerRadius: KeyboardMetrics.keyCornerRadius,
+                                        style: .continuous
+                                    )
+                                    .fill(tab == category ? KeyPalette.active : Color.clear)
+                                )
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(tab.accessibilityLabel)
@@ -101,5 +140,7 @@ struct EmojiPage: View {
             }
             .frame(height: Self.stripHeight)
         }
+        // The live list is consulted again only when the tab changes.
+        .onChange(of: category) { shownRecents = recents }
     }
 }

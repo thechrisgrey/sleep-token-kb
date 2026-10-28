@@ -21,10 +21,11 @@ struct KeyboardRootView: View {
     /// Live reads of the field being edited: what precedes the cursor, how it wants text
     /// capitalised, what its return key means, and whether Full Access was granted.
     let host: HostField
-    /// Reports the page and layout mode whenever something that changes the required
-    /// height changes, so the container re-reserves space from the same inputs the
-    /// content lays itself out with -- one value, one channel.
-    var onHeightInputsChanged: ((KeyboardMetrics.HeightInputs) -> Void)? = nil
+    /// Reports the layout mode whenever it changes, so the container re-reserves height
+    /// from the same input the content lays itself out with -- one value, one channel.
+    /// The page deliberately does not travel: the container reserves the tallest page
+    /// for the layout, so a page change never changes the height.
+    var onLayoutModeChanged: ((LayoutMode) -> Void)? = nil
 
     // Preferences are deliberately declared with inert defaults and loaded in exactly one
     // place — `loadPreferences()`, called from `prepareForAppearance()` on appear.
@@ -41,13 +42,13 @@ struct KeyboardRootView: View {
     @State private var autoShift = AutoShift()
     @State private var page: KeyboardMetrics.Page = .letters
 
-    /// Whether a character has been typed since this visit to the symbol planes began.
-    /// Stock arms the space bar's return to letters on the first keystroke of a visit, not
-    /// on arrival — `123 space` stays on 123 so a "meet me at " keeps the digits one tap
-    /// away, while `123 5 space` goes back. Every deliberate page change clears it through
+    /// Whether the space bar's return to letters is armed for this visit to the symbol
+    /// planes. Stock arms it on the first keystroke of a visit, not on arrival — `123
+    /// space` stays on 123 so a "meet me at " keeps the digits one tap away, while `123
+    /// 5 space` goes back. Every deliberate page change starts a fresh visit through
     /// `setPage`; the 123 <-> #+= toggle deliberately does not, because stock counts the
-    /// two symbol planes as one visit. See `PageAfterSpace`.
-    @State private var typedOnSymbolPage = false
+    /// two symbol planes as one visit. The sequences are pinned in SymbolVisitTests.
+    @State private var symbolVisit = SymbolVisit()
 
     /// Bookkeeping for the double-space shortcut. A reference type held in `@State` on
     /// purpose, twice over: the reference never changes, so recording a timestamp does
@@ -64,7 +65,9 @@ struct KeyboardRootView: View {
     @State private var showsGlideAlternates = false
 
     /// Double-tap-shift-for-caps-lock, the gesture an iPhone thumb already knows. The
-    /// three-tap cycle still works; this is a shortcut into the same state.
+    /// quick second tap is the only road into caps lock (plus the named accessibility
+    /// action), and a tap on the locked state is the road out; the old three-tap cycle
+    /// is gone. See `AutoShift.userTappedShift` and `CapsLockTap`.
     @State private var capsLockTap = CapsLockTap()
 
     /// Emoji page session state. Recents are persisted; the selected tab is not, because
@@ -83,11 +86,17 @@ struct KeyboardRootView: View {
     /// Token holder for in-flight `SpellWorker` requests. Reference type in `@State`
     /// for the same reason `spaceTracker` is: nothing renders it.
     @State private var suggestionRequest = SuggestionRequest()
+    /// The road back from the last silent replacement: offered in the bar while the
+    /// caret sits on the corrected word. A value type; `@State` keeps it per view.
+    @State private var correctionUndo = CorrectionUndo()
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
-    /// Scaled within the keyboard's fixed height budget, clamped at the root so the
-    /// extension cannot grow unboundedly.
+    /// Scaled within the keyboard's fixed height budget. The ceiling is
+    /// `KeyboardMetrics.maximumContentSizeCategory`, applied by the controller to the
+    /// hosting view's trait collection — which is what these wrappers read. A
+    /// `.dynamicTypeSize` modifier inside `body` only ever reached the descendants, so
+    /// the faces kept growing past the clamp while the keys they sat in did not.
     @ScaledMetric(relativeTo: .caption2) private var hintSize: CGFloat = 9
     @ScaledMetric(relativeTo: .body) private var letterFaceSize: CGFloat = 17
     @ScaledMetric(relativeTo: .body) private var symbolFaceSize: CGFloat = 16
@@ -95,6 +104,10 @@ struct KeyboardRootView: View {
     /// words a low-vision user has to read to accept or decline a correction, and a
     /// fixed size left them small while every key face grew.
     @ScaledMetric(relativeTo: .body) private var candidateSize: CGFloat = 16
+    /// The chrome captions scale with the faces they sit beside; a fixed 14pt "space"
+    /// under 31pt letters inverted the hierarchy at accessibility sizes.
+    @ScaledMetric(relativeTo: .body) private var chromeFaceSize: CGFloat = KeyboardMetrics.chromeFaceSize
+    @ScaledMetric(relativeTo: .body) private var returnFaceSize: CGFloat = KeyboardMetrics.returnFaceSize
 
     /// One generator for the life of the extension. As an instance property it was
     /// re-allocated with every root view, so the object `prepare()` warmed was discarded
@@ -129,6 +142,12 @@ struct KeyboardRootView: View {
                 onAccept: acceptSuggestion
             )
             .frame(height: KeyboardMetrics.suggestionBarHeight(compact: isCompact))
+            // The container reserves the tallest page for the layout, and this VStack
+            // is bottom-anchored inside that reservation. The slack above a shorter
+            // page used to sit ABOVE the bar, dropping it under the thumb by 12pt on
+            // every face change and by a row on every tap of 123. Giving the bar's
+            // frame the slack pins the bar to the top and the keys to the bottom.
+            .frame(maxHeight: .infinity, alignment: .top)
 
             switch page {
             case .symbols, .symbolsAlt:
@@ -139,6 +158,7 @@ struct KeyboardRootView: View {
                     switchTitle: page == .symbols ? "#+=" : "123",
                     keyHeight: keyHeight,
                     faceSize: symbolFaceSize,
+                    chromeFaceSize: chromeFaceSize,
                     // Digits and punctuation move the cursor like any other insert, so
                     // they re-derive too — this was the one mutation path that skipped
                     // it and left shift stale on the 123 page.
@@ -152,7 +172,7 @@ struct KeyboardRootView: View {
                         }
                         insert(symbol)
                         // The keystroke that arms the space bar's return to letters.
-                        typedOnSymbolPage = true
+                        symbolVisit.didType()
                         applyAutocapitalization()
                     },
                     onSwitchPage: {
@@ -160,6 +180,7 @@ struct KeyboardRootView: View {
                         // Not `setPage`: stock counts 123 and #+= as one visit, so a digit
                         // typed on 123 still arms the space bar over on #+=.
                         page = (page == .symbols) ? .symbolsAlt : .symbols
+                        symbolVisit.didTogglePlane()
                     },
                     onBackspace: { deleteBackward(isRepeat: $0) }
                 )
@@ -205,16 +226,22 @@ struct KeyboardRootView: View {
         .overlay {
             if showsKeyboardOptions { keyboardOptionsPanel }
         }
-        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+        // The same ceiling the controller applies to the hosting view, restated here so
+        // a preview or test host without the controller clamps identically.
+        .dynamicTypeSize(...(DynamicTypeSize(KeyboardMetrics.maximumContentSizeCategory) ?? .accessibility2))
         .onAppear(perform: prepareForAppearance)
         .onChange(of: fieldGeneration) {
-            // A different field: the old field's shift provenance and double-space
-            // window are meaningless here. Start clean and derive for the new field.
+            // A different field: the old field's shift provenance, double-space window,
+            // correction memo and page are meaningless here. Start clean and derive for
+            // the new field — on letters, the way stock presents a fresh responder.
             autoShift = AutoShift()
             spaceTracker.interrupt()
             glideUndo.interrupt()
             capsLockTap.interrupt()
-            typedOnSymbolPage = false
+            correctionUndo.interrupt()
+            symbolVisit = SymbolVisit()
+            if page != .letters { setPage(.letters) }
+            emojiCategory = EmojiCategory.landing(recentsEmpty: emojiRecents.isEmpty)
             applyAutocapitalization()
             refreshSuggestions()
         }
@@ -222,12 +249,17 @@ struct KeyboardRootView: View {
             // A change this keyboard did not cause -- a cursor jump, a host-side clear,
             // a same-trait field switch -- breaks double-space consecutiveness; the echo
             // of our own keystroke passes through the tracker silently.
-            spaceTracker.hostTextDidChange()
+            let external = spaceTracker.hostTextDidChange()
             glideUndo.hostTextDidChange()
-            // Any text change — external or our own echo — is not the second tap
-            // of a shift double tap. CapsLockTap's contract names this case; the
-            // wiring used to deliver only the field-switch half of it.
-            capsLockTap.interrupt()
+            if external {
+                // An external change is not the second tap of a shift double tap, and
+                // the caret may no longer sit on the word the memo was recorded for.
+                // The echo of a local keystroke is NOT an interrupt: `insert()` already
+                // interrupted synchronously, and a slow host's echo of the letter
+                // before a quick shift-shift used to land between the two taps.
+                capsLockTap.interrupt()
+                correctionUndo.interrupt()
+            }
             applyAutocapitalization()
             if showsGlideAlternates {
                 // The echo of the glide commit: keep the alternates one round.
@@ -251,7 +283,7 @@ struct KeyboardRootView: View {
             // press on the emoji key, which is what buys the space bar its stock width.
             ChromeKeyButton(
                 content: .text(page == .letters ? "123" : "ABC"),
-                fontSize: 14,
+                fontSize: chromeFaceSize,
                 weight: .semibold,
                 label: page == .letters ? "Switch to numbers" : "Switch to letters"
             ) {
@@ -266,20 +298,25 @@ struct KeyboardRootView: View {
                 // hands us those. Tap still advances; long press opens the picker, which
                 // is the stock gesture and the only supported route to Apple's Emoji
                 // keyboard for a third-party extension.
-                GlobeKey(onTap: onNextKeyboard)
-                    .frame(width: 38)
+                GlobeKey(onTap: onNextKeyboard, onPress: haptic)
+                    .frame(width: KeyboardMetrics.globeKeyWidth)
             }
 
+            // One label whatever the page: on the emoji page this key is the selected
+            // "Emoji" key, not a second "Switch to letters" beside the ABC key — two
+            // adjacent keys announcing the same label and action were indistinguishable
+            // to VoiceOver. Selected-and-activating-deselects is the shift key's pattern.
             ChromeKeyButton(
                 content: .symbol(page == .emoji ? "keyboard" : "face.smiling"),
                 weight: .medium,
-                label: page == .emoji ? "Switch to letters" : "Emoji",
-                fill: page == .emoji ? KeyPalette.active : KeyPalette.function
+                label: "Emoji",
+                fill: page == .emoji ? KeyPalette.active : KeyPalette.function,
+                selected: page == .emoji
             ) {
                 haptic()
                 setPage(page == .emoji ? .letters : .emoji)
             }
-            .frame(width: 38)
+            .frame(width: KeyboardMetrics.emojiKeyWidth)
             .simultaneousGesture(
                 LongPressGesture(minimumDuration: 0.4).onEnded { _ in
                     haptic()
@@ -287,11 +324,16 @@ struct KeyboardRootView: View {
                 }
             )
             .accessibilityHint("Double tap and hold for layout and key face")
+            // The assistive route into the panel: a 0.4s hold is not a gesture VoiceOver
+            // or Switch Control users can be asked to perform.
+            .accessibilityAction(named: Text("Keyboard options")) {
+                showsKeyboardOptions = true
+            }
 
             // The space bar is a primary key, so it takes the primary keycap fill.
             ChromeKeyButton(
                 content: .text("space"),
-                fontSize: 14,
+                fontSize: chromeFaceSize,
                 weight: .regular,
                 label: "Space",
                 fill: KeyPalette.keycap,
@@ -301,17 +343,22 @@ struct KeyboardRootView: View {
             }
             .frame(maxWidth: .infinity)
 
-            // The cap names the host field's action -- Search, Send, Done -- rather
-            // than always reading "return", and honours enablesReturnKeyAutomatically
-            // the way the system keyboard does: disabled until the field has text.
-            // The controller rebuilds this view on every host text change, so both
-            // stay current. One read serves the cap and the spoken label alike.
+            // The cap names the host field's action -- search, send, done -- rather
+            // than always reading "return", takes stock's tinted action fill for those
+            // actions, and honours enablesReturnKeyAutomatically the way the system
+            // keyboard does: disabled until the field has text. The controller rebuilds
+            // this view on every host text change, so all three stay current. One read
+            // serves the cap, the fill and the spoken label alike.
             let returnKey = host.returnKeyType()
+            let isAction = ReturnKeyTitle.isAction(for: returnKey)
             ChromeKeyButton(
                 content: .text(ReturnKeyTitle.title(for: returnKey)),
-                fontSize: 13,
+                fontSize: returnFaceSize,
                 weight: .semibold,
+                minimumScaleFactor: KeyboardMetrics.returnMinimumScaleFactor,
                 label: ReturnKeyTitle.accessibilityLabel(for: returnKey),
+                fill: isAction ? KeyPalette.action : KeyPalette.function,
+                titleColor: isAction ? KeyPalette.actionTitle : Color.primary,
                 isTypingKey: true,
                 enabled: host.returnKeyEnabled()
             ) {
@@ -322,80 +369,31 @@ struct KeyboardRootView: View {
                 insert("\n")
                 applyAutocapitalization()
             }
-            .frame(width: 64)
+            .frame(width: KeyboardMetrics.returnKeyWidth)
         }
     }
 
-    /// Layout and key face, reachable by long-pressing the emoji key. Both are still in
-    /// the host app's settings; this is the in-keyboard shortcut they used to have as two
-    /// permanent chrome keys.
+    /// Layout and key face, reachable by long-pressing the emoji key or through the
+    /// key's named "Keyboard options" action. Both are still in the host app's settings;
+    /// this is the in-keyboard shortcut they used to have as two permanent chrome keys.
     private var keyboardOptionsPanel: some View {
-        ZStack {
-            KeyPalette.field.opacity(0.96)
-                .contentShape(Rectangle())
-                .onTapGesture { showsKeyboardOptions = false }
-
-            VStack(spacing: 10) {
-                optionRow(
-                    title: "Layout",
-                    options: LayoutMode.allCases.map { ($0.shortTitle, $0 == layoutMode) }
-                ) { index in
-                    layoutMode = LayoutMode.allCases[index]
-                    KeyboardPreferences.layoutMode = layoutMode
-                    onHeightInputsChanged?(.init(page: page, mode: layoutMode))
-                }
-
-                optionRow(
-                    title: "Key face",
-                    options: KeyFaceStyle.allCases.map { ($0.shortTitle, $0 == keyFaceStyle) }
-                ) { index in
-                    keyFaceStyle = KeyFaceStyle.allCases[index]
-                    KeyboardPreferences.keyFaceStyle = keyFaceStyle
-                    onHeightInputsChanged?(.init(page: page, mode: layoutMode))
-                }
-
-                Button("Done") { showsKeyboardOptions = false }
-                    .font(.footnote.weight(.semibold))
-                    .padding(.top, 2)
-            }
-            .padding(.horizontal, 12)
-        }
-        .accessibilityAddTraits(.isModal)
-    }
-
-    private func optionRow(
-        title: String,
-        options: [(String, Bool)],
-        select: @escaping (Int) -> Void
-    ) -> some View {
-        VStack(spacing: 4) {
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-            HStack(spacing: KeyboardMetrics.keyGap) {
-                ForEach(options.indices, id: \.self) { index in
-                    let (label, isSelected) = options[index]
-                    Button {
-                        haptic()
-                        select(index)
-                    } label: {
-                        Text(label)
-                            .font(.footnote.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .frame(minHeight: KeyboardMetrics.minimumTouchTarget)
-                            .background(
-                                RoundedRectangle(
-                                    cornerRadius: KeyboardMetrics.keyCornerRadius,
-                                    style: .continuous
-                                )
-                                .fill(isSelected ? KeyPalette.active : KeyPalette.function)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-                }
-            }
-        }
+        KeyboardOptionsPanel(
+            layoutMode: layoutMode,
+            keyFaceStyle: keyFaceStyle,
+            onSelectLayout: { mode in
+                layoutMode = mode
+                KeyboardPreferences.layoutMode = mode
+                onLayoutModeChanged?(mode)
+            },
+            // The key face changes row height, not reserved height: the container
+            // reserves the tallest face, so nothing is reported.
+            onSelectKeyFace: { style in
+                keyFaceStyle = style
+                KeyboardPreferences.keyFaceStyle = style
+            },
+            onDismiss: { showsKeyboardOptions = false },
+            haptic: haptic
+        )
     }
 
     // MARK: - Actions
@@ -405,7 +403,7 @@ struct KeyboardRootView: View {
     /// shared preferences, report the initial height inputs, derive the opening shift.
     private func prepareForAppearance() {
         loadPreferences()
-        onHeightInputsChanged?(.init(page: page, mode: layoutMode))
+        onLayoutModeChanged?(layoutMode)
         applyAutocapitalization()
         if glideEnabled {
             // Warm the 50k-word parse off-main so the first glide never pays
@@ -431,6 +429,8 @@ struct KeyboardRootView: View {
 
     private func insertLetter(_ letter: SleepTokenLetter) {
         insert(letter.englishInsert(shifted: autoShift.state.isUppercase))
+        // Typing on past a corrected word makes it the user's own again.
+        correctionUndo.interrupt()
         autoShift.didInsertLetter()
         applyAutocapitalization()
     }
@@ -461,12 +461,13 @@ struct KeyboardRootView: View {
             contextBefore: host.contextBefore(),
             sinceLastSpace: spaceTracker.sinceLastSpace
         ) {
-            haptic()
+            // The first space comes out, ". " goes in through the one insert path, so
+            // the bookkeeping (haptic, window, echo, caps-lock tap) cannot drift from
+            // every other keystroke's. The space is a VoiceOver-silent key; say what
+            // landed, as the autocorrection announcement does.
             onDeleteBackward()
-            onInsert(". ")
-            spaceTracker.interrupt()
-            spaceTracker.noteLocalChange()
-            capsLockTap.interrupt()
+            insert(". ")
+            AccessibilityNotification.Announcement(PeriodShortcut.announcement).post()
         } else {
             // insert() interrupts and re-opens are not its business; the record comes
             // after so the window belongs to this space.
@@ -494,6 +495,7 @@ struct KeyboardRootView: View {
                                            contextBefore: host.contextBefore(),
                                            lastInsertWasGlide: glideUndo.isArmed)
         insert(commit.text)                       // haptic, space window, echo note
+        correctionUndo.interrupt()
         glideUndo.record(wordLength: commit.word.count)
         glideUndo.noteLocalChange()
         autoShift.didInsertLetter()
@@ -516,21 +518,25 @@ struct KeyboardRootView: View {
     private func returnToLettersAfterSpace() {
         let next = PageAfterSpace.page(
             from: page,
-            typedSinceEntering: typedOnSymbolPage,
+            typedSinceEntering: symbolVisit.isArmed,
             numberPadField: host.usesNumberPad()
         )
         guard next != page else { return }
         setPage(next)
     }
 
-    /// The one channel every deliberate page change goes through. It clears the space
-    /// bar's arming, because a fresh visit to the symbol planes starts disarmed, and
-    /// reports the height inputs the container reserves from. The 123 <-> #+= toggle is
-    /// the deliberate exception: stock counts both planes as a single visit.
+    /// The one channel every deliberate page change goes through. It starts a fresh,
+    /// disarmed symbol visit, and lands the emoji page on the tab stock would — Recents
+    /// once there are any, Smileys before, so a new user sees emoji rather than the
+    /// clock tab's teaching text. The 123 <-> #+= toggle is the deliberate exception:
+    /// stock counts both planes as a single visit. Height is not reported: the
+    /// container reserves the tallest page, so a page change never changes it.
     private func setPage(_ next: KeyboardMetrics.Page) {
         page = next
-        typedOnSymbolPage = false
-        onHeightInputsChanged?(.init(page: page, mode: layoutMode))
+        symbolVisit.didChangePage()
+        if next == .emoji {
+            emojiCategory = EmojiCategory.landing(recentsEmpty: emojiRecents.isEmpty)
+        }
     }
 
     /// `isRepeat` is false for the tap that begins a hold and true for every repeat after
@@ -608,6 +614,16 @@ struct KeyboardRootView: View {
         }
         let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
 
+        // The caret is back on a word this keyboard silently replaced: offer what was
+        // typed, the way stock does, before the engine can call the replacement a
+        // known word and show nothing.
+        if let typed = correctionUndo.original(ifCurrentWordIs: word) {
+            suggestionRequest.cancelAll()
+            let offer = SuggestionSet(literal: word, candidates: [typed])
+            if offer != suggestions { suggestions = offer }
+            return
+        }
+
         // Anything the engine can answer for free — a kept word, one under the length
         // floor, the pronoun, or a memo already filled — lands in this keystroke.
         if let immediate = suggestionEngine.immediateSuggestions(forPartialWord: word) {
@@ -623,14 +639,16 @@ struct KeyboardRootView: View {
         let literalOnly = SuggestionSet(literal: word, candidates: [])
         if literalOnly != suggestions { suggestions = literalOnly }
 
-        Task { @MainActor in
+        // Tracked so the next keystroke cancels it: a superseded request used to run
+        // `guesses()` to completion in the actor and merely lose the right to publish.
+        suggestionRequest.track(Task { @MainActor in
             let candidates = await SpellWorker.shared.corrections(for: word)
             // A newer keystroke has already asked a different question.
             guard suggestionRequest.isCurrent(token) else { return }
             suggestionEngine.remember(word, corrections: candidates)
             let updated = SuggestionSet(literal: word, candidates: candidates)
             if updated != suggestions { suggestions = updated }
-        }
+        })
     }
 
     /// Replaces the word in progress with `replacement`, by deleting exactly as many
@@ -644,23 +662,29 @@ struct KeyboardRootView: View {
         spaceTracker.noteLocalChange()
     }
 
-    /// The user tapped a correction.
+    /// The user tapped a correction — or, after a silent replacement, the word they
+    /// originally typed. Taking a correction back is a rejection of it: stock stops
+    /// correcting that word, and so does this.
     private func acceptSuggestion(_ replacement: String) {
         haptic()
+        let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
+        let isRevert = correctionUndo.original(ifCurrentWordIs: word) == replacement
         replaceCurrentWord(with: replacement)
+        if isRevert { suggestionEngine.keepAsTyped(replacement) }
+        correctionUndo.interrupt()
         refreshSuggestions()
         applyAutocapitalization()
     }
 
     /// The user tapped their own spelling. Keep it, and stop offering to change it —
     /// otherwise the keyboard argues with them about their own vocabulary forever.
+    /// The engine's kept set gates every path before either checker is consulted, so
+    /// there is nothing to tell the bar's worker.
     private func keepTypedWord() {
         haptic()
         let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
         guard !word.isEmpty else { return }
         suggestionEngine.keepAsTyped(word)
-        // The bar's checker is a different instance; keep the two vocabularies in step.
-        Task { await SpellWorker.shared.keep(word) }
         refreshSuggestions()
     }
 
@@ -676,9 +700,13 @@ struct KeyboardRootView: View {
         let word = WordBoundary.currentWord(in: host.contextBefore() ?? "")
         guard let replacement = suggestionEngine.autoReplacement(for: word) else { return }
         replaceCurrentWord(with: replacement)
-        AccessibilityNotification.Announcement(
-            SuggestionEngine.announcement(replacing: word, with: replacement)
-        ).post()
+        correctionUndo.record(typed: word, replacement: replacement)
+        // High priority: the caller inserts the boundary in the same call, and
+        // VoiceOver's typing echo of that space or return used to cut the default-
+        // priority announcement to a syllable.
+        var spoken = AttributedString(SuggestionEngine.announcement(replacing: word, with: replacement))
+        spoken.accessibilitySpeechAnnouncementPriority = .high
+        AccessibilityNotification.Announcement(spoken).post()
     }
 
     /// Re-reads the field and arms or releases shift accordingly. Runs after anything
@@ -697,232 +725,6 @@ struct KeyboardRootView: View {
         Self.impact.impactOccurred(intensity: 0.7)
         // Re-arm for the next keystroke; a single warm-up only covers the first tap.
         Self.impact.prepare()
-    }
-}
-
-// MARK: - Pages
-
-private struct LetterPage: View {
-    let layoutMode: LayoutMode
-    let keyFaceStyle: KeyFaceStyle
-    let shift: ShiftState
-    let keyHeight: CGFloat
-    let hintSize: CGFloat
-    let faceSize: CGFloat
-    /// Glide typing: QWERTY-only, off under VoiceOver, additive over the buttons.
-    let glideEnabled: Bool
-    let onLetter: (SleepTokenLetter) -> Void
-    let onShift: () -> Void
-    /// The named accessibility action on the shift key — the assistive route into
-    /// caps lock now that the slow tap releases instead of cycling.
-    let onCapsLock: () -> Void
-    let onBackspace: (Bool) -> Void
-    let onGlide: (_ trace: [CGPoint], _ availableWidth: CGFloat) -> Void
-
-    @State private var glide = GlideSession()
-    /// Keeps taps suppressed one runloop tick past lift, so the origin key's
-    /// Button cannot fire on the same touch-up. During the drag itself the
-    /// suppression rides `isGliding`.
-    @State private var suppressesTaps = false
-    /// True while the finger is down in THIS gesture. `@GestureState`, not
-    /// `@State`, and the difference is the whole point (see BackspaceKey): its
-    /// reset also runs when the system CANCELS the touch, so a call banner
-    /// mid-glide cannot wedge the keyboard.
-    @GestureState private var isGliding = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Read here rather than passed, exactly as KeyboardRootView reads it: both sit in
-    /// one hosting controller's trait environment, so there is only ever one answer —
-    /// and the row pitch this page draws with must be the one height was reserved for.
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
-
-    private var compact: Bool { verticalSizeClass == .compact }
-
-    private var rows: [[SleepTokenLetter]] {
-        layoutMode == .qwerty ? KeyboardLayout.qwertyRows : KeyboardLayout.gridRows
-    }
-
-    var body: some View {
-        // One GeometryReader for the page (not per key) so every row shares a key unit
-        // and columns line up. Height is pinned by the caller, so it cannot expand.
-        GeometryReader { geo in
-            let unit = KeyboardMetrics.keyUnit(availableWidth: geo.size.width)
-            VStack(spacing: KeyboardMetrics.rowGap(compact: compact)) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                    HStack(spacing: KeyboardMetrics.keyGap) {
-                        if layoutMode == .qwerty && index == rows.count - 1 {
-                            shiftKey(unit: unit)
-                            // Stock seats shift and delete flush against the keyboard's
-                            // own edge and leaves a wider gap before the letters than
-                            // between them, so a thumb aiming at Z has room to miss.
-                            // The HStack already contributes one keyGap either side of
-                            // this spacer, so it carries only the remainder.
-                            Color.clear
-                                .frame(width: KeyboardMetrics.functionKeySpacer(keyUnit: unit))
-                        }
-
-                        ForEach(row) { letter in
-                            LetterKeyButton(
-                                letter: letter,
-                                keyFaceStyle: keyFaceStyle,
-                                // Rune art carries no case, so its VISUAL face is pinned
-                                // to false. The spoken case below is never pinned: the
-                                // label must tell the truth on every face, which costs
-                                // rune art the same shift-change repaint the Latin
-                                // faces already pay.
-                                shifted: keyFaceStyle == .runeArt ? false : shift.isUppercase,
-                                spokenUppercase: shift.isUppercase,
-                                keyHeight: keyHeight,
-                                hintSize: hintSize,
-                                faceSize: faceSize,
-                                fixedWidth: layoutMode == .qwerty ? unit : nil,
-                                action: {
-                                    guard !(isGliding || suppressesTaps) else { return }
-                                    onLetter(letter)
-                                }
-                            )
-                            .equatable()
-                        }
-
-                        if layoutMode == .qwerty && index == rows.count - 1 {
-                            Color.clear
-                                .frame(width: KeyboardMetrics.functionKeySpacer(keyUnit: unit))
-                            backspaceKey(unit: unit)
-                        }
-                    }
-                    // Centre the 9-key home row under the 10-key top row. The old flat
-                    // 12pt literal could not be correct on more than one screen width.
-                    .padding(
-                        .horizontal,
-                        layoutMode == .qwerty && index == rows.count - 2
-                            ? KeyboardMetrics.homeRowInset(keyUnit: unit)
-                            : 0
-                    )
-                }
-
-                if layoutMode == .grid {
-                    HStack(spacing: KeyboardMetrics.keyGap) {
-                        shiftKey(unit: unit)
-                        Spacer(minLength: 0)
-                        backspaceKey(unit: unit)
-                    }
-                    .frame(height: keyHeight)
-                }
-            }
-            .frame(width: geo.size.width, alignment: .top)
-            .overlay {
-                if glide.isActive {
-                    GlideTrailView(points: glide.points, reduceMotion: reduceMotion)
-                        .allowsHitTesting(false)
-                }
-            }
-            .simultaneousGesture(glideGesture(width: geo.size.width), including: glideActive ? .all : .subviews)
-            .onChange(of: isGliding) { _, active in
-                // @GestureState's reset is the only signal a CANCELLED touch
-                // gives us: falling while the session is still active means no
-                // onEnded came — discard the glide, clear the trail. This is
-                // the spec's cancellation clause, and GlideSession.cancel's
-                // one production caller.
-                guard !active, glide.isActive else { return }
-                glide.cancel()
-                suppressesTaps = false
-            }
-        }
-    }
-
-    private var glideActive: Bool {
-        glideEnabled && layoutMode == .qwerty && !UIAccessibility.isVoiceOverRunning
-    }
-
-    private func glideGesture(width: CGFloat) -> some Gesture {
-        let unit = KeyboardMetrics.keyUnit(availableWidth: width)
-        return DragGesture(minimumDistance: unit / 2, coordinateSpace: .local)
-            .updating($isGliding) { _, state, _ in state = true }
-            .onChanged { value in
-                guard glideActive else { return }
-                if glide.points.first != value.startLocation {
-                    // A glide must BEGIN on a letter: a thumb drifting off a
-                    // held backspace or shift is not a word. 0.9 units reaches
-                    // a letter key's corners and rejects the function keys.
-                    guard nearestLetterDistance(to: value.startLocation, width: width)
-                        <= unit * 0.9 else { return }
-                }
-                suppressesTaps = true
-                glide.extend(start: value.startLocation, to: value.location)
-            }
-            .onEnded { value in
-                guard glideActive, glide.isActive else { return }
-                let trace = glide.finish(at: value.location)
-                onGlide(trace, width)
-                // Release tap suppression on the next runloop tick, after the
-                // origin Button has had its chance to (not) fire for this touch.
-                Task { @MainActor in suppressesTaps = false }
-            }
-    }
-
-    private func nearestLetterDistance(to point: CGPoint, width: CGFloat) -> CGFloat {
-        let centers = KeyCenters.qwerty(
-            availableWidth: width,
-            keyHeight: keyHeight,
-            compact: compact
-        )
-        return centers.values.map { hypot($0.x - point.x, $0.y - point.y) }.min() ?? .infinity
-    }
-
-    private func shiftKey(unit: CGFloat) -> some View {
-        IconKeyButton(
-            systemName: shift.symbolName,
-            fill: shift == .off ? KeyPalette.function : KeyPalette.active,
-            label: "Shift",
-            value: shift.accessibilityValue,
-            selected: shift != .off,
-            action: onShift
-        )
-        // The double tap that engages caps lock is two activations inside 0.35s —
-        // not a gesture VoiceOver or Switch Control users can perform. The named
-        // action is their road in; everyone else double-taps.
-        .accessibilityAction(named: Text("Caps lock"), onCapsLock)
-        .frame(
-            width: KeyboardMetrics.functionKeyWidth(keyUnit: unit),
-            height: keyHeight
-        )
-    }
-
-    private func backspaceKey(unit: CGFloat) -> some View {
-        BackspaceKey(
-            width: KeyboardMetrics.functionKeyWidth(keyUnit: unit),
-            keyHeight: keyHeight,
-            onBackspace: onBackspace
-        )
-    }
-}
-
-/// The comet trail behind a gliding finger. Reduce Motion gets a uniform line —
-/// same information, no animated fade.
-private struct GlideTrailView: View {
-    let points: [CGPoint]
-    let reduceMotion: Bool
-
-    var body: some View {
-        Canvas { context, _ in
-            guard points.count > 1 else { return }
-            if reduceMotion {
-                var path = Path()
-                path.addLines(points)
-                context.stroke(path, with: .color(KeyPalette.active.opacity(0.55)),
-                               style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-            } else {
-                // Newest segments brightest: opacity climbs along the trail.
-                let count = points.count
-                for index in 1..<count {
-                    var segment = Path()
-                    segment.move(to: points[index - 1])
-                    segment.addLine(to: points[index])
-                    let progress = Double(index) / Double(count)
-                    context.stroke(segment, with: .color(KeyPalette.active.opacity(0.15 + 0.55 * progress)),
-                                   style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-                }
-            }
-        }
     }
 }
 
@@ -1013,21 +815,52 @@ private struct SuggestionBar: View {
 /// this key is a `UIButton` that forwards both.
 private struct GlobeKey: UIViewRepresentable {
     let onTap: () -> Void
+    /// Touch-down feedback, the same haptic every other bar key fires.
+    let onPress: () -> Void
 
     func makeUIView(context: Context) -> UIButton {
-        let button = UIButton(type: .system)
-        button.setImage(
-            UIImage(systemName: "globe", withConfiguration: UIImage.SymbolConfiguration(
-                pointSize: 16, weight: .medium
-            )),
-            for: .normal
+        // Configuration-based so the press appearance can be driven from the button's
+        // own state: the system button only dimmed its glyph on touch-down while every
+        // other key drops the whole cap to 55% and, outside Reduce Motion, to 97%.
+        var configuration = UIButton.Configuration.plain()
+        configuration.contentInsets = .zero
+        // Text-style, not a point size: scales with Dynamic Type exactly as the SF
+        // Symbols on the SwiftUI keys do, and the hosting view's content-size ceiling
+        // is inherited through the trait collection.
+        configuration.image = UIImage(
+            systemName: "globe",
+            withConfiguration: UIImage.SymbolConfiguration(textStyle: .body)
+                .applying(UIImage.SymbolConfiguration(weight: .medium))
         )
-        button.tintColor = .label
+        configuration.baseForegroundColor = .label
+        let button = UIButton(configuration: configuration)
+        // The cap is the button's own layer, not the configuration's background: that
+        // is the one place a continuous corner curve — the keycap shape every SwiftUI
+        // key draws — can be set.
         button.backgroundColor = KeyPalette.functionColor
         button.layer.cornerRadius = KeyboardMetrics.keyCornerRadius
         button.layer.cornerCurve = .continuous
+        button.configurationUpdateHandler = { button in
+            let pressed = button.isHighlighted
+            let scale: CGFloat = pressed && !UIAccessibility.isReduceMotionEnabled ? 0.97 : 1
+            let apply = {
+                button.alpha = pressed ? 0.55 : 1
+                button.transform = CGAffineTransform(scaleX: scale, y: scale)
+            }
+            // Highlight lands immediately; only the release fades out — PressAppearance.
+            if pressed || UIAccessibility.isReduceMotionEnabled {
+                apply()
+            } else {
+                UIView.animate(withDuration: 0.08, delay: 0, options: .curveEaseOut, animations: apply)
+            }
+        }
         button.accessibilityLabel = "Next keyboard"
         button.accessibilityHint = "Double tap and hold to choose a keyboard"
+        button.addTarget(
+            context.coordinator,
+            action: #selector(Coordinator.handleTouchDown),
+            for: .touchDown
+        )
         button.addTarget(
             context.coordinator,
             action: #selector(Coordinator.handlePress(_:event:)),
@@ -1038,13 +871,20 @@ private struct GlobeKey: UIViewRepresentable {
 
     func updateUIView(_ button: UIButton, context: Context) {
         context.coordinator.onTap = onTap
+        context.coordinator.onPress = onPress
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator(onTap: onTap) }
+    func makeCoordinator() -> Coordinator { Coordinator(onTap: onTap, onPress: onPress) }
 
     final class Coordinator: NSObject {
         var onTap: () -> Void
-        init(onTap: @escaping () -> Void) { self.onTap = onTap }
+        var onPress: () -> Void
+        init(onTap: @escaping () -> Void, onPress: @escaping () -> Void) {
+            self.onTap = onTap
+            self.onPress = onPress
+        }
+
+        @objc func handleTouchDown() { onPress() }
 
         /// The controller installs itself as the input view controller for this key so
         /// the long press can reach `handleInputModeList`. Walking the responder chain
@@ -1083,8 +923,10 @@ private extension UIResponder {
 /// The shared press feedback: highlight lands on touch-down, only the release fades
 /// out, and Reduce Motion drops the scale. One definition serves the Button-based keys
 /// (through KeyPressStyle) and the gesture-driven delete key alike — previously the
-/// same four lines existed twice and had to be retuned in lockstep.
-private struct PressAppearance: ViewModifier {
+/// same four lines existed twice and had to be retuned in lockstep. Internal, like the
+/// rest of the chassis, so LetterPage, the options panel and the symbol and emoji pages
+/// draw with it from their own files.
+struct PressAppearance: ViewModifier {
     let isPressed: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -1099,7 +941,7 @@ private struct PressAppearance: ViewModifier {
     }
 }
 
-private extension View {
+extension View {
     func pressAppearance(_ isPressed: Bool) -> some View {
         modifier(PressAppearance(isPressed: isPressed))
     }
@@ -1128,7 +970,7 @@ struct BackspaceKey: View {
 }
 
 /// The one keycap shape. Four key structs previously re-declared it independently.
-private struct KeycapBackground: ViewModifier {
+struct KeycapBackground: ViewModifier {
     let fill: Color
 
     func body(content: Content) -> some View {
@@ -1139,7 +981,7 @@ private struct KeycapBackground: ViewModifier {
     }
 }
 
-private extension View {
+extension View {
     func keycap(fill: Color) -> some View {
         modifier(KeycapBackground(fill: fill))
     }
@@ -1147,7 +989,7 @@ private extension View {
 
 // MARK: - Keys
 
-private struct LetterKeyButton: View, Equatable {
+struct LetterKeyButton: View, Equatable {
     let letter: SleepTokenLetter
     let keyFaceStyle: KeyFaceStyle
     /// Whether the Latin faces render uppercase. Keycaps flipping case with shift is
@@ -1207,7 +1049,9 @@ private struct LetterKeyButton: View, Equatable {
                     .accessibilityHidden(true)
                 Text(shifted ? letter.upperLatin : letter.latin)
                     .font(.system(size: hintSize, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.secondary)
+                    // Its own role: `.secondary` over the keycap resolved to ~3.4:1 on
+                    // the one face whose job is the Latin mapping.
+                    .foregroundStyle(KeyPalette.hint)
                     .accessibilityHidden(true)
             }
             .padding(.vertical, 5)
@@ -1241,7 +1085,7 @@ struct SymbolKeyButton: View {
 }
 
 /// Shift and backspace, which previously differed only in four literals.
-private struct IconKeyButton: View {
+struct IconKeyButton: View {
     let systemName: String
     let fill: Color
     let label: String
@@ -1273,7 +1117,7 @@ private struct IconKeyButton: View {
 /// Button fires on release and this key has to fire on touch-down and keep firing until the
 /// finger lifts. The drag also survives the finger sliding off the keycap, which is exactly
 /// what happens when someone holds delete and their thumb relaxes.
-private struct RepeatingIconKeyButton: View {
+struct RepeatingIconKeyButton: View {
     let systemName: String
     let fill: Color
     let label: String
@@ -1358,15 +1202,29 @@ struct ChromeKeyButton: View {
     }
 
     let content: Content
-    var fontSize: CGFloat = 14
+    /// Already scaled by the caller's `@ScaledMetric`; the default is the unscaled
+    /// chrome face for callers without one.
+    var fontSize: CGFloat = KeyboardMetrics.chromeFaceSize
     var weight: Font.Weight = .regular
+    var minimumScaleFactor: CGFloat = KeyboardMetrics.chromeMinimumScaleFactor
     let label: String
     var fill: Color = KeyPalette.function
+    var titleColor: Color = .primary
     /// True for keys that insert text (space, return): adds `.isKeyboardKey`.
     var isTypingKey: Bool = false
+    /// True for a mode key whose mode is showing (the emoji key on the emoji page):
+    /// adds `.isSelected`, the shift key's pattern.
+    var selected: Bool = false
     /// Return honours `enablesReturnKeyAutomatically`; everything else is always on.
     var enabled: Bool = true
     let action: () -> Void
+
+    private var traits: AccessibilityTraits {
+        var traits: AccessibilityTraits = []
+        if isTypingKey { traits.insert(.isKeyboardKey) }
+        if selected { traits.insert(.isSelected) }
+        return traits
+    }
 
     var body: some View {
         Button(action: action) {
@@ -1379,12 +1237,13 @@ struct ChromeKeyButton: View {
                     Text(title)
                         .font(.system(size: fontSize, weight: weight, design: .rounded))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.65)
+                        .minimumScaleFactor(minimumScaleFactor)
                         // Breathing room before the cap edge: without it a long
-                        // adaptive return title ("Continue") renders edge-to-edge.
-                        .padding(.horizontal, 4)
+                        // adaptive return title ("continue") renders edge-to-edge.
+                        .padding(.horizontal, KeyboardMetrics.chromeTitleInset)
                 }
             }
+            .foregroundStyle(titleColor)
             .opacity(enabled ? 1 : 0.35)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .keycap(fill: fill)
@@ -1392,11 +1251,11 @@ struct ChromeKeyButton: View {
         .buttonStyle(KeyPressStyle())
         .disabled(!enabled)
         .accessibilityLabel(label)
-        .accessibilityAddTraits(isTypingKey ? .isKeyboardKey : [])
+        .accessibilityAddTraits(traits)
     }
 }
 
-private struct KeyPressStyle: ButtonStyle {
+struct KeyPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.pressAppearance(configuration.isPressed)
     }

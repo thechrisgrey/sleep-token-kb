@@ -113,3 +113,20 @@ final class PageParityTests: XCTestCase {
         }
     }
 }
+
+// MARK: - Per-row identity
+
+extension PageParityTests {
+
+    /// `SymbolsPage` keys each row's cells with `ForEach(id: \.self)`, so a character
+    /// repeated inside one row would collide identities and misrender. The page-wide
+    /// uniqueness check in `KeyboardLayoutTests` covers this too, but only by
+    /// implication; the row is the unit the view actually enumerates.
+    func testNoSymbolRepeatsWithinARow() {
+        for rows in [KeyboardLayout.symbolRows, KeyboardLayout.symbolAltRows] {
+            for row in rows {
+                XCTAssertEqual(Set(row).count, row.count, "row \(row) repeats a symbol")
+            }
+        }
+    }
+}
