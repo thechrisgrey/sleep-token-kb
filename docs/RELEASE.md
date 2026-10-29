@@ -184,6 +184,19 @@ are present, whether both privacy manifests are valid, whether the version keys 
 wired to build settings, and the version and build number this run would produce.
 Safe to run at any time, including with no credentials configured at all.
 
+It also asks the questions that `xcodebuild -version` cannot answer. Every Xcode
+update re-locks the toolchain twice: the licence has to be accepted again, and the
+first-launch packages installed again. Until both are done, `-version` still prints
+and every build command exits 69. Preflight checks both directly and prints the fix
+with Xcode's full path, since `xcode-select` here points at the Command Line Tools.
+Both fixes need `sudo`, so they are run in Terminal.app. With a key configured,
+preflight also makes one read against App Store Connect. While the Account Holder
+has an agreement waiting, every call answers
+`FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED`, which is fatal for `validate`
+and `upload` and a note for everything else. A clean answer is necessary rather than
+sufficient: on 2026-10-28 the block lifted endpoint by endpoint over several
+minutes.
+
 ```bash
 ./scripts/release.sh status
 ```
@@ -228,6 +241,17 @@ was requested. Uploads nothing.
 Archive, then run Apple's own validation without submitting. This is the step that
 catches missing icons, entitlement mismatches, and privacy-manifest problems.
 
+The stage reads altool's transcript rather than trusting its exit status. Blocked by
+a pending agreement, altool printed `VERIFY SUCCEEDED with no errors, 4 warnings`,
+then `A non-validation error occurred during validation. (403) Skipping validation.`,
+and exited 0. So validation counts as passed only if the transcript reports success
+and never reports a skip. A skip fails the stage with Apple's reason, and nothing is
+uploaded.
+
+Validation is not free of side effects on Apple's side: it opens the build-upload
+record for that build number, in state `AWAITING_UPLOAD`, before any file is sent.
+The upload that follows completes the same record.
+
 ```bash
 ./scripts/release.sh upload
 ```
@@ -240,8 +264,22 @@ processing, uploaded but not yet distributed to anyone.
 ```
 
 Builds nothing and uploads nothing: Apple rejects a second upload of a build number
-outright, so this stage only ever works on a build that is already there. It takes
-that build the rest of the way, in the only order that is safe:
+outright, so this stage only ever works on a build that is already there.
+
+"Already there" lags the upload by a few minutes. On 2026-10-28 build 103's upload
+finished at 15:57 and `/v1/builds` first listed it at 16:00. So when the build is not
+listed, the stage reads Apple's build-upload record for that number instead of
+giving up:
+
+| Upload record | Meaning | The stage |
+|---|---|---|
+| `PROCESSING` or `COMPLETE` | the file arrived | waits up to 15 minutes for the build to be listed |
+| `AWAITING_UPLOAD` | a record with no file: a validate-only run, or an upload that failed | stops at once and says to run `upload` |
+| `FAILED` | Apple refused the file | stops at once with Apple's errors |
+| none | never uploaded | stops at once |
+
+Once the build is listed, the stage takes it the rest of the way, in the only order
+that is safe:
 
 1. Waits for `processingState` to reach `VALID`, and fails immediately on `INVALID`
    or `FAILED` rather than waiting out the timeout.
