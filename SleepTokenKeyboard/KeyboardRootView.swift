@@ -1221,8 +1221,8 @@ struct ChromeKeyButton: View {
 
     private var traits: AccessibilityTraits {
         var traits: AccessibilityTraits = []
-        if isTypingKey { traits.insert(.isKeyboardKey) }
-        if selected { traits.insert(.isSelected) }
+        if isTypingKey { traits.formUnion(.isKeyboardKey) }
+        if selected { traits.formUnion(.isSelected) }
         return traits
     }
 
