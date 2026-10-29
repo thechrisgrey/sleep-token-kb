@@ -114,6 +114,31 @@ preflight() {
   step "Toolchain"
   if [ -d "$DEVELOPER_DIR" ]; then
     ok "$(xcodebuild -version | head -1) at $DEVELOPER_DIR"
+    # -version answers even while every other xcodebuild command is locked, so it
+    # says nothing about whether this Xcode can build. Each Xcode update re-locks it
+    # twice over: the licence has to be accepted again, and the first-launch packages
+    # installed again. After 27.1, preflight printed [ok] here while archive, simctl
+    # and swiftlint all exited 69, and then test.sh failed on "CoreSimulator is out
+    # of date" once the licence was in. Both are asked about directly instead.
+    #
+    # Both fixes need sudo, and sudo needs a terminal for the password, so they are
+    # run in Terminal.app. The full path matters: xcode-select on this machine points
+    # at the Command Line Tools, whose xcodebuild cannot accept an Xcode licence.
+    if xcodebuild -license check >/dev/null 2>&1; then
+      ok "the Xcode licence is accepted"
+      if xcodebuild -checkFirstLaunchStatus >/dev/null 2>&1; then
+        ok "the first-launch packages are installed"
+      else
+        bad "this Xcode's first-launch packages are not installed"
+        note "in Terminal.app: sudo $DEVELOPER_DIR/usr/bin/xcodebuild -runFirstLaunch"
+        fatal=1
+      fi
+    else
+      bad "the licence for this Xcode has not been accepted"
+      note "in Terminal.app: sudo $DEVELOPER_DIR/usr/bin/xcodebuild -license accept"
+      note "the first-launch packages cannot be checked until it is"
+      fatal=1
+    fi
   else
     bad "Xcode not found at $DEVELOPER_DIR. Set DEVELOPER_DIR."
     fatal=1
@@ -148,6 +173,38 @@ preflight() {
       validate|upload) bad "the $STAGE stage cannot run without an API key"; fatal=1 ;;
       *)               note "archive may still work if Xcode is signed in to the developer account" ;;
     esac
+  fi
+
+  # A key that signs is not an account that can ship. While the Account Holder has
+  # an agreement waiting, every API call answers 403
+  # FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED -- and altool still prints
+  # VERIFY SUCCEEDED, so nothing downstream would have said so. One clean answer is
+  # necessary rather than sufficient: on 2026-10-28 the block lifted endpoint by
+  # endpoint over several minutes, which is why do_validate reads altool's
+  # transcript as well.
+  if have_asc_key && command -v jq >/dev/null; then
+    step "App Store Connect account"
+    local probe
+    ASC_TOKEN="$(asc_jwt)"
+    probe="$(asc_get "/v1/apps?filter%5BbundleId%5D=$APP_BUNDLE_ID&limit=1&fields%5Bapps%5D=bundleId" 2>/dev/null)" || probe=""
+    if jq -e '(.errors | length) > 0' <<<"$probe" >/dev/null 2>&1; then
+      bad "App Store Connect refused the key's first request:"
+      jq -r '.errors[] | "         \(.code): \(.detail)"' <<<"$probe" >&2
+      if jq -e '[.errors[].code] | index("FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED")' <<<"$probe" >/dev/null 2>&1; then
+        note "the Account Holder accepts it at https://developer.apple.com/account"
+      fi
+      case "$STAGE" in
+        validate|upload) fatal=1 ;;
+        *)               note "archive can still run; validate and upload cannot" ;;
+      esac
+    elif jq -e '(.data | type) == "array"' <<<"$probe" >/dev/null 2>&1; then
+      ok "App Store Connect answers the key without objection"
+    else
+      bad "could not reach App Store Connect"
+      case "$STAGE" in
+        validate|upload) fatal=1 ;;
+      esac
+    fi
   fi
 
   step "Release metadata"
@@ -550,9 +607,28 @@ altool() {
     --apiIssuer "$ASC_ISSUER_ID"
 }
 
+# altool's exit status and its banner can both say success when nothing was
+# validated. On 2026-10-28, with an agreement pending on the account, it printed
+# "VERIFY SUCCEEDED with no errors, 4 warnings", then "A non-validation error
+# occurred during validation. (403) Skipping validation.", and exited 0 -- and this
+# stage printed "validation passed" over it. So the transcript decides: validation
+# ran only if altool reports success and never reports skipping.
+validation_ran() {
+  grep -q "VERIFY SUCCEEDED" "$1" && ! grep -qi "skipping validation" "$1"
+}
+
 do_validate() {
   step "Validating against App Store Connect"
-  altool --validate-app
+  local log="$TMP_ROOT/validate.log"
+  # pipefail carries a non-zero altool exit through tee, so a real failure still
+  # stops the script here exactly as it did before the transcript was kept.
+  altool --validate-app 2>&1 | tee "$log"
+  if ! validation_ran "$log"; then
+    bad "altool did not validate the build, whatever its banner says"
+    grep -m1 "NSUnderlyingError" "$log" | sed 's/^ *NSUnderlyingError : /         /' >&2 || true
+    note "nothing was uploaded"
+    return 1
+  fi
   ok "validation passed"
 }
 
@@ -604,6 +680,7 @@ normalize_flag DRY_RUN
 normalize_flag NO_EXPIRE
 
 POLL_INTERVAL=30
+LISTING_TIMEOUT=900
 PROCESSING_TIMEOUT=1800
 BETA_STATE_TIMEOUT=1800
 
@@ -750,24 +827,76 @@ do_distribute() {
   ok "$(jq -r '.data[0].attributes.name' <<<"$app") ($APP_BUNDLE_ID), Apple ID $app_id"
 
   # ---- 2. the build --------------------------------------------------------
+  #
+  # A build is not listed the moment altool returns. On 2026-10-28 build 103's
+  # upload finished at 15:57 and /v1/builds first listed it at 16:00, so a run
+  # straight after upload said "no build 103 has been uploaded" about a build that
+  # had been. Apple keeps a second record that exists from the start -- the build
+  # upload, keyed by the Delivery UUID altool prints -- and its state separates the
+  # answers that one missing row was hiding:
+  #
+  #   PROCESSING, COMPLETE  the file arrived and the build is on its way: wait
+  #   AWAITING_UPLOAD       a record with no file. altool's validate opens one and
+  #                         a failed upload leaves it; build 87's has waited since
+  #                         August. Waiting cannot help.
+  #   FAILED                Apple refused the file
+  #
+  # No record at all is the one case that really is "never uploaded".
   step "Build $BUILD_NUMBER"
-  local builds build_id twins
-  builds="$(asc_get "/v1/builds?limit=200&sort=-uploadedDate&filter%5Bapp%5D=$app_id&fields%5Bbuilds%5D=version,uploadedDate,processingState,expired")"
-  # Same distinction step 7 makes: a list that could not be read is not an empty
-  # list, and must not be reported as "that build was never uploaded".
-  if ! jq -e '(.data | type) == "array"' <<<"$builds" >/dev/null 2>&1; then
-    bad "could not read the build list"
-    jq -r '.errors[]? | "         \(.title): \(.detail)"' <<<"$builds" >&2 2>/dev/null || true
-    return 1
-  fi
-  build_id="$(jq -r --arg v "$BUILD_NUMBER" \
-    '[.data[] | select(.attributes.version == $v) | .id][0] // empty' <<<"$builds")"
-  if [ -z "$build_id" ]; then
-    bad "no build $BUILD_NUMBER has been uploaded"
-    note "uploaded builds: $(jq -r '[.data[].attributes.version] | join(", ")' <<<"$builds")"
-    note "distribute never uploads; run ./scripts/release.sh upload first"
-    return 1
-  fi
+  local builds build_id twins uploads upload_state upload_last="" listing_elapsed=0
+  while :; do
+    asc_token_fresh
+    builds="$(asc_get "/v1/builds?limit=200&sort=-uploadedDate&filter%5Bapp%5D=$app_id&fields%5Bbuilds%5D=version,uploadedDate,processingState,expired")"
+    # Same distinction step 7 makes: a list that could not be read is not an empty
+    # list, and must not be reported as "that build was never uploaded".
+    if ! jq -e '(.data | type) == "array"' <<<"$builds" >/dev/null 2>&1; then
+      bad "could not read the build list"
+      jq -r '.errors[]? | "         \(.title): \(.detail)"' <<<"$builds" >&2 2>/dev/null || true
+      return 1
+    fi
+    build_id="$(jq -r --arg v "$BUILD_NUMBER" \
+      '[.data[] | select(.attributes.version == $v) | .id][0] // empty' <<<"$builds")"
+    [ -n "$build_id" ] && break
+
+    # The newest record wins: a failed upload's record is reused by the retry
+    # rather than replaced, but a build number can still be uploaded twice under
+    # two versions.
+    uploads="$(asc_get "/v1/apps/$app_id/buildUploads?limit=200&filter%5BcfBundleVersion%5D=$BUILD_NUMBER")"
+    if ! jq -e '(.data | type) == "array"' <<<"$uploads" >/dev/null 2>&1; then
+      bad "build $BUILD_NUMBER is not listed, and its upload records could not be read"
+      jq -r '.errors[]? | "         \(.title): \(.detail)"' <<<"$uploads" >&2 2>/dev/null || true
+      return 1
+    fi
+    upload_state="$(jq -r '.data | sort_by(.attributes.createdDate) | last | .attributes.state.state // empty' <<<"$uploads")"
+    case "$upload_state" in
+      "")
+        bad "no build $BUILD_NUMBER has been uploaded"
+        note "uploaded builds: $(jq -r '[.data[].attributes.version] | join(", ")' <<<"$builds")"
+        note "distribute never uploads; run ./scripts/release.sh upload first"
+        return 1 ;;
+      AWAITING_UPLOAD)
+        bad "Apple opened a record for build $BUILD_NUMBER on $(jq -r '.data | sort_by(.attributes.createdDate) | last | .attributes.createdDate[:10]' <<<"$uploads") but never received its file"
+        note "validate opens that record and a failed upload leaves it there; run ./scripts/release.sh upload"
+        return 1 ;;
+      FAILED)
+        bad "Apple refused the upload of build $BUILD_NUMBER"
+        jq -r '.data | sort_by(.attributes.createdDate) | last | .attributes.state.errors[]?
+               | "         \(.code // "error"): \(.description // .message // "")"' <<<"$uploads" >&2 2>/dev/null || true
+        note "a refused upload is answered with a new one, not by waiting"
+        return 1 ;;
+    esac
+    if [ "$upload_state" != "$upload_last" ]; then
+      note "the upload reached Apple ($upload_state); waiting for the build to be listed"
+      upload_last="$upload_state"
+    fi
+    if [ "$listing_elapsed" -ge "$LISTING_TIMEOUT" ]; then
+      bad "build $BUILD_NUMBER is still not listed after $((LISTING_TIMEOUT / 60)) minutes"
+      note "no group was touched and nothing was expired; re-run distribute later"
+      return 1
+    fi
+    sleep "$POLL_INTERVAL"
+    listing_elapsed=$((listing_elapsed + POLL_INTERVAL))
+  done
   ok "build $BUILD_NUMBER is $build_id, uploaded $(jq -r --arg v "$BUILD_NUMBER" \
     '[.data[] | select(.attributes.version == $v) | .attributes.uploadedDate][0][:10]' <<<"$builds")"
 
