@@ -2,7 +2,9 @@ import CoreGraphics
 import Foundation
 
 /// One glide-typable word: its display form, the key path that draws it, and a
-/// log-normalized frequency the decoder blends into its score.
+/// log-normalized frequency the decoder blends into its score. This is also what the
+/// lexicon stores — a private twin with the same three fields used to be rebuilt per
+/// surviving candidate on every lift.
 public struct GlideWord: Equatable {
     public let word: String
     public let path: [SleepTokenLetter]
@@ -15,13 +17,7 @@ public struct GlideWord: Equatable {
 /// are bucketed by first path letter so pruning touches a fraction of the list.
 public final class GlideLexicon {
 
-    private struct Entry {
-        let word: String
-        let path: [SleepTokenLetter]
-        let frequency: Double
-    }
-
-    private var buckets: [SleepTokenLetter: [Entry]] = [:]
+    private var buckets: [SleepTokenLetter: [GlideWord]] = [:]
     private var known: Set<String> = []
     public private(set) var wordCount = 0
 
@@ -62,7 +58,7 @@ public final class GlideLexicon {
         guard path.count >= 2, !known.contains(word.lowercased()) else { return }
         known.insert(word.lowercased())
         wordCount += 1
-        buckets[path[0], default: []].append(Entry(word: word, path: path, frequency: frequency))
+        buckets[path[0], default: []].append(GlideWord(word: word, path: path, frequency: frequency))
     }
 
     /// Lowercased letters only, adjacent duplicates collapsed: the finger visits
@@ -99,7 +95,7 @@ public final class GlideLexicon {
             for entry in buckets[letter] ?? [] {
                 guard let lastCenter = centers[entry.path.last!] else { continue }
                 guard hypot(lastCenter.x - end.x, lastCenter.y - end.y) <= radius else { continue }
-                results.append(GlideWord(word: entry.word, path: entry.path, frequency: entry.frequency))
+                results.append(entry)
             }
         }
         return results

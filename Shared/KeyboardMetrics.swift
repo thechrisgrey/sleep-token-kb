@@ -1,4 +1,5 @@
 import CoreGraphics
+import UIKit
 
 /// Single source of truth for keyboard geometry.
 ///
@@ -8,6 +9,14 @@ import CoreGraphics
 /// held six hand-maintained literal totals while the real drivers lived privately in
 /// `KeyboardRootView`, which under-allocated the grid layout by ~48pt and pushed its
 /// top key row off the edge of the input view.
+///
+/// iPad is a deliberate inheritance, not an oversight. The app targets both device
+/// families and every number here was measured on four iPhone widths; an iPad gets the
+/// same grid, scaled by its width, and never takes the compact path because its
+/// vertical size class is regular in both orientations. Stock's iPad keyboard is a
+/// different layout (a wider grid with its own row of keys), and an iPad-measured table
+/// would be new capability rather than a refinement of this one — so the decision is
+/// recorded here and in DESIGN.md rather than silently assumed.
 public enum KeyboardMetrics {
 
     // MARK: - Spacing scale
@@ -48,6 +57,14 @@ public enum KeyboardMetrics {
     /// under a fixed 42pt bar inverted the size hierarchy between typing keys and
     /// chrome. It stays a shade taller than the compact keys because it hosts the
     /// widest touch targets.
+    ///
+    /// The 30 is the one bar number here that was CHOSEN rather than measured: stock's
+    /// landscape bottom row has not been read off a screenshot the way the portrait
+    /// row and every key height were, and a landscape stock screenshot cannot be
+    /// taken from this project's portrait-only host app. If it is ever measured and
+    /// comes out at the 27.5pt key height, this becomes `compactBaseKeyHeight` and
+    /// `KeyboardMetricsTests.testCompactBottomBarShrinksWithTheKeys` is the test that
+    /// moves with it.
     public static func bottomBarHeight(compact: Bool = false) -> CGFloat {
         compact ? 30 : 43
     }
@@ -62,11 +79,46 @@ public enum KeyboardMetrics {
     }
     public static let keyCornerRadius: CGFloat = 6
 
-    /// The 44pt floor every touch target has to clear. Chrome that is not part of the
-    /// letter grid — the bottom bar's page key, the options panel, the emoji strip's
-    /// delete — sizes itself against this rather than against a key unit it has no
-    /// business knowing.
+    /// The 44pt floor touch targets clear. Chrome that is not part of the letter grid —
+    /// the bottom bar's page key, the options panel, the emoji strip's delete — sizes
+    /// itself against this rather than against a key unit it has no business knowing.
+    /// Two bottom-bar keys sit under it on purpose, named just below: stock's own globe
+    /// and emoji keys are narrower than 44pt, and widening ours would cost the space bar
+    /// the stock width it was measured for.
     public static let minimumTouchTarget: CGFloat = 44
+
+    // MARK: - Bottom bar
+
+    /// The globe and emoji keys: stock's two narrow bar keys, 38pt wide. Both are full
+    /// bar height, so the target is 38 x 43 — under the 44pt floor on one axis, the
+    /// trade the space bar's stock width is bought with.
+    public static let globeKeyWidth: CGFloat = 38
+    public static let emojiKeyWidth: CGFloat = 38
+    /// The return key. Wider than the floor because it carries a word, not a glyph.
+    public static let returnKeyWidth: CGFloat = 64
+    /// Breathing room inside the return cap: without it a long adaptive title
+    /// ("continue") renders edge-to-edge.
+    public static let chromeTitleInset: CGFloat = 4
+
+    // MARK: - Chrome faces
+
+    /// The captions on the bar keys ("123", "space", "#+=") and the return title, at the
+    /// default content size. They scale with the body text style like every key face;
+    /// a fixed literal left "space" at 14pt while the letters beside it grew to 31.
+    public static let chromeFaceSize: CGFloat = 14
+    public static let returnFaceSize: CGFloat = 13
+    /// How far a caption may shrink to fit its cap. The return title has further to go:
+    /// at the Dynamic Type ceiling the longest adaptive titles only fit by shrinking
+    /// back past their default size, which KeyboardMetricsTests measures.
+    public static let chromeMinimumScaleFactor: CGFloat = 0.65
+    public static let returnMinimumScaleFactor: CGFloat = 0.4
+
+    /// The Dynamic Type ceiling for the whole keyboard. Faces scale within the fixed
+    /// height budget up to here and no further, so the extension cannot grow
+    /// unboundedly. Applied once, on the hosting controller's view, so it reaches the
+    /// `@ScaledMetric` wrappers on the root view as well as every descendant — a
+    /// SwiftUI modifier inside `body` only ever clamped the latter.
+    public static let maximumContentSizeCategory: UIContentSizeCategory = .accessibilityLarge
 
     /// Width of shift and backspace.
     ///
@@ -133,20 +185,6 @@ public enum KeyboardMetrics {
         case symbols
         case symbolsAlt
         case emoji
-    }
-
-    /// Everything the container must know to reserve height, as one value over one
-    /// channel. Previously the page travelled a callback while the layout mode was
-    /// re-read from UserDefaults inside the controller — two transports for inputs to
-    /// a single derivation, which made it impossible to exercise end to end.
-    public struct HeightInputs: Equatable, Sendable {
-        public let page: Page
-        public let mode: LayoutMode
-
-        public init(page: Page, mode: LayoutMode) {
-            self.page = page
-            self.mode = mode
-        }
     }
 
     /// Number of full-height rows the page renders.

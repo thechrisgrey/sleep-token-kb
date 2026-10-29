@@ -114,4 +114,29 @@ final class KeyboardPreferencesTests: XCTestCase {
         KeyboardPreferences.glideTypingEnabled = true
         XCTAssertTrue(KeyboardPreferences.glideTypingEnabled)
     }
+
+    // MARK: - The commonest legacy state
+
+    /// In the pre-merge build `runeArt` was the default and never written, so a fan who
+    /// only ever toggled hints on has `showLatinHints == true` and NO stored key face.
+    /// The migration used to return `runeArt` before reading the hints key at all, and
+    /// those users came back without their hints.
+    func testLegacyHintsOnWithNoStoredFaceMigratesToRuneHints() {
+        removeEverywhere(KeyboardPreferences.keyFaceStyleKey)
+        setEverywhere(true, KeyboardPreferences.showLatinHintsKey)
+        XCTAssertEqual(KeyboardPreferences.keyFaceStyle, .runeHints)
+    }
+
+    func testLegacyHintsOffWithNoStoredFaceStaysRuneArt() {
+        removeEverywhere(KeyboardPreferences.keyFaceStyleKey)
+        setEverywhere(false, KeyboardPreferences.showLatinHintsKey)
+        XCTAssertEqual(KeyboardPreferences.keyFaceStyle, .runeArt)
+    }
+
+    /// A stored non-rune face wins over a stale hints bool from the old build.
+    func testAStoredLettersFaceIsNotPromotedByTheLegacyBool() {
+        setEverywhere(KeyFaceStyle.letters.rawValue, KeyboardPreferences.keyFaceStyleKey)
+        setEverywhere(true, KeyboardPreferences.showLatinHintsKey)
+        XCTAssertEqual(KeyboardPreferences.keyFaceStyle, .letters)
+    }
 }

@@ -10,20 +10,23 @@ final class KeyboardViewController: UIInputViewController {
     private var hostingController: UIHostingController<KeyboardRootView>?
     private var heightConstraint: NSLayoutConstraint?
 
-    /// What the SwiftUI view is showing, as the view itself reported it. The page and
-    /// layout mode change the row count and therefore the height the container must
-    /// reserve; carrying both on the one callback retires the second transport this
-    /// derivation used to have (a UserDefaults re-read at height time).
-    private var heightInputs = KeyboardMetrics.HeightInputs(
-        page: .letters,
-        mode: KeyboardPreferences.layoutMode
-    )
+    /// The layout mode the SwiftUI view is showing, as the view itself reported it. It
+    /// is the one input that changes the height the container must reserve (the grid
+    /// carries a fourth row); the page does not, because the tallest page is reserved
+    /// for the whole session. Carrying it on a callback retires the second transport
+    /// this derivation used to have (a UserDefaults re-read at height time).
+    private var layoutMode = KeyboardPreferences.layoutMode
 
     /// Which host field the keyboard is serving, as far as the proxy can identify one.
-    /// Two fields with identical traits are indistinguishable, and that is acceptable:
-    /// identical traits mean identical derivation rules, so the per-field reset only
-    /// matters when the fingerprint actually changes.
+    ///
+    /// The traits alone were not enough: two sibling fields with identical traits
+    /// never changed the fingerprint, so a manual caps lock engaged in one followed the
+    /// user into the next — the auto-derived state re-derives identically in both, but
+    /// a MANUAL state is preserved by rule and leaked. `documentIdentifier` is the
+    /// proxy's own notion of which document is being edited; iOS rotates it when focus
+    /// moves between fields and holds it steady while one field is typed into.
     private struct FieldFingerprint: Equatable {
+        let document: UUID?
         let returnKey: UIReturnKeyType
         let autocapitalization: UITextAutocapitalizationType
     }
@@ -38,6 +41,7 @@ final class KeyboardViewController: UIInputViewController {
 
     private var currentFingerprint: FieldFingerprint {
         FieldFingerprint(
+            document: textDocumentProxy.documentIdentifier,
             returnKey: textDocumentProxy.returnKeyType ?? .default,
             autocapitalization: textDocumentProxy.autocapitalizationType ?? .sentences
         )
@@ -122,6 +126,12 @@ final class KeyboardViewController: UIInputViewController {
         let host = UIHostingController(rootView: makeRootView())
         host.view.translatesAutoresizingMaskIntoConstraints = false
         host.view.backgroundColor = .clear
+        // The Dynamic Type ceiling for the whole keyboard, applied to the trait
+        // collection the hosting view hands SwiftUI. This is what the root view's
+        // `@ScaledMetric` wrappers read; the `.dynamicTypeSize` modifier inside its
+        // body only ever clamped the descendants, so at AX5 the Aa face resolved to
+        // ~53pt inside a 43pt key while the key itself honoured the clamp.
+        host.view.maximumContentSizeCategory = KeyboardMetrics.maximumContentSizeCategory
         addChild(host)
         view.addSubview(host.view)
         host.didMove(toParent: self)
@@ -173,7 +183,11 @@ final class KeyboardViewController: UIInputViewController {
                 },
                 correctionAllowed: { [weak self] in
                     guard let proxy = self?.textDocumentProxy else { return false }
-                    // Any one of these is the field saying "leave my text alone".
+                    // Any one of these is the field saying "leave my text alone". A
+                    // secure field first: iOS normally swaps to the system keyboard
+                    // for one, but a host can leave this keyboard up, and a password
+                    // is the one word that must never reach a spell checker.
+                    if proxy.isSecureTextEntry == true { return false }
                     if proxy.autocorrectionType == .no { return false }
                     if proxy.spellCheckingType == .no { return false }
                     switch proxy.keyboardType {
@@ -197,8 +211,8 @@ final class KeyboardViewController: UIInputViewController {
                     self?.hasFullAccess ?? false
                 }
             ),
-            onHeightInputsChanged: { [weak self] inputs in
-                self?.heightInputs = inputs
+            onLayoutModeChanged: { [weak self] mode in
+                self?.layoutMode = mode
                 self?.applyHeight()
             }
         )
@@ -241,7 +255,7 @@ final class KeyboardViewController: UIInputViewController {
         // tallest page up front costs a little headroom above the shorter ones and buys
         // a keyboard that never moves under the thumb.
         KeyboardMetrics.reservedHeight(
-            mode: heightInputs.mode,
+            mode: layoutMode,
             compact: traitCollection.verticalSizeClass == .compact
         )
     }

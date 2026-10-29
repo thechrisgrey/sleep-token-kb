@@ -57,3 +57,25 @@ final class SpaceTrackerTests: XCTestCase {
         XCTAssertEqual(tracker.sinceLastSpace, .infinity)
     }
 }
+
+// MARK: - Telling the keyboard which changes were external
+
+/// The caps-lock double tap needs the same answer the window does: the echo of the
+/// keystroke before a quick shift-shift must not land between the taps as an
+/// interrupt, while a real external change must. The tracker already knows; it now says.
+extension SpaceTrackerTests {
+
+    func testTheEchoOfALocalChangeIsReportedAsNotExternal() {
+        let tracker = SpaceTracker()
+        tracker.noteLocalChange()
+        XCTAssertFalse(tracker.hostTextDidChange(), "the keyboard's own echo is not an external change")
+    }
+
+    func testAChangeWithNoLocalEditBehindItIsReportedAsExternal() {
+        let tracker = SpaceTracker()
+        XCTAssertTrue(tracker.hostTextDidChange())
+        tracker.noteLocalChange()
+        _ = tracker.hostTextDidChange()
+        XCTAssertTrue(tracker.hostTextDidChange(), "one local edit earns exactly one silent echo")
+    }
+}

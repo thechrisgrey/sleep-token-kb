@@ -355,3 +355,84 @@ final class SuggestionRequestTests: XCTestCase {
         XCTAssertFalse(request.isCurrent(token))
     }
 }
+
+// MARK: - Memo bookkeeping
+
+extension SuggestionsTests {
+
+    /// Eviction keeps the in-progress word's own prefixes and drops everything else.
+    /// This is the branch the last rewrite changed (wipe-all became keep-prefixes), and
+    /// nothing filled the cache to prove it.
+    func testEvictionKeepsThePrefixesOfTheWordBeingTyped() {
+        let engine = SuggestionEngine()
+        for index in 0..<SuggestionEngine.cacheLimit {
+            engine.remember("word\(index)", corrections: ["x"])
+        }
+        engine.remember("keyb", corrections: ["keys"])
+        engine.remember("keybo", corrections: ["keybo"])
+        XCTAssertEqual(engine.immediateSuggestions(forPartialWord: "keyb")?.candidates, ["keys"],
+                       "a prefix of the word being typed survives eviction")
+        XCTAssertNil(engine.immediateSuggestions(forPartialWord: "word3"),
+                     "an unrelated memo is evicted")
+    }
+
+    /// A word the engine answers for free must never be memoised, or a stale background
+    /// answer could outrank the short-circuit.
+    func testRememberIgnoresWordsTheEngineAnswersForFree() {
+        let engine = SuggestionEngine()
+        engine.remember("hm", corrections: ["him"])
+        XCTAssertEqual(engine.immediateSuggestions(forPartialWord: "hm")?.candidates, [])
+        engine.keepAsTyped("vessel")
+        engine.remember("vessel", corrections: ["vessels"])
+        XCTAssertEqual(engine.immediateSuggestions(forPartialWord: "vessel")?.candidates, [])
+    }
+
+    /// Contractions reach the checker whole (the apostrophe is in-word) and the
+    /// lowercase form is known, so they are never touched. Foundation's `capitalized`
+    /// — the fallback `isKnown` also tries — keeps the apostrophe inside the word, so
+    /// the capitalised form is a real word too; pinned because the 2026-10-27 audit
+    /// claimed it produced "Don'T", and it does not.
+    func testContractionsAreNeverAutoReplaced() {
+        let engine = SuggestionEngine()
+        for word in ["don't", "it's", "we're", "Don't"] {
+            XCTAssertNil(engine.autoReplacement(for: word), "\(word) would be silently replaced")
+        }
+        XCTAssertEqual("don't".capitalized, "Don't")
+    }
+}
+
+// MARK: - Cancelling the work, not just the publication
+
+extension SuggestionRequestTests {
+
+    /// A newer keystroke cancels the task behind the older request, so a burst on one
+    /// long word no longer queues every stale prefix's `guesses()` ahead of the live one.
+    func testIssuingANewRequestCancelsTheTaskInFlight() {
+        let request = SuggestionRequest()
+        _ = request.issue()
+        let stale = Task { _ = try? await Task.sleep(for: .seconds(60)) }
+        request.track(stale)
+        _ = request.issue()
+        XCTAssertTrue(stale.isCancelled)
+    }
+
+    func testCancelAllCancelsTheTaskInFlight() {
+        let request = SuggestionRequest()
+        _ = request.issue()
+        let stale = Task { _ = try? await Task.sleep(for: .seconds(60)) }
+        request.track(stale)
+        request.cancelAll()
+        XCTAssertTrue(stale.isCancelled)
+    }
+
+    /// The worker checks for cancellation before consulting the dictionary, so a
+    /// cancelled request costs nothing in the actor.
+    func testTheWorkerAnswersNothingForACancelledRequest() async {
+        let task = Task { () -> [String] in
+            withUnsafeCurrentTask { $0?.cancel() }
+            return await SpellWorker.shared.corrections(for: "teh")
+        }
+        let answer = await task.value
+        XCTAssertEqual(answer, [], "a cancelled request must not run guesses()")
+    }
+}

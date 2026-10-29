@@ -7,28 +7,42 @@ import UIKit
 /// dropped from here fails rather than silently falling through to "return".
 public enum ReturnKeyTitle {
 
+    /// Lowercase throughout, to match the system keyboard: since iOS 13 stock draws
+    /// "return", "go", "search", "send" and "done" all in lowercase, and the cap sits
+    /// beside "space". The spoken label (below) carries the capital.
     public static func title(for type: UIReturnKeyType) -> String {
         switch type {
-        case .go: "Go"
+        case .go: "go"
         // google and yahoo are legacy spellings of "this is a search field". Neither should
         // put a search engine's name on a keycap.
-        case .google, .search, .yahoo: "Search"
-        case .join: "Join"
-        case .next: "Next"
-        case .route: "Route"
-        case .send: "Send"
-        case .done: "Done"
-        case .emergencyCall: "Emergency"
-        case .continue: "Continue"
-        // Lowercase to match the system keyboard, and to sit correctly beside "space".
+        case .google, .search, .yahoo: "search"
+        case .join: "join"
+        case .next: "next"
+        case .route: "route"
+        case .send: "send"
+        case .done: "done"
+        case .emergencyCall: "emergency"
+        case .continue: "continue"
         case .default: "return"
         @unknown default: "return"
         }
     }
 
-    /// VoiceOver reads this rather than the cap. Only the lowercase default needs
-    /// promoting; every other title is already a word spoken as written.
+    /// Whether stock paints this return key as a tinted action key with a white title
+    /// rather than the function grey. The field actions do; a plain return and "next"
+    /// — which only moves focus — stay grey, and emergency call is its own red key on
+    /// stock that this keyboard does not imitate.
+    public static func isAction(for type: UIReturnKeyType) -> Bool {
+        switch type {
+        case .go, .google, .search, .yahoo, .join, .route, .send, .done, .continue: true
+        case .default, .next, .emergencyCall: false
+        @unknown default: false
+        }
+    }
+
+    /// VoiceOver reads this rather than the cap: the cap is lowercase to match stock,
+    /// the spoken word carries the capital.
     public static func accessibilityLabel(for type: UIReturnKeyType) -> String {
-        type == .default ? "Return" : title(for: type)
+        title(for: type).capitalized
     }
 }

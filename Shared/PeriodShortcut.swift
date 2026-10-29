@@ -13,6 +13,11 @@ public enum PeriodShortcut {
     /// thumb without firing on two deliberately separate spaces.
     public static let window: TimeInterval = 1.0
 
+    /// What VoiceOver speaks when the shortcut fires. A VoiceOver user with character
+    /// feedback otherwise hears the space key twice and no cue that a period landed
+    /// and shift armed; the sibling "Corrected X to Y" announcement already speaks.
+    public static let announcement = "Period"
+
     /// The rule is deliberately blind to interleaving: it sees only (context, elapsed).
     /// Consecutiveness is the CALLER's obligation — any keystroke between the two
     /// spaces must reset the clock, because given a qualifying context and a fresh
@@ -25,13 +30,15 @@ public enum PeriodShortcut {
     public static func shouldSubstitute(contextBefore: @autoclosure () -> String?, sinceLastSpace: TimeInterval) -> Bool {
         guard sinceLastSpace <= window else { return false }
 
-        // Two characters answer everything: the space to be replaced, and the word
-        // character that proves a word actually ended here. Only a letter or digit ends
-        // a word — punctuation, another space, or a newline means nothing here wants a
-        // full stop.
-        guard let context = contextBefore(),
-              context.last == " ",
-              let preceding = context.dropLast().last else { return false }
+        // The space to be replaced, then — looking past any closing quote or bracket,
+        // the way autocapitalisation does — the word character that proves a word
+        // actually ended here. Only a letter or digit ends a word: a terminator, another
+        // space, or a newline means nothing here wants a full stop, and `"stop." ` must
+        // not become `"stop.". `.
+        guard let context = contextBefore(), context.last == " " else { return false }
+        let beforeSpace = context.dropLast().reversed()
+        guard let preceding = beforeSpace.drop(while: { SentenceBoundary.closers.contains($0) }).first
+        else { return false }
         return preceding.isLetter || preceding.isNumber
     }
 }

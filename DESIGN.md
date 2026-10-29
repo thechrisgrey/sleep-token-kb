@@ -365,7 +365,17 @@ compact height class (landscape iPhone) the keys shrink rather than the total
 being clamped — 43pt to 27.5pt base, 47pt to 31.5pt hinted, with the row gap
 tightening 11pt to 8pt — and the bottom chrome bar drops 43pt to 30pt alongside
 them, staying a shade taller than the keys because it hosts the widest touch
-targets. Every one of those numbers is stock's, measured, not chosen.
+targets. The key heights, gaps and row pitches are stock's, measured, not chosen;
+the compact bar's 30pt is the one bar number chosen by eye rather than measured,
+and `KeyboardMetrics` says so.
+
+**iPad inherits the iPhone grid on purpose.** Every keyboard metric was measured
+on four iPhone widths. An iPad gets the same grid scaled by its width and never
+takes the compact path, because its vertical size class is regular in both
+orientations. Stock's iPad keyboard is a different layout — a wider grid with its
+own extra row — and an iPad-measured table would be new capability rather than a
+refinement of this one. Recorded here and in `KeyboardMetrics` so the inheritance
+reads as a decision, not an oversight.
 
 ### Named Rules
 

@@ -16,6 +16,8 @@ struct SymbolsPage: View {
     let switchTitle: String
     let keyHeight: CGFloat
     let faceSize: CGFloat
+    /// The page-switch key's caption, scaled by the root alongside the symbol faces.
+    let chromeFaceSize: CGFloat
     let onInsert: (String) -> Void
     let onSwitchPage: () -> Void
     let onBackspace: (Bool) -> Void
@@ -38,7 +40,7 @@ struct SymbolsPage: View {
                         if isLastRow {
                             ChromeKeyButton(
                                 content: .text(switchTitle),
-                                fontSize: 14,
+                                fontSize: chromeFaceSize,
                                 weight: .semibold,
                                 label: switchTitle == "123"
                                     ? "Switch to numbers"

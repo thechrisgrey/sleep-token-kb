@@ -28,13 +28,6 @@ public enum LayoutMode: String, CaseIterable, Identifiable, Codable, Sendable {
         case .grid: "A to Z grid layout"
         }
     }
-
-    public var next: LayoutMode {
-        switch self {
-        case .qwerty: .grid
-        case .grid: .qwerty
-        }
-    }
 }
 
 /// How letter keys look. Typing always inserts normal English a–z.
@@ -49,9 +42,6 @@ public enum KeyFaceStyle: String, CaseIterable, Identifiable, Codable, Sendable 
 
     public var id: String { rawValue }
 
-    /// Whether the key face draws the rune art at all.
-    public var showsRuneArt: Bool { self != .letters }
-
     /// Whether a small Latin letter sits beneath the rune art.
     public var showsLatinHint: Bool { self == .runeHints }
 
@@ -63,21 +53,13 @@ public enum KeyFaceStyle: String, CaseIterable, Identifiable, Codable, Sendable 
         }
     }
 
-    /// Names the key *style* rather than an alphabet, so the chrome key can never show
-    /// the same text as the neighbouring 123/ABC page key.
+    /// Names the key *style* rather than an alphabet; the options panel renders these
+    /// three side by side, and the host app's segmented picker uses them too.
     public var shortTitle: String {
         switch self {
         case .runeArt: "Rune"
         case .runeHints: "Rune·A"
         case .letters: "Aa"
-        }
-    }
-
-    public var next: KeyFaceStyle {
-        switch self {
-        case .runeArt: .runeHints
-        case .runeHints: .letters
-        case .letters: .runeArt
         }
     }
 }
@@ -150,17 +132,17 @@ public enum KeyboardPreferences {
 
     public static var keyFaceStyle: KeyFaceStyle {
         get {
-            guard let raw = storedString(keyFaceStyleKey),
-                  let style = KeyFaceStyle(rawValue: raw) else {
-                // Default: ritual keys, English text (simple path for fans).
-                return .runeArt
-            }
-            // Legacy migration: hints used to be a separate bool alongside `runeArt`.
-            // A stored pair of (runeArt, hints on) means the user wants `runeHints`.
-            if style == .runeArt, storedBool(showLatinHintsKey, default: false) {
+            // Default: ritual keys, English text (simple path for fans).
+            let stored = storedString(keyFaceStyleKey).flatMap(KeyFaceStyle.init(rawValue:))
+            // Legacy migration: hints used to be a separate bool alongside `runeArt`,
+            // and `runeArt` was the default that was never written. So the commonest
+            // legacy state is hints on with NO stored face — it has to be read the
+            // same way as the explicit (runeArt, hints on) pair, or the fan who only
+            // ever toggled hints on comes back without them.
+            if stored == nil || stored == .runeArt, storedBool(showLatinHintsKey, default: false) {
                 return .runeHints
             }
-            return style
+            return stored ?? .runeArt
         }
         set {
             store(newValue.rawValue, keyFaceStyleKey)
